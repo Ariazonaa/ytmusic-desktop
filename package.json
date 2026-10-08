@@ -1,0 +1,36 @@
+{
+  "name": "ytmusic-desktop",
+  "private": true,
+  "version": "0.4.1",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "npm run build:inject && npm run build:sandbox && npm run build:ui",
+    "build:inject": "vite build",
+    "build:sandbox": "vite build --config vite.sandbox.config.ts",
+    "build:ui": "vite build --config vite.ui.config.ts",
+    "dev": "npm run build && tauri dev",
+    "dev:watch": "node scripts/dev.mjs",
+    "tauri": "tauri",
+    "test": "vitest run",
+    "test:e2e": "node scripts/e2e-transition.mjs && node scripts/e2e-startup.mjs",
+    "typecheck": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json",
+    "version": "node scripts/sync-version.mjs && git add src-tauri/Cargo.toml src-tauri/Cargo.lock"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^7.3.1",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/cli": "^2",
+    "@testing-library/svelte": "^5.4.2",
+    "jsdom": "^27",
+    "svelte": "^5.57.1",
+    "svelte-check": "^4.7.6",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^5",
+    "vite": "^8",
+    "vitest": "^5"
+  }
+}

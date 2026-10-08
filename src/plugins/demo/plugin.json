@@ -1,0 +1,30 @@
+{
+  "name": "demo",
+  "version": "0.2.0",
+  "description": "A working template for people who write plugins.",
+  "category": "tools",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "accentColor": {
+      "type": "select",
+      "label": "Accent color",
+      "default": "red",
+      "options": [
+        { "value": "red", "label": "Red" },
+        { "value": "blue", "label": "Blue" },
+        { "value": "green", "label": "Green" }
+      ]
+    },
+    "buttonLabel": {
+      "type": "string",
+      "label": "Button label",
+      "default": "Demo"
+    },
+    "logSongs": {
+      "type": "boolean",
+      "label": "Log songs",
+      "description": "Write every song change to the console.",
+      "default": true
+    }
+  }
+}

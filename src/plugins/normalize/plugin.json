@@ -1,0 +1,30 @@
+{
+  "name": "normalize",
+  "version": "0.1.0",
+  "description": "Brings every track to the same loudness.",
+  "category": "audio",
+  "permissions": ["music.read", "audio"],
+  "settings": {
+    "target": {
+      "type": "select",
+      "label": "Loudness",
+      "description": "Every track is brought to this loudness. Quiet leaves the most room for tracks with loud peaks.",
+      "default": "medium",
+      "options": [
+        { "value": "quiet", "label": "Quiet" },
+        { "value": "medium", "label": "Medium" },
+        { "value": "loud", "label": "Loud" }
+      ]
+    },
+    "maxBoost": {
+      "type": "range",
+      "label": "Largest boost",
+      "description": "Quiet tracks are made louder by at most this much. More can distort their loudest moments.",
+      "default": 6,
+      "min": 0,
+      "max": 12,
+      "step": 1,
+      "unit": "dB"
+    }
+  }
+}

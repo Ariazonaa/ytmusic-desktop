@@ -1,0 +1,12 @@
+{
+  "name": "hello",
+  "version": "0.1.0",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "greeting": {
+      "type": "string",
+      "label": "Greeting",
+      "default": "Now playing"
+    }
+  }
+}

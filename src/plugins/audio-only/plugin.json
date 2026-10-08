@@ -1,0 +1,7 @@
+{
+  "name": "audio-only",
+  "version": "0.1.0",
+  "description": "When a music video comes up, switches to its audio version. Saves bandwidth and processor time.",
+  "category": "playback",
+  "permissions": ["music.read", "music.control"]
+}

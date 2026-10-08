@@ -1,0 +1,49 @@
+name: Linux probe
+
+# An experiment, not a check: what does the app's webview on Linux make of
+# YouTube Music, and does the Rust code build there? Started by hand; the
+# results are written up in docs/platforms.md.
+on:
+  workflow_dispatch:
+
+jobs:
+  webview:
+    name: YouTube Music in WebKitGTK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install WebKitGTK and GStreamer
+        run: |
+          SUDO=""; if [ "$(id -u)" != 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q --no-install-recommends xvfb xauth python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 gir1.2-soup-3.0 \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav gstreamer1.0-pulseaudio \
+            glib-networking ca-certificates dbus-x11
+          . /etc/os-release; echo "$PRETTY_NAME"
+      - name: Probe
+        run: xvfb-run -a dbus-run-session python3 scripts/linux-probe.py
+
+  build:
+    name: Rust code on Linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install build dependencies
+        run: |
+          SUDO=""; if [ "$(id -u)" != 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q --no-install-recommends build-essential curl pkg-config libssl-dev libwebkit2gtk-4.1-dev \
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: npm run build
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri

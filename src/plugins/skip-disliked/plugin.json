@@ -1,0 +1,14 @@
+{
+  "name": "skip-disliked",
+  "version": "0.1.0",
+  "description": "Skips tracks you gave a thumbs down.",
+  "category": "playback",
+  "permissions": ["music.read", "music.control", "ui.inject"],
+  "settings": {
+    "showNotice": {
+      "type": "boolean",
+      "label": "Show a notice when skipping",
+      "default": true
+    }
+  }
+}
