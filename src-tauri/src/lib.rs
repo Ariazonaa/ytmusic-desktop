@@ -17,6 +17,7 @@ mod settings;
 mod shortcuts;
 mod themes;
 mod tray;
+mod update;
 mod watch;
 mod window;
 
@@ -47,6 +48,7 @@ pub fn run() {
         .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .register_uri_scheme_protocol(plugins::SCHEME, |context, request| {
             // An empty path matches nothing, so this answers 404 without a config directory.
             let dir = plugins::dir(context.app_handle()).unwrap_or_default();
@@ -75,7 +77,11 @@ pub fn run() {
             commands::is_first_run,
             commands::install_plugin,
             commands::remove_plugin,
-            commands::output_device
+            commands::output_device,
+            commands::app_version,
+            commands::pending_update,
+            commands::check_update,
+            commands::install_update
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -96,9 +102,11 @@ pub fn run() {
             app.manage(store);
             app.manage(health::HealthStore::default());
             app.manage(commands::NotifyLimit::default());
+            app.manage(update::UpdateStore::default());
             tray::create(app.handle(), &app.state::<SettingsStore>().get().language)?;
             window::create_main_window(app.handle(), hidden)?;
             watch::start(app.handle());
+            update::check_at_start(app.handle());
             if first_run && !hidden {
                 // No plugin is on yet: the settings window is where to choose some.
                 window::open_settings_window(app.handle());

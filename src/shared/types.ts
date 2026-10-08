@@ -105,6 +105,8 @@ export interface Settings {
   reloadPluginsOnChange: boolean;
   /** Draw and decode video on the GPU. Applies from the next start. */
   hardwareAcceleration: boolean;
+  /** Ask the project's releases at each start whether there is a newer version. */
+  checkForUpdates: boolean;
   /** Only values the user changed are stored; the rest come from the schema defaults. */
   pluginSettings: StoredPluginSettings;
   shortcuts: Shortcuts;
@@ -139,6 +141,13 @@ export type LikeStatus = "like" | "dislike" | "none";
 export interface NoticeAction {
   label: string;
   onClick: () => void;
+}
+
+/** A newer version of the app that can be installed. */
+export interface UpdateInfo {
+  version: string;
+  /** What changed, as the release says it. May be empty. */
+  notes: string;
 }
 
 /** One track of the play queue, with its texts as the page shows them. */

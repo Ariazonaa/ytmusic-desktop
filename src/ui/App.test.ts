@@ -18,6 +18,10 @@ const client = vi.hoisted(() => ({
   importSettings: vi.fn(),
   installPlugin: vi.fn(),
   removePlugin: vi.fn(),
+  appVersion: vi.fn(),
+  pendingUpdate: vi.fn(),
+  checkUpdate: vi.fn(),
+  installUpdate: vi.fn(),
 }));
 const setTitle = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
@@ -33,6 +37,7 @@ const settings = (changes: Partial<Settings> = {}): Settings => ({
   language: "en",
   reloadPluginsOnChange: false,
   hardwareAcceleration: true,
+  checkForUpdates: true,
   pluginSettings: {},
   shortcuts: { playPause: "", next: "", previous: "", volumeUp: "", volumeDown: "", toggleMute: "" },
   ...changes,
@@ -58,6 +63,8 @@ beforeEach(() => {
   client.openLog.mockResolvedValue(undefined);
   client.getHealth.mockResolvedValue({ pageProblems: [], pluginErrors: {} });
   client.isFirstRun.mockResolvedValue(false);
+  client.appVersion.mockResolvedValue("1.0.0");
+  client.pendingUpdate.mockResolvedValue(null);
 });
 
 describe("settings window", () => {
@@ -207,6 +214,41 @@ describe("settings window", () => {
     render(App);
     await screen.findByText("General");
     expect(screen.queryByText("Welcome!")).toBeNull();
+  });
+
+  it("shows the version and what a check finds", async () => {
+    client.checkUpdate.mockResolvedValue(null);
+    render(App);
+    expect(await screen.findByText("Installed: version 1.0.0")).toBeTruthy();
+    expect(screen.queryByText("Install and restart")).toBeNull();
+    await fireEvent.click(screen.getByText("Look now"));
+    expect(await screen.findByText("This is the newest version.")).toBeTruthy();
+
+    client.checkUpdate.mockResolvedValue({ version: "1.1.0", notes: "- Something new" });
+    await fireEvent.click(screen.getByText("Look now"));
+    expect(await screen.findByText("Version 1.1.0 is available.")).toBeTruthy();
+    expect(screen.getByText("- Something new")).toBeTruthy();
+    expect(screen.queryByText("This is the newest version.")).toBeNull();
+  });
+
+  it("offers the update found at start and installs it on a click only", async () => {
+    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "" });
+    client.installUpdate.mockRejectedValue("signature does not fit");
+    render(App);
+    const install = await screen.findByText("Install and restart");
+    expect(client.installUpdate).not.toHaveBeenCalled();
+    await fireEvent.click(install);
+    expect(client.installUpdate).toHaveBeenCalledOnce();
+    expect(await screen.findByText("Could not install the update: signature does not fit")).toBeTruthy();
+  });
+
+  it("says so when the check fails, and saves the switch", async () => {
+    client.checkUpdate.mockRejectedValue("no connection");
+    render(App);
+    await fireEvent.click(await screen.findByText("Look now"));
+    expect(await screen.findByText("Could not check for updates: no connection")).toBeTruthy();
+    await fireEvent.click(screen.getByRole("switch", { name: /Look for updates at start/ }));
+    expect(client.setSettings).toHaveBeenLastCalledWith(expect.objectContaining({ checkForUpdates: false }));
   });
 
   it("says so when the settings cannot be loaded", async () => {

@@ -6,6 +6,7 @@ import { addNavButton } from "../core/injector/nav-button";
 import { showNotice } from "../core/injector/notice";
 import { createPanel } from "../core/injector/panel";
 import { addSettingsButton } from "../core/injector/settings-button";
+import { showUpdateNotice } from "../core/injector/update-notice";
 import { createExternalPlugin } from "../core/plugin-manager/external";
 import { PluginManager } from "../core/plugin-manager/manager";
 import { AudioChain } from "../core/audio/chain";
@@ -196,6 +197,8 @@ interface Hooks {
   reloadPlugins?: () => Promise<void>;
   /** A notification a plugin asked for was clicked. */
   notificationClicked: (id: number) => void;
+  /** The check at start found a newer version of the app. */
+  updateAvailable: (version: string) => void;
   /** What plugins are told about the playing song. Read by `scripts/e2e-transition.mjs`. */
   inspect?: () => { song: Song | null; playback: PlaybackState | null; videoId: string | null };
 }
@@ -207,11 +210,12 @@ const hooks: Hooks = {
     controlPlayer(action);
   },
   notificationClicked: (id) => notifier.clicked(id),
+  updateAvailable: (version) => showUpdateNotice(version, () => void openSettings()),
 };
 
 declare global {
   interface Window {
-    /** Called from Rust, see `control_player`, `apply_settings`, `reload_plugins` and `notification_clicked` in `window.rs`. */
+    /** Called from Rust, see `control_player`, `apply_settings`, `reload_plugins`, `notification_clicked` and `update_available` in `window.rs`. */
     __ytmDesktop?: Hooks;
   }
 }

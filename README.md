@@ -33,7 +33,8 @@ app adds what a website cannot do:
 - **Light:** the installer is under 3 MB. The app is built with
   [Tauri](https://tauri.app) and uses the browser engine Windows already has,
   instead of bringing its own.
-- **Private:** no statistics, no account, no server of its own.
+- **Private:** no statistics, no account, no server of its own; the one thing
+  it asks for is whether there is a newer version, and that can be switched off.
   [What leaves your computer](#privacy) is written down.
 
 Everything is a plugin and off until you switch it on. The app is in English
@@ -50,19 +51,21 @@ and German.
 
 ## Install
 
-Windows 10 or 11. There is no ready-made download yet, so for now the app is
-built from the source. That needs [Rust](https://rustup.rs) and
-[Node.js](https://nodejs.org) 22 or newer:
+Windows 10 or 11.
 
-```sh
-git clone https://github.com/Ariazonaa/ytmusic-desktop.git
-cd ytmusic-desktop
-npm install
-npm run tauri build
-```
+**[Download the installer](https://github.com/Ariazonaa/ytmusic-desktop/releases/latest)**
+(`ytmusic-desktop_…_x64-setup.exe`) and run it. It installs for your user only
+and needs no administrator rights.
 
-The installer is then in `src-tauri/target/release/bundle/nsis`. It installs
-for your user only and needs no administrator rights.
+The installer is not signed with a certificate, so Windows SmartScreen may
+warn about an unknown publisher; "More info" and "Run anyway" get past that.
+
+**Updates:** the app looks for a newer version when it starts and tells you.
+You install it with one click in the settings window, under Updates; nothing
+is installed by itself. The check can be switched off there.
+
+To build it yourself instead, see
+[docs/development.md](docs/development.md#setup).
 
 Linux and macOS are not supported yet; [docs/platforms.md](docs/platforms.md)
 says how far that is.
@@ -153,6 +156,7 @@ Want to write one? [docs/plugins.md](docs/plugins.md) is the guide, and
   own, and goes back to the music by itself once the connection is there.
 - **When YouTube Music changes** and something stops working, the settings
   window says what, instead of features silently doing nothing.
+- **Updates:** found at start, installed when you say so.
 - **Backup:** all settings can be exported to a file and imported again.
 - **Language:** English or German for everything the app adds. It follows
   Windows unless you choose one. YouTube Music itself keeps the language of
@@ -218,8 +222,14 @@ another for the speakers.
 What leaves your computer because of this app, as opposed to because of
 YouTube Music itself.
 
-**The app.** It sends nothing of its own: no statistics, no crash reports, no
-check for updates. It has no server. The window is a browser showing
+**The app.** It sends no statistics and no crash reports, and it has no
+server. The one request of its own is the look for updates: at each start it
+fetches a small file from this project's releases on `github.com`, which
+names the newest version. The request carries nothing about you or the app;
+GitHub sees your IP address, as every server does. "Look for updates at
+start" in the settings window switches it off. An update itself is downloaded
+from there too, only when you click to install it, and only installed if it
+carries this project's signature. The window is a browser showing
 `music.youtube.com`, so Google sees what it would see in any browser, with
 your Google account if you sign in. The browser engine is Microsoft's WebView2,
 which is part of Windows.

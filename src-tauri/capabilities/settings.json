@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "settings-window",
-  "description": "Lets the settings window read, write, export and import settings, install, remove and manage external plugins, open the log and set its own title.",
+  "description": "Lets the settings window read, write, export and import settings, install, remove and manage external plugins, look for and install updates, open the log and set its own title.",
   "windows": ["settings"],
   "permissions": [
     "allow-get-settings",
@@ -18,6 +18,10 @@
     "allow-is-first-run",
     "allow-install-plugin",
     "allow-remove-plugin",
+    "allow-app-version",
+    "allow-pending-update",
+    "allow-check-update",
+    "allow-install-update",
     "core:window:allow-set-title"
   ]
 }

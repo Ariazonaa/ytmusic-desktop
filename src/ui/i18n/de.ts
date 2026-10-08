@@ -284,6 +284,21 @@ const de: Readonly<Record<string, string>> = {
   "How far one notch of the mouse wheel changes the volume.":
     "Um wie viel eine Raste des Mausrads die Lautstärke ändert.",
   "Show the volume while changing it": "Lautstärke beim Ändern anzeigen",
+
+  // updates
+  Updates: "Updates",
+  "Look for updates at start": "Beim Start nach Updates suchen",
+  "Asks GitHub at each start whether there is a newer version. Nothing is installed without your click.":
+    "Fragt bei jedem Start bei GitHub nach, ob es eine neuere Version gibt. Installiert wird erst auf deinen Klick.",
+  "Version {version} is available.": "Version {version} ist verfügbar.",
+  "Install and restart": "Installieren und neu starten",
+  "Installing…": "Wird installiert…",
+  "Looking…": "Suche läuft…",
+  "Look now": "Jetzt suchen",
+  "Installed: version {version}": "Installiert: Version {version}",
+  "This is the newest version.": "Das ist die neueste Version.",
+  "Could not check for updates: {reason}": "Die Suche nach Updates ist fehlgeschlagen: {reason}",
+  "Could not install the update: {reason}": "Das Update ließ sich nicht installieren: {reason}",
 };
 
 export default de;

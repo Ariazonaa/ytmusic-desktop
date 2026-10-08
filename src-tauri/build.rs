@@ -25,6 +25,10 @@ fn main() {
         "install_plugin",
         "remove_plugin",
         "output_device",
+        "app_version",
+        "pending_update",
+        "check_update",
+        "install_update",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run tauri-build");

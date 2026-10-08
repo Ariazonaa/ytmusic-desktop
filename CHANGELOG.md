@@ -4,6 +4,13 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.5.0
+
+- Updates: the app looks for a newer version at start and says so. It is
+  installed with a click under Updates in the settings window, which also
+  shows the installed version and can switch the check off.
+- Installers are published as releases on GitHub.
+
 ## 0.4.2
 
 - The settings window says what the language setting covers: the window, the
