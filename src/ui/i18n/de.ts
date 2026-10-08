@@ -30,7 +30,8 @@ const de: Readonly<Record<string, string>> = {
   "Restart the app to apply this change.": "Starte die App neu, damit die Änderung gilt.",
   "Restart now": "Jetzt neu starten",
   Language: "Sprache",
-  "Language of this window.": "Sprache dieses Fensters.",
+  "Of this window, the tray menu and what the app adds to the page.":
+    "Für dieses Fenster, das Tray-Menü und alles, was die App in die Seite einfügt.",
   "Same as Windows": "Wie Windows",
 
   // Global shortcuts

@@ -537,8 +537,8 @@ loaded. All plugins start again when the user changes the language.
 ### Developing
 
 `npm run dev` starts the app and rebuilds on change. Edits to a built-in
-plugin reload the page within a couple of seconds. See the README for the
-rest of the loop.
+plugin reload the page within a couple of seconds. See
+[development.md](development.md) for the rest of the loop.
 
 Put logic that does not need the page into its own file and test it with
 Vitest (`npm test`). The plugins here keep the DOM and Web Audio parts thin
