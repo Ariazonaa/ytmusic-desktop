@@ -166,6 +166,20 @@ pub fn reload_plugins(app: &AppHandle) {
     }
 }
 
+/// Tells the page that a newer version of the app can be installed.
+pub fn update_available(app: &AppHandle, version: &str) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+    // The version comes from the network: as JSON it is a harmless literal.
+    let result = serde_json::to_string(version)
+        .map_err(tauri::Error::from)
+        .and_then(|json| window.eval(format!("window.__ytmDesktop?.updateAvailable?.({json})")));
+    if let Err(err) = result {
+        log_error!("cannot tell the page about the update: {err}");
+    }
+}
+
 /// Tells the page that the notification it asked for under `id` was clicked.
 pub fn notification_clicked(app: &AppHandle, id: u32) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {

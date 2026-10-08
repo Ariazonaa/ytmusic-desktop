@@ -39,6 +39,8 @@ pub struct Settings {
     /// Draw and decode video on the GPU. Off saves memory at the cost of CPU
     /// time. Read once at start: the browser cannot switch while it runs.
     pub hardware_acceleration: bool,
+    /// Ask the project's releases at each start whether there is a newer version.
+    pub check_for_updates: bool,
     /// Per-plugin settings by plugin name. What the keys mean is defined by
     /// each plugin's schema, which only the frontend knows.
     pub plugin_settings: BTreeMap<String, BTreeMap<String, Value>>,
@@ -71,6 +73,7 @@ impl Default for Settings {
             language: "system".into(),
             reload_plugins_on_change: false,
             hardware_acceleration: true,
+            check_for_updates: true,
             plugin_settings: BTreeMap::new(),
             shortcuts: Shortcuts::default(),
         }
@@ -274,6 +277,7 @@ mod tests {
             language: "de".into(),
             reload_plugins_on_change: true,
             hardware_acceleration: false,
+            check_for_updates: false,
             plugin_settings: BTreeMap::from([(
                 "lyrics".to_string(),
                 BTreeMap::from([

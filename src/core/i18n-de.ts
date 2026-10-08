@@ -4,6 +4,8 @@ const de: Readonly<Record<string, string>> = {
   "Desktop settings": "Einstellungen der Desktop-App",
   Close: "Schließen",
   "Close panel": "Panel schließen",
+  "Version {version} of the app is available": "Version {version} der App ist verfügbar",
+  Show: "Anzeigen",
 
   // equalizer
   Equalizer: "Equalizer",

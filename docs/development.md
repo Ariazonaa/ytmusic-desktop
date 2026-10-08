@@ -75,6 +75,41 @@ the Rust side; the app's configuration reads it from there. What changed for
 users goes into [CHANGELOG.md](../CHANGELOG.md), and a test fails if the current
 version has no entry.
 
+## Releases and updates
+
+A release is made by a tag:
+
+```sh
+npm version 1.2.3          # also needs an entry in CHANGELOG.md
+git commit -am "Version 1.2.3" && git push
+git tag v1.2.3 && git push origin v1.2.3
+```
+
+`.github/workflows/release.yml` then builds the installer, and
+`scripts/release.mjs` puts together what is published: the installer, the
+version's part of the changelog as the release's text, and `latest.json`.
+
+That file is how installed apps learn of the update: they fetch
+`releases/latest/download/latest.json`, which names the version, the
+installer's address and its signature. The app installs an update only if the
+signature fits the public key in `src-tauri/tauri.conf.json`
+(`plugins.updater.pubkey`). The private key is not in the repository: the
+workflow reads it from the secrets `TAURI_SIGNING_PRIVATE_KEY` and
+`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. Whoever has it can publish updates that
+every installed app accepts, and without it no update can be published for
+them, so it has to be kept both secret and safe.
+
+A release can be made by hand as well, on a computer that has the key: build
+with `--config src-tauri/tauri.release.conf.json` and the two variables set,
+run `node scripts/release.mjs`, and publish a release for the tag
+`v<version>` with the installer and `latest.json` from the `release` folder.
+The workflow sees that release and does nothing.
+
+An ordinary `npm run tauri build` needs no key: only
+`--config src-tauri/tauri.release.conf.json` asks for the signature. The
+code is in `src-tauri/src/update.rs`; development builds do not look for
+updates at start.
+
 ## Architecture
 
 ```
@@ -123,6 +158,7 @@ Rust (src-tauri)                         WebView2: https://music.youtube.com
   "language": "system",
   "reloadPluginsOnChange": false,
   "hardwareAcceleration": true,
+  "checkForUpdates": true,
   "shortcuts": { "playPause": "Ctrl+Alt+Shift+F9", "next": "", "previous": "", "volumeUp": "", "volumeDown": "", "toggleMute": "" },
   "pluginSettings": { "demo": { "accentColor": "blue" } }
 }
@@ -138,6 +174,7 @@ Rust (src-tauri)                         WebView2: https://music.youtube.com
 | `language` | language of the settings window, the tray menu and the app's parts of the page: `system`, `en` or `de` |
 | `reloadPluginsOnChange` | for plugin authors: restart the external plugins when a file in the plugins folder changes |
 | `hardwareAcceleration` | draw and decode video on the GPU; off saves about 150 MB, applies from the next start |
+| `checkForUpdates` | ask the project's releases at each start whether there is a newer version |
 | `shortcuts` | global shortcuts, written like `Ctrl+Alt+ArrowUp`; empty is off |
 | `pluginSettings` | per-plugin settings the user changed, by plugin name |
 

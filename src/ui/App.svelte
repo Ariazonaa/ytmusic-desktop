@@ -1,14 +1,18 @@
 <script lang="ts">
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import {
+    appVersion,
+    checkUpdate,
     exportSettings,
     getHealth,
     getSettings,
     isFirstRun,
     importSettings,
     installPlugin,
+    installUpdate,
     openLog,
     openPluginsFolder,
+    pendingUpdate,
     reloadPlugins,
     removePlugin,
     restartApp,
@@ -17,7 +21,7 @@
   } from "../core/settings/client";
   import { conflict, resolveSettings } from "../core/plugin-manager/api";
   import { PLUGIN_CATEGORIES } from "../shared/types";
-  import type { Health, PluginCategory, Settings, SettingValue, Shortcuts } from "../shared/types";
+  import type { Health, PluginCategory, Settings, SettingValue, Shortcuts, UpdateInfo } from "../shared/types";
   import { resolveLanguage, translator } from "./i18n";
   import { listPlugins, type ListedPlugin } from "./plugins";
   import PluginSettings from "./PluginSettings.svelte";
@@ -247,6 +251,46 @@
     } catch (reason) {
       error = t("Could not remove the plugin: {reason}", { reason: String(reason) });
     }
+  }
+
+  let version = $state("");
+  /** A newer version that can be installed. */
+  let available = $state<UpdateInfo | null>(null);
+  let updateNotice = $state<string | null>(null);
+  let updateBusy = $state<"checking" | "installing" | null>(null);
+
+  appVersion().then(
+    (current) => (version = current),
+    () => {},
+  );
+  // What the check at start found.
+  pendingUpdate().then(
+    (update) => (available = update),
+    () => {},
+  );
+
+  async function lookForUpdate(): Promise<void> {
+    updateBusy = "checking";
+    updateNotice = null;
+    try {
+      available = await checkUpdate();
+      if (!available) updateNotice = t("This is the newest version.");
+    } catch (reason) {
+      updateNotice = t("Could not check for updates: {reason}", { reason: String(reason) });
+    }
+    updateBusy = null;
+  }
+
+  async function installAvailable(): Promise<void> {
+    updateBusy = "installing";
+    updateNotice = null;
+    try {
+      // On success the app ends here and comes back as the new version.
+      await installUpdate();
+    } catch (reason) {
+      updateNotice = t("Could not install the update: {reason}", { reason: String(reason) });
+    }
+    updateBusy = null;
   }
 
   function showPluginsFolder(): void {
@@ -536,6 +580,50 @@
           </span>
         </Toggle>
       </div>
+    </section>
+
+    <section class="mt-6">
+      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+        {t("Updates")}
+      </h2>
+      <div class="rounded-lg bg-neutral-900 px-4">
+        <Toggle checked={settings.checkForUpdates} onchange={(checkForUpdates) => update({ checkForUpdates })}>
+          <span class="block font-medium">{t("Look for updates at start")}</span>
+          <span class="block text-neutral-400">
+            {t(
+              "Asks GitHub at each start whether there is a newer version. Nothing is installed without your click.",
+            )}
+          </span>
+        </Toggle>
+      </div>
+      {#if available}
+        <div class="mt-2 rounded-md border border-emerald-800 bg-emerald-950 px-3 py-2 text-emerald-100">
+          <span class="block font-medium">{t("Version {version} is available.", { version: available.version })}</span>
+          {#if available.notes}
+            <p class="mt-1 max-h-40 overflow-y-auto whitespace-pre-wrap text-emerald-200">{available.notes}</p>
+          {/if}
+          <button
+            type="button"
+            class="mt-2 rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-500
+              focus-visible:outline-2 focus-visible:outline-white disabled:opacity-50"
+            disabled={updateBusy !== null}
+            onclick={() => void installAvailable()}
+          >
+            {updateBusy === "installing" ? t("Installing…") : t("Install and restart")}
+          </button>
+        </div>
+      {/if}
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        {@render action(updateBusy === "checking" ? t("Looking…") : t("Look now"), () => {
+          if (!updateBusy) void lookForUpdate();
+        })}
+        {#if version}
+          <span class="text-neutral-400">{t("Installed: version {version}", { version })}</span>
+        {/if}
+      </div>
+      {#if updateNotice}
+        <p role="status" class="mt-2 text-neutral-300">{updateNotice}</p>
+      {/if}
     </section>
 
     <section class="mt-6">

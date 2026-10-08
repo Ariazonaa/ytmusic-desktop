@@ -6,6 +6,7 @@ import type {
   Settings,
   SharedFile,
   SharedKind,
+  UpdateInfo,
 } from "../../shared/types";
 
 export function getSettings(): Promise<Settings> {
@@ -129,6 +130,26 @@ export function restartRequired(): Promise<boolean> {
 /** Quits the app and starts it again. Settings window only. */
 export function restartApp(): Promise<void> {
   return invoke("restart_app");
+}
+
+/** The version of the running app. Settings window only. */
+export function appVersion(): Promise<string> {
+  return invoke<string>("app_version");
+}
+
+/** The update the last check found, without asking again. Settings window only. */
+export function pendingUpdate(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>("pending_update");
+}
+
+/** Asks the project's releases for a newer version; `null` means this is the newest. Settings window only. */
+export function checkUpdate(): Promise<UpdateInfo | null> {
+  return invoke<UpdateInfo | null>("check_update");
+}
+
+/** Installs the update the last check found. The app then starts again as the new version. Settings window only. */
+export function installUpdate(): Promise<void> {
+  return invoke("install_update");
 }
 
 /** Shows the plugins folder in the file manager. Only the settings window may call this. */

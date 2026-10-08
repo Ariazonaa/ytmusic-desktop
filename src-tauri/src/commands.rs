@@ -9,6 +9,7 @@ use crate::settings::{Settings, SettingsStore};
 use crate::shortcuts;
 use crate::themes::{self, Kind, Theme};
 use crate::tray;
+use crate::update::{self, UpdateInfo};
 use crate::window;
 use base64::Engine;
 use serde_json::Value;
@@ -240,6 +241,31 @@ pub fn remove_plugin(
 #[tauri::command]
 pub fn output_device() -> Option<String> {
     crate::audio_device::default_output_name()
+}
+
+/// The version of the running app. Settings window only.
+#[tauri::command]
+pub fn app_version(app: AppHandle) -> String {
+    app.package_info().version.to_string()
+}
+
+/// The update the last check found, if any. Settings window only.
+#[tauri::command]
+pub fn pending_update(app: AppHandle) -> Option<UpdateInfo> {
+    update::pending(&app)
+}
+
+/// Asks the project's releases for a newer version. Settings window only.
+#[tauri::command]
+pub async fn check_update(app: AppHandle) -> Result<Option<UpdateInfo>, String> {
+    update::check(&app).await
+}
+
+/// Installs the update the last check found and starts the new version.
+/// Settings window only.
+#[tauri::command]
+pub async fn install_update(app: AppHandle) -> Result<(), String> {
+    update::install(&app).await
 }
 
 /// Opens the log file. Settings window only.
