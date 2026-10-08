@@ -22,7 +22,8 @@ const start = changelog.indexOf(`\n## ${version}\n`);
 if (start < 0) throw new Error(`CHANGELOG.md has no entry for ${version}`);
 const rest = changelog.slice(start + `\n## ${version}\n`.length);
 const end = rest.indexOf("\n## ");
-const notes = (end < 0 ? rest : rest.slice(0, end)).trim();
+// The changelog wraps its lines; the app shows the notes as they are, so each point becomes one line.
+const notes = (end < 0 ? rest : rest.slice(0, end)).trim().replace(/\n {2,}(?=\S)/g, " ");
 if (!notes) throw new Error(`the entry for ${version} in CHANGELOG.md is empty`);
 
 const bundle = join(process.env.CARGO_TARGET_DIR ?? "src-tauri/target", "release", "bundle", "nsis");
