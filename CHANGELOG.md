@@ -4,6 +4,12 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.5.1
+
+- Nothing new in the app. This is the first release built and published by
+  the release workflow, and the first one installed apps update to by
+  themselves.
+
 ## 0.5.0
 
 - Updates: the app looks for a newer version at start and says so. It is
