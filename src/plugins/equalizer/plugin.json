@@ -1,0 +1,143 @@
+{
+  "name": "equalizer",
+  "version": "0.4.0",
+  "description": "Ten bands with presets and a panel to adjust them.",
+  "category": "audio",
+  "permissions": ["audio", "ui.inject"],
+  "settings": {
+    "preset": {
+      "type": "string",
+      "label": "Preset",
+      "default": "flat",
+      "hidden": true
+    },
+    "preamp": {
+      "type": "range",
+      "label": "Pre-amplifier",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "perDevice": {
+      "type": "boolean",
+      "label": "Remember the preset per output device",
+      "description": "Switching to other headphones or speakers brings back the preset last chosen with them.",
+      "default": false
+    },
+    "devicePresets": {
+      "type": "text",
+      "label": "Presets by output device",
+      "default": "{}",
+      "hidden": true
+    },
+    "presets": {
+      "type": "text",
+      "label": "Saved presets",
+      "default": "[]",
+      "hidden": true
+    },
+    "band32": {
+      "type": "range",
+      "label": "32 Hz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band64": {
+      "type": "range",
+      "label": "64 Hz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band125": {
+      "type": "range",
+      "label": "125 Hz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band250": {
+      "type": "range",
+      "label": "250 Hz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band500": {
+      "type": "range",
+      "label": "500 Hz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band1000": {
+      "type": "range",
+      "label": "1 kHz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band2000": {
+      "type": "range",
+      "label": "2 kHz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band4000": {
+      "type": "range",
+      "label": "4 kHz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band8000": {
+      "type": "range",
+      "label": "8 kHz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    },
+    "band16000": {
+      "type": "range",
+      "label": "16 kHz",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "hidden": true
+    }
+  }
+}

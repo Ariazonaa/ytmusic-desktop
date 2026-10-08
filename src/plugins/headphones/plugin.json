@@ -1,0 +1,29 @@
+{
+  "name": "headphones",
+  "version": "0.1.0",
+  "description": "For headphones: mixes a little of each side into the other, as speakers do, and widens or narrows the stereo image.",
+  "category": "audio",
+  "permissions": ["audio"],
+  "settings": {
+    "crossfeed": {
+      "type": "range",
+      "label": "Crossfeed",
+      "description": "How much of the left channel reaches the right ear and the other way round. Takes away the hard left and right of old recordings. 0 is off.",
+      "default": 30,
+      "min": 0,
+      "max": 100,
+      "step": 5,
+      "unit": "%"
+    },
+    "width": {
+      "type": "range",
+      "label": "Stereo width",
+      "description": "100 is unchanged, 0 is mono, 200 is as wide as it gets.",
+      "default": 100,
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "%"
+    }
+  }
+}

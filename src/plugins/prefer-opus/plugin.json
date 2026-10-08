@@ -1,0 +1,7 @@
+{
+  "name": "prefer-opus",
+  "version": "0.1.0",
+  "description": "Makes the player choose Opus audio instead of AAC.",
+  "category": "playback",
+  "permissions": []
+}

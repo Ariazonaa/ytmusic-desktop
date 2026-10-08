@@ -1,0 +1,122 @@
+name: CI
+
+# Runs for every pull request and for everything that lands on main,
+# whether pushed directly or merged.
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  frontend:
+    name: TypeScript checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: npm ci
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build
+
+  rust:
+    name: Rust checks
+    # The app is Windows-only for now: it builds against WebView2.
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Set up with PowerShell, as in .gitea/workflows, whose Windows runner
+      # has no usable bash for the usual toolchain actions.
+      - name: Set up Rust
+        run: |
+          $bin = "$env:USERPROFILE/.cargo/bin"
+          if (-not (Test-Path "$bin/rustup.exe")) {
+            Invoke-WebRequest https://win.rustup.rs/x86_64 -OutFile "$env:TEMP/rustup-init.exe"
+            & "$env:TEMP/rustup-init.exe" -y --default-toolchain none --no-modify-path
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & "$bin/rustup.exe" toolchain install stable --profile minimal --component rustfmt --component clippy
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & "$bin/cargo.exe" --version
+      - run: npm ci
+      # The Rust code embeds the bundles this produces.
+      - run: npm run build
+      - run: cargo fmt --check
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+
+  rust-linux:
+    name: Rust checks on Linux
+    # There is no Linux release yet. This keeps the code building there,
+    # see docs/platforms.md.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install build dependencies
+        run: |
+          SUDO=""; if [ "$(id -u)" != 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q --no-install-recommends build-essential curl pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      # The Rust code embeds the bundles this produces.
+      - run: npm run build
+      - run: cargo clippy --all-targets -- -D warnings
+        working-directory: src-tauri
+      - run: cargo test
+        working-directory: src-tauri
+
+  installer:
+    name: Windows installer
+    # Only for what has landed on main, and only if the checks pass.
+    if: github.event_name == 'push'
+    needs: [frontend, rust]
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: powershell
+    env:
+      RUSTUP_TOOLCHAIN: stable
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Set up Rust
+        run: |
+          $bin = "$env:USERPROFILE/.cargo/bin"
+          if (-not (Test-Path "$bin/rustup.exe")) {
+            Invoke-WebRequest https://win.rustup.rs/x86_64 -OutFile "$env:TEMP/rustup-init.exe"
+            & "$env:TEMP/rustup-init.exe" -y --default-toolchain none --no-modify-path
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $bin | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          & "$bin/rustup.exe" toolchain install stable --profile minimal
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - run: npm ci
+      - run: npm run tauri build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ytmusic-desktop-installer
+          path: src-tauri/target/release/bundle/nsis/*.exe
+          if-no-files-found: error

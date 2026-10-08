@@ -1,0 +1,71 @@
+{
+  "name": "themes",
+  "version": "0.3.0",
+  "description": "Color schemes, a glass effect, the cover as background and your own CSS.",
+  "category": "appearance",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "scheme": {
+      "type": "select",
+      "label": "Color scheme",
+      "default": "default",
+      "options": [
+        { "value": "default", "label": "YouTube Music" },
+        { "value": "amoled", "label": "Black" },
+        { "value": "slate", "label": "Slate" },
+        { "value": "midnight", "label": "Midnight blue" },
+        { "value": "forest", "label": "Forest" },
+        { "value": "plum", "label": "Plum" },
+        { "value": "cover", "label": "From the cover" }
+      ]
+    },
+    "accent": {
+      "type": "select",
+      "label": "Accent color",
+      "description": "Used for the progress bar and volume slider.",
+      "default": "default",
+      "options": [
+        { "value": "default", "label": "Red" },
+        { "value": "blue", "label": "Blue" },
+        { "value": "green", "label": "Green" },
+        { "value": "purple", "label": "Purple" },
+        { "value": "orange", "label": "Orange" },
+        { "value": "pink", "label": "Pink" },
+        { "value": "cover", "label": "From the cover" }
+      ]
+    },
+    "blur": {
+      "type": "range",
+      "label": "Glass blur",
+      "description": "Makes the bars translucent and blurs what scrolls under them. 0 is off.",
+      "default": 0,
+      "min": 0,
+      "max": 30,
+      "step": 2,
+      "unit": "px"
+    },
+    "coverBackground": {
+      "type": "boolean",
+      "label": "Cover art as background",
+      "description": "Shows the playing song's cover, blurred and darkened, behind the page.",
+      "default": false
+    },
+    "contentWidth": {
+      "type": "select",
+      "label": "Content width",
+      "description": "How wide the page's content gets in a large window. Search results and playlist pages keep their own width.",
+      "default": "default",
+      "options": [
+        { "value": "default", "label": "Standard" },
+        { "value": "narrow", "label": "Narrow" },
+        { "value": "full", "label": "Full window" }
+      ]
+    },
+    "customCss": {
+      "type": "text",
+      "label": "Custom CSS",
+      "description": "Applied after the theme.",
+      "default": ""
+    }
+  }
+}

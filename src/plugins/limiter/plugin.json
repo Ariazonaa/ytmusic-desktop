@@ -1,0 +1,7 @@
+{
+  "name": "limiter",
+  "version": "0.1.0",
+  "description": "Keeps boosted sound from distorting by holding its peaks just below the limit.",
+  "category": "audio",
+  "permissions": ["audio"]
+}

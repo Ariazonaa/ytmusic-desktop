@@ -1,0 +1,24 @@
+{
+  "name": "wheel-volume",
+  "version": "0.1.0",
+  "description": "Changes the volume with the mouse wheel over the player bar.",
+  "category": "playback",
+  "permissions": ["music.control", "ui.inject"],
+  "settings": {
+    "step": {
+      "type": "range",
+      "label": "Step",
+      "description": "How far one notch of the mouse wheel changes the volume.",
+      "default": 5,
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "%"
+    },
+    "showNotice": {
+      "type": "boolean",
+      "label": "Show the volume while changing it",
+      "default": true
+    }
+  }
+}

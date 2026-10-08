@@ -1,0 +1,55 @@
+{
+  "name": "sponsorblock",
+  "version": "0.2.0",
+  "description": "Skips sponsors and non-music sections, using the SponsorBlock database.",
+  "category": "playback",
+  "permissions": ["music.read", "music.control", "ui.inject", "network"],
+  "hosts": ["sponsor.ajay.app"],
+  "settings": {
+    "musicOfftopic": {
+      "type": "boolean",
+      "label": "Non-music sections",
+      "description": "Talking, skits and silence in music videos.",
+      "default": true
+    },
+    "sponsor": {
+      "type": "boolean",
+      "label": "Sponsors",
+      "default": true
+    },
+    "selfpromo": {
+      "type": "boolean",
+      "label": "Self-promotion",
+      "default": true
+    },
+    "interaction": {
+      "type": "boolean",
+      "label": "Interaction reminders",
+      "description": "Requests to like, subscribe or follow.",
+      "default": true
+    },
+    "intro": {
+      "type": "boolean",
+      "label": "Intros",
+      "default": false
+    },
+    "outro": {
+      "type": "boolean",
+      "label": "Outros and credits",
+      "default": false
+    },
+    "showNotice": {
+      "type": "boolean",
+      "label": "Show a notice when skipping",
+      "description": "The notice says how long the section was and how much time was skipped so far. Its button plays the section after all.",
+      "default": true
+    },
+    "savedSeconds": {
+      "type": "number",
+      "label": "Seconds skipped so far",
+      "default": 0,
+      "min": 0,
+      "hidden": true
+    }
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "name": "audio-tools",
+  "version": "0.1.0",
+  "description": "Volume boost up to 300 %, left/right balance and mono.",
+  "category": "audio",
+  "permissions": ["audio"],
+  "settings": {
+    "boost": {
+      "type": "range",
+      "label": "Volume boost",
+      "description": "Above 100 % loud passages can distort.",
+      "default": 100,
+      "min": 100,
+      "max": 300,
+      "step": 10,
+      "unit": "%"
+    },
+    "balance": {
+      "type": "range",
+      "label": "Balance",
+      "description": "Negative is left, positive is right.",
+      "default": 0,
+      "min": -100,
+      "max": 100,
+      "step": 5,
+      "unit": "%"
+    },
+    "mono": {
+      "type": "boolean",
+      "label": "Mono",
+      "description": "Plays both channels on both sides.",
+      "default": false
+    }
+  }
+}

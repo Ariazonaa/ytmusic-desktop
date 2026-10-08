@@ -1,0 +1,30 @@
+{
+  "name": "track-fade",
+  "version": "0.1.0",
+  "description": "Fades each track out at its end and the next one in.",
+  "category": "audio",
+  "permissions": ["music.read", "audio"],
+  "conflicts": ["crossfade"],
+  "settings": {
+    "fadeOut": {
+      "type": "range",
+      "label": "Fade out",
+      "description": "Seconds over which a track gets quieter at its end.",
+      "default": 4,
+      "min": 0,
+      "max": 10,
+      "step": 0.5,
+      "unit": "s"
+    },
+    "fadeIn": {
+      "type": "range",
+      "label": "Fade in",
+      "description": "Seconds over which a track gets louder at its start.",
+      "default": 1.5,
+      "min": 0,
+      "max": 5,
+      "step": 0.5,
+      "unit": "s"
+    }
+  }
+}

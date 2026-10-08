@@ -1,0 +1,46 @@
+name: Audit
+
+# Looks for known security holes in what the app depends on: every Monday
+# morning, when the dependencies change, and on request. New advisories
+# appear without the code changing, which is why this runs on a schedule.
+on:
+  schedule:
+    - cron: "17 5 * * 1"
+  push:
+    branches: [main]
+    paths:
+      - package-lock.json
+      - src-tauri/Cargo.lock
+      - .github/workflows/audit.yml
+  workflow_dispatch:
+
+jobs:
+  npm:
+    name: npm packages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      # Everything here is a build tool except @tauri-apps/api, so all of it counts.
+      - run: npm audit --audit-level=moderate
+
+  cargo:
+    name: Rust crates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cargo-audit
+        run: |
+          SUDO=""; if [ "$(id -u)" != 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q --no-install-recommends build-essential curl pkg-config libssl-dev
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+          "$HOME/.cargo/bin/cargo" install cargo-audit --locked
+      # Fails for vulnerabilities. Crates that are merely unmaintained are
+      # listed as warnings: the Linux webview pulls in several through GTK 3.
+      - run: cargo audit
+        working-directory: src-tauri

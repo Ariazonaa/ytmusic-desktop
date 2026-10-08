@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "ytm-remote",
+  "description": "Lets the injected script on music.youtube.com read and write settings, open the settings window, list external plugins, manage files to share (themes, equalizer presets), tell the tray what is playing, add lines to the log, show notifications, report what does not work and ask for the name of the sound output device. Nothing else.",
+  "windows": ["main"],
+  "remote": {
+    "urls": ["https://music.youtube.com/*"]
+  },
+  "permissions": [
+    "allow-get-settings",
+    "allow-set-settings",
+    "allow-open-settings",
+    "allow-list-external-plugins",
+    "allow-list-shared",
+    "allow-save-shared",
+    "allow-open-shared-folder",
+    "allow-set-now-playing",
+    "allow-log-error",
+    "allow-notify",
+    "allow-report-health",
+    "allow-output-device"
+  ]
+}

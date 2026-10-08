@@ -1,0 +1,23 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "settings-window",
+  "description": "Lets the settings window read, write, export and import settings, install, remove and manage external plugins, open the log and set its own title.",
+  "windows": ["settings"],
+  "permissions": [
+    "allow-get-settings",
+    "allow-set-settings",
+    "allow-list-external-plugins",
+    "allow-open-plugins-folder",
+    "allow-reload-plugins",
+    "allow-restart-required",
+    "allow-restart-app",
+    "allow-open-log",
+    "allow-export-settings",
+    "allow-import-settings",
+    "allow-get-health",
+    "allow-is-first-run",
+    "allow-install-plugin",
+    "allow-remove-plugin",
+    "core:window:allow-set-title"
+  ]
+}

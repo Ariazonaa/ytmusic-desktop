@@ -1,0 +1,25 @@
+{
+  "name": "playback-speed",
+  "version": "0.1.0",
+  "description": "Plays everything faster or slower.",
+  "category": "playback",
+  "permissions": ["music.read", "music.control"],
+  "conflicts": ["crossfade"],
+  "settings": {
+    "speed": {
+      "type": "range",
+      "label": "Speed",
+      "default": 1,
+      "min": 0.5,
+      "max": 2,
+      "step": 0.05,
+      "unit": "×"
+    },
+    "preservePitch": {
+      "type": "boolean",
+      "label": "Keep the pitch",
+      "description": "Off makes faster playback sound higher, like a record played too fast.",
+      "default": true
+    }
+  }
+}

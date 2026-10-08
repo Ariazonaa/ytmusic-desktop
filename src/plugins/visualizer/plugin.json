@@ -1,0 +1,19 @@
+{
+  "name": "visualizer",
+  "version": "0.1.0",
+  "description": "The spectrum of the music as bars behind the player bar.",
+  "category": "appearance",
+  "permissions": ["music.read", "audio", "ui.inject"],
+  "settings": {
+    "opacity": {
+      "type": "range",
+      "label": "Opacity",
+      "description": "How strongly the bars show behind the player bar.",
+      "default": 35,
+      "min": 10,
+      "max": 100,
+      "step": 5,
+      "unit": "%"
+    }
+  }
+}

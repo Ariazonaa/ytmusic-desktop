@@ -1,0 +1,44 @@
+{
+  "name": "lyrics",
+  "version": "0.3.0",
+  "description": "Time-synced lyrics in a side panel, from LRCLIB and lyrics.ovh.",
+  "category": "tools",
+  "permissions": ["music.read", "music.control", "ui.inject", "network"],
+  "hosts": ["lrclib.net", "api.lyrics.ovh"],
+  "settings": {
+    "fontSize": {
+      "type": "number",
+      "label": "Font size",
+      "description": "In pixels, 12 to 28.",
+      "default": 16,
+      "min": 12,
+      "max": 28
+    },
+    "largeFontSize": {
+      "type": "number",
+      "label": "Font size in the large view",
+      "description": "In pixels, 20 to 64.",
+      "default": 34,
+      "min": 20,
+      "max": 64
+    },
+    "offsets": {
+      "type": "text",
+      "label": "Timing corrections",
+      "default": "{}",
+      "hidden": true
+    },
+    "shortcut": {
+      "type": "shortcut",
+      "label": "Shortcut",
+      "description": "Opens and closes the lyrics while the app's window has the focus.",
+      "default": ""
+    },
+    "openOnStart": {
+      "type": "boolean",
+      "label": "Open on start",
+      "description": "Show the lyrics panel when the app starts.",
+      "default": false
+    }
+  }
+}
