@@ -386,7 +386,7 @@
         <label class="flex items-center justify-between gap-4 py-3">
           <span class="min-w-0">
             <span class="block font-medium">{t("Language")}</span>
-            <span class="block text-neutral-400">{t("Language of this window.")}</span>
+            <span class="block text-neutral-400">{t("Of this window, the tray menu and what the app adds to the page.")}</span>
           </span>
           <select
             class="w-44 shrink-0 rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5

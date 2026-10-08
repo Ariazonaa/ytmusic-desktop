@@ -27,8 +27,8 @@ On Ubuntu 24.04 with WebKitGTK 2.52.6, the webview Tauri uses on Linux
 | Web Audio, `adoptedStyleSheets` | available; the audio plugins and CSS injection build on them |
 | `cargo clippy` and `cargo test` | pass without changes |
 
-The tracks checked on Windows were not encrypted either (see Playback in the
-README), which fits: ordinary YouTube Music playback does not go through DRM.
+The tracks checked on Windows were not encrypted either (see Playback in
+[development.md](development.md#playback)), which fits: ordinary YouTube Music playback does not go through DRM.
 
 ## What this does not show
 
@@ -57,7 +57,7 @@ Known from the code:
   its own switch or the setting hidden.
 - External plugins are served from `ytmd-plugin://localhost` instead of
   `http://ytmd-plugin.localhost`. The code handles both, untested.
-- The end-to-end test and all measurements in the README drive the app over
+- The end-to-end test and all measurements in [development.md](development.md) drive the app over
   the Chrome DevTools protocol, which WebKitGTK does not speak.
 - Packaging: the bundle targets only list the Windows installer.
 - Users need the GStreamer plugin packages (`good`, `bad`, `libav`); without

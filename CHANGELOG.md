@@ -4,6 +4,13 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.4.2
+
+- The settings window says what the language setting covers: the window, the
+  tray menu and what the app adds to the page.
+- The README is written for people who use the app and has pictures; what
+  developers need moved to `docs/development.md`.
+
 ## 0.4.1
 
 - The app has a new identifier, so its files are now in
