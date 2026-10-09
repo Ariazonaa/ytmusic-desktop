@@ -45,15 +45,28 @@ pub fn install<R: Read + Seek>(plugins_dir: &Path, archive: R) -> Result<String,
         return Err(reason);
     }
     let target = plugins_dir.join(&name);
-    let replaced = fs::remove_dir_all(&target)
-        .or_else(|err| match err.kind() {
-            io::ErrorKind::NotFound => Ok(()),
-            _ => Err(err),
-        })
-        .and_then(|()| fs::rename(&staging, &target));
-    if let Err(err) = replaced {
+    // A plugin of that name steps aside first, whole, and comes back if the
+    // new one cannot take its place. Deleting it file by file could stop
+    // halfway, on a file some program has open, and leave neither.
+    let aside = plugins_dir.join(format!(".replaced-{name}"));
+    let _ = fs::remove_dir_all(&aside);
+    let had_old = match fs::rename(&target, &aside) {
+        Ok(()) => true,
+        Err(err) if err.kind() == io::ErrorKind::NotFound => false,
+        Err(err) => {
+            let _ = fs::remove_dir_all(&staging);
+            return Err(format!("cannot replace the installed plugin: {err}"));
+        }
+    };
+    if let Err(err) = fs::rename(&staging, &target) {
+        if had_old {
+            let _ = fs::rename(&aside, &target);
+        }
         let _ = fs::remove_dir_all(&staging);
         return Err(format!("cannot put the plugin in place: {err}"));
+    }
+    if had_old {
+        let _ = fs::remove_dir_all(&aside);
     }
     Ok(name)
 }

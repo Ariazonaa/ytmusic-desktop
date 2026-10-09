@@ -155,6 +155,10 @@ function tick(): void {
   const line = g.lines[active] as Line;
   const rate = rateFor(line.slope);
 
+  // A pause turns the sound off. Whatever else happens on the way out of it,
+  // such as another track being chosen, playing turns it on again.
+  if (wasPaused && !playback.paused) setGain(g.master, 1, time);
+
   if (videoId !== lastVideoId) {
     if (lastVideoId !== null && !playback.paused) crossfade(g, time);
     else reset(g, time, "first track");
@@ -168,9 +172,7 @@ function tick(): void {
       reset(g, time, "paused");
       if (ahead > 0.05) api.player.seekTo(Math.max(0, position - ahead));
     }
-  } else if (wasPaused) {
-    setGain(g.master, 1, time);
-  } else {
+  } else if (!wasPaused) {
     const expected = lastPosition + ((now - lastTick) / 1000) * rate;
     const jump = position - expected;
     if (Math.abs(jump) > SEEK_THRESHOLD_SECONDS) reset(g, time, `position jumped by ${jump.toFixed(1)} s`);
@@ -245,6 +247,10 @@ const crossfadePlugin: Plugin = {
     stopCorrectingDisplay?.();
     stopCorrectingDisplay = undefined;
     setRate(1);
+    // The player is ahead of what was heard, and the delay that held the rest
+    // goes away with the effect: back to what was last heard.
+    const playback = api?.music.getPlaybackState();
+    if (api && playback && reportedAhead > 0.05) api.player.seekTo(Math.max(0, playback.positionSeconds));
     // The API removes the effect and reports that the player is no longer ahead.
     api = graph = undefined;
   },

@@ -79,6 +79,10 @@ fn lock() -> Option<std::sync::MutexGuard<'static, Log>> {
 
 fn append(path: &Path, source: &str, message: &str) {
     let line = format_line(now(), source, message);
+    // Not only at start: the app may run for weeks.
+    if fs::metadata(path).is_ok_and(|meta| meta.len() > MAX_FILE_BYTES) {
+        let _ = fs::rename(path, path.with_file_name("log.old.txt"));
+    }
     let written = path
         .parent()
         .map_or(Ok(()), fs::create_dir_all)

@@ -68,6 +68,15 @@
   type Filter = "all" | "on" | PluginCategory;
   const FILTERS: readonly Filter[] = ["all", "on", ...PLUGIN_CATEGORIES];
   let filter = $state<Filter>("all");
+  /**
+   * The plugins that were on when "switched on" was chosen. They stay in the
+   * list when switched off, so that a slip can be undone where it happened.
+   */
+  let listedAsOn = $state<string[]>([]);
+  const chooseFilter = (id: Filter): void => {
+    if (id === "on") listedAsOn = [...(settings?.plugins ?? [])];
+    filter = id;
+  };
   /** The plugins whose details and settings are unfolded. */
   let unfolded = $state<string[]>([]);
   const toggleUnfolded = (name: string): void => {
@@ -85,6 +94,13 @@
         (latest) => (health = latest),
         () => {},
       );
+      // The check at start may find an update while the window is open.
+      if (!available && !updateBusy) {
+        pendingUpdate().then(
+          (update) => (available ??= update),
+          () => {},
+        );
+      }
     };
     refresh();
     const timer = setInterval(refresh, 3000);
@@ -102,7 +118,9 @@
     const wanted = search.trim().toLowerCase();
     const enabled = settings?.plugins ?? [];
     const matches = ({ manifest }: ListedPlugin): boolean =>
-      (filter === "all" || (filter === "on" ? enabled.includes(manifest.name) : (manifest.category ?? "tools") === filter)) &&
+      (filter === "all" || (filter === "on"
+          ? enabled.includes(manifest.name) || listedAsOn.includes(manifest.name)
+          : (manifest.category ?? "tools") === filter)) &&
       (wanted === "" ||
         manifest.name.includes(wanted) ||
         t(manifest.description ?? "").toLowerCase().includes(wanted) ||
@@ -294,11 +312,6 @@
     (current) => (version = current),
     () => {},
   );
-  // What the check at start found.
-  pendingUpdate().then(
-    (update) => (available = update),
-    () => {},
-  );
 
   async function lookForUpdate(): Promise<void> {
     updateBusy = "checking";
@@ -439,7 +452,7 @@
               {filter === id
               ? 'border-neutral-200 bg-neutral-200 text-neutral-900'
               : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'}"
-            onclick={() => (filter = id)}
+            onclick={() => chooseFilter(id)}
           >
             {filterLabel(id)}
           </button>

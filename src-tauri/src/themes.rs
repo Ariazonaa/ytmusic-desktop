@@ -111,9 +111,28 @@ pub fn save(dir: &Path, name: &str, settings: BTreeMap<String, Value>) -> Result
     // `file` is skipped when reading, so it is left out when writing as well.
     let contents = serde_json::json!({ "name": theme.name, "settings": theme.settings });
     let text = serde_json::to_string_pretty(&contents).map_err(|err| err.to_string())?;
+    // What could not be read back is not written either.
+    if text.len() as u64 > MAX_FILE_BYTES {
+        return Err("too large to save".into());
+    }
     fs::create_dir_all(dir).map_err(|err| err.to_string())?;
-    fs::write(dir.join(format!("{file}.json")), text).map_err(|err| err.to_string())?;
+    let path = dir.join(format!("{file}.json"));
+    // The page can ask for this: without a limit it could fill the disk.
+    if !path.exists() && count_files(dir) >= MAX_THEMES {
+        return Err(format!("delete a file first: {MAX_THEMES} is the limit"));
+    }
+    fs::write(path, text).map_err(|err| err.to_string())?;
     Ok(file)
+}
+
+/// How many files to share there are in `dir`.
+fn count_files(dir: &Path) -> usize {
+    fs::read_dir(dir).map_or(0, |entries| {
+        entries
+            .filter_map(Result::ok)
+            .filter(|entry| entry.path().extension().is_some_and(|ext| ext == "json"))
+            .count()
+    })
 }
 
 /// The name as shown: trimmed, without control characters, of bounded length.
@@ -226,5 +245,29 @@ mod tests {
     fn missing_folder_lists_nothing() {
         let dir = tempfile::tempdir().unwrap();
         assert_eq!(list(&dir.path().join("missing")), Vec::new());
+    }
+
+    #[test]
+    fn saving_stops_at_the_limits() {
+        let dir = tempfile::tempdir().unwrap();
+        for index in 0..MAX_THEMES {
+            save(dir.path(), &format!("theme {index}"), BTreeMap::new()).unwrap();
+        }
+        assert!(save(dir.path(), "one more", BTreeMap::new())
+            .unwrap_err()
+            .contains("limit"));
+        // Replacing one that is there still works.
+        save(dir.path(), "theme 0", BTreeMap::new()).unwrap();
+        assert_eq!(count_files(dir.path()), MAX_THEMES);
+
+        let other = tempfile::tempdir().unwrap();
+        let large: BTreeMap<String, Value> = (0..8)
+            .map(|index| (format!("key{index}"), Value::from("x".repeat(10_000))))
+            .collect();
+        assert_eq!(
+            save(other.path(), "large", large).unwrap_err(),
+            "too large to save"
+        );
+        assert_eq!(count_files(other.path()), 0);
     }
 }

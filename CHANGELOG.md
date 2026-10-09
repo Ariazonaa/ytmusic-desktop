@@ -4,6 +4,42 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.6.2
+
+Fixes from a review of the code.
+
+Security:
+
+- A plugin from others could send data out without the `network` permission,
+  by pointing its own frame at another address. Such a navigation is now
+  cancelled, and a plugin whose frame leaves its document anyway is stopped.
+- `net.getJson` followed redirects, which could lead to a host the plugin's
+  manifest does not list. It no longer does, like `net.request`.
+- The page could save any number of theme and preset files. There is a limit
+  of 100 now, and a file too large to be read back is not written.
+
+Fixed:
+
+- An audio effect that failed to start could leave the app without sound
+  until a restart. It is now left out and the rest keeps playing.
+- Crossfade: the sound comes back on whenever playback goes on after a pause,
+  also when another track was chosen meanwhile. Switching the plugin off no
+  longer skips the seconds the player was ahead.
+- Equalizer: an imported preset whose name was cut at a space was saved but
+  not applied. AutoEq files with `+3.0` or a decimal comma are read in full.
+- Themes: a track without a cover no longer keeps the colors of the one before.
+- Settings window: with "Switched on" chosen, a plugin stays in the list when
+  it is switched off. An update found while the window is open shows up by
+  itself.
+- A settings file that cannot be read at start is kept as `settings.json.bak`
+  instead of being written over.
+- Installing a plugin over an existing one puts the old one back if the new
+  one cannot take its place.
+- The log file starts over at its size limit while the app runs, not only at
+  start.
+- Positions sent to plugins with `playbackChange` describe what is heard, as
+  `getPlaybackState` already did.
+
 ## 0.6.1
 
 - The settings window is tidier: tabs for plugins, general settings,

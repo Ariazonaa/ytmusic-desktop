@@ -23,6 +23,9 @@ function text(value: unknown, maxLength: number, what: string): string {
   return value;
 }
 
+/** Messages held back for a frame that has not said it is ready. */
+const MAX_QUEUED = 200;
+
 /**
  * Wraps an external plugin as a regular `Plugin`.
  *
@@ -50,7 +53,12 @@ export function createExternalPlugin(
   let queued: HostMessage[] = [];
 
   const send = (message: HostMessage): void => {
-    if (!ready) queued.push(message);
+    // An answer that arrives after the plugin was stopped belongs to no one:
+    // kept, it would reach the plugin's next start.
+    if (!frameWindow) return;
+    if (!ready) {
+      if (queued.length < MAX_QUEUED) queued.push(message);
+    }
     // The iframe's origin is opaque, so no narrower target than "*" exists.
     else frameWindow?.()?.postMessage(message, "*");
   };
@@ -193,6 +201,20 @@ export function createExternalPlugin(
       frame.setAttribute("sandbox", "allow-scripts");
       frame.src = frameUrl;
       frameWindow = () => frame.contentWindow;
+      // The frame loads once. A second load means its document went somewhere
+      // else, which is the one way out of the sandbox's network block: the
+      // address it goes to can carry data. The backend cancels such a
+      // navigation where it can (`frames.rs`); this stops the plugin wherever
+      // one got through, so that the page it went to cannot use the API.
+      let loads = 0;
+      frame.addEventListener("load", () => {
+        if (++loads < 2 || !frame.isConnected) return;
+        frame.remove();
+        frameWindow = undefined;
+        ready = false;
+        queued = [];
+        log.error(`[ytm-desktop] plugin "${manifest.name}":`, "left its sandboxed document and was stopped");
+      });
 
       const table = methods(api, ownPanel);
       const answer = async (id: number, method: string, args: unknown[]): Promise<void> => {

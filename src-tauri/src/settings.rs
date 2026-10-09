@@ -151,14 +151,35 @@ pub(crate) fn is_valid_name(name: &str) -> bool {
             .all(|b| b.is_ascii_lowercase() || b.is_ascii_digit() || b == b'-')
 }
 
+/// Reads the file, trying again for a moment if it is there but cannot be
+/// read: a virus scanner or a backup may hold it just as the app starts.
+fn read_patiently(path: &Path) -> io::Result<String> {
+    const TRIES: u32 = 4;
+    let mut tries = 0;
+    loop {
+        tries += 1;
+        match fs::read_to_string(path) {
+            Err(err) if err.kind() != io::ErrorKind::NotFound && tries < TRIES => {
+                std::thread::sleep(std::time::Duration::from_millis(150));
+            }
+            result => return result,
+        }
+    }
+}
+
 /// Loads settings from `path`. A missing file yields the defaults; an
 /// unreadable or invalid file is moved to `<path>.bak` and replaced by them.
 pub fn load(path: &Path) -> Settings {
-    let text = match fs::read_to_string(path) {
+    let text = match read_patiently(path) {
         Ok(text) => text,
         Err(err) if err.kind() == io::ErrorKind::NotFound => return Settings::default(),
         Err(err) => {
             log_error!("settings: cannot read {}: {err}", path.display());
+            // Kept aside: the next save would otherwise write the defaults
+            // over settings that were only out of reach.
+            if let Err(err) = fs::rename(path, backup_path(path)) {
+                log_error!("settings: cannot back up the unreadable file: {err}");
+            }
             return Settings::default();
         }
     };
@@ -460,5 +481,16 @@ mod tests {
         assert!(import(&dir.path().join("missing.json")).is_err());
         fs::write(&path, " ".repeat(2 * 1024 * 1024)).unwrap();
         assert!(import(&path).is_err());
+    }
+
+    #[test]
+    fn a_file_that_cannot_be_read_is_kept_aside() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = settings_path(&dir);
+        // Not text: reading it as a string fails, as a locked file would.
+        fs::write(&path, [0xff, 0xfe, 0xfd]).unwrap();
+        assert_eq!(load(&path), Settings::default());
+        assert!(!path.exists());
+        assert_eq!(fs::read(backup_path(&path)).unwrap(), [0xff, 0xfe, 0xfd]);
     }
 }

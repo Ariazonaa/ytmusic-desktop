@@ -227,6 +227,43 @@ describe("createExternalPlugin", () => {
     expect(removeButton).toHaveBeenCalledOnce();
   });
 
+  it("drops answers that arrive after the plugin was stopped", async () => {
+    let finish: (value: { status: number; data: unknown }) => void = () => {};
+    const { manager, services, fromFrame, ready, sent } = setup(["network"], ["example.com"]);
+    vi.mocked(services.net.getJson).mockReturnValue(new Promise((resolve) => (finish = resolve)));
+    ready();
+    fromFrame({ ytmd: PROTOCOL, type: "call", id: 1, method: "net.getJson", args: ["https://example.com/"] });
+    manager.setEnabled([]);
+    finish({ status: 200, data: "late" });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    // The plugin's next start gets nothing of it.
+    manager.setEnabled(["ext"]);
+    const frame = document.querySelector("iframe") as HTMLIFrameElement;
+    const again: HostMessage[] = [];
+    vi.spyOn(frame.contentWindow as Window, "postMessage").mockImplementation((message: unknown) => {
+      again.push(message as HostMessage);
+    });
+    window.dispatchEvent(new MessageEvent("message", { data: { ytmd: PROTOCOL, type: "ready" }, source: frame.contentWindow }));
+    expect(sent.filter((message) => message.type === "result")).toEqual([]);
+    expect(again.filter((message) => message.type === "result")).toEqual([]);
+  });
+
+  it("stops a plugin whose frame loads a second document", () => {
+    const { frame, ready, sent, manager, log } = setup(["music.read"]);
+    ready();
+    frame.dispatchEvent(new Event("load"));
+    expect(frame.isConnected).toBe(true);
+
+    frame.dispatchEvent(new Event("load"));
+    expect(frame.isConnected).toBe(false);
+    expect(log.error).toHaveBeenCalledWith('[ytm-desktop] plugin "ext":', "left its sandboxed document and was stopped");
+    // Whatever it went to hears nothing more.
+    manager.notifySongChange(song);
+    expect(sent.filter((message) => message.type === "event" && message.name === "songChange")).toEqual([]);
+  });
+
   it("logs errors the plugin reports", () => {
     const { fromFrame, log } = setup([]);
     fromFrame({ ytmd: PROTOCOL, type: "error", message: "boom" });

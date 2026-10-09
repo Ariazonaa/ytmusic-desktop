@@ -84,14 +84,15 @@ async function start(): Promise<void> {
   /** How far the heard sound lags behind the player, in seconds of the track. */
   let outputDelay = 0;
 
+  /** An effect may hold the sound back: what is heard, not what the player is at. */
+  const heard = <State extends PlaybackState | null>(state: State): State =>
+    !state || outputDelay === 0
+      ? state
+      : { ...state, positionSeconds: Math.max(0, state.positionSeconds - outputDelay) };
+
   const music = {
     getCurrentSong: () => watcher.current,
-    getPlaybackState() {
-      const state = readPlaybackState();
-      if (!state || outputDelay === 0) return state;
-      // An effect holds the sound back: report what is heard, not what the player is at.
-      return { ...state, positionSeconds: Math.max(0, state.positionSeconds - outputDelay) };
-    },
+    getPlaybackState: () => heard(readPlaybackState()),
     getVideoId: () => readVideoId(),
     getLoudnessLkfs: () => readLoudnessLkfs(),
     getLikeStatus: () => readLikeStatus(),
@@ -182,7 +183,7 @@ async function start(): Promise<void> {
     manager.setEnabled(current.plugins);
   };
   watcher.start();
-  watchPlayback((state) => manager.notifyPlaybackChange(state));
+  watchPlayback((state) => manager.notifyPlaybackChange(heard(state)));
   const navBar = await waitForElement(SELECTORS.navBar);
   addSettingsButton(navBar, () => void openSettings());
   manager.notifyUIReady();

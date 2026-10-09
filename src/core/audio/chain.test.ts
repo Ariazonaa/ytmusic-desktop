@@ -177,4 +177,22 @@ describe("AudioChain", () => {
     expect(equalizer.build).not.toHaveBeenCalled();
     expect(remove).not.toThrow();
   });
+
+  it("leaves out an effect that cannot be built and keeps the sound", () => {
+    const { chain, effect, path, log } = setup();
+    const good = effect("good");
+    chain.addEffect(10, good.build);
+    const broken = vi.fn((): AudioEffect => {
+      throw new Error("no such node");
+    });
+    expect(() => chain.addEffect(5, broken)).not.toThrow();
+    expect(path()).toEqual(["source1", "good", "destination"]);
+    expect(log.error).toHaveBeenCalledOnce();
+
+    // It is gone for good: later changes do not run into it again.
+    const late = effect("late");
+    chain.addEffect(20, late.build);
+    expect(path()).toEqual(["source1", "good", "late", "destination"]);
+    expect(broken).toHaveBeenCalledOnce();
+  });
 });
