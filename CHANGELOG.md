@@ -4,6 +4,11 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.6.0
+
+- New plugin `adblock`: removes the ads between tracks for accounts without
+  Premium.
+
 ## 0.5.1
 
 - Nothing new in the app. This is the first release built and published by
