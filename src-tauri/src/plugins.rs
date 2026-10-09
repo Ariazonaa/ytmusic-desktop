@@ -258,7 +258,8 @@ fn frame_document(manifest: &Value) -> Response<Cow<'static, [u8]>> {
     // or come from the plugin's own folder, which this scheme serves; images
     // from the network are limited to the sources the plugin's permissions cover.
     let mut policy = format!(
-        "sandbox allow-scripts; default-src 'none'; script-src {ORIGIN}; \
+        "sandbox allow-scripts; default-src 'none'; form-action 'none'; base-uri 'none'; \
+         script-src {ORIGIN}; \
          style-src 'unsafe-inline' {ORIGIN}; img-src data: blob: {ORIGIN}"
     );
     for source in image_sources(manifest) {
@@ -293,6 +294,30 @@ fn base_response(status: StatusCode, content_type: &str) -> tauri::http::respons
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CACHE_CONTROL, "no-store")
         .header(header::X_CONTENT_TYPE_OPTIONS, "nosniff")
+}
+
+/// What to do with a navigation of a frame in the main window.
+#[cfg_attr(not(windows), allow(dead_code))]
+#[derive(Debug, PartialEq, Eq)]
+pub enum FrameNavigation {
+    Allow,
+    /// The frame shows a plugin from now on: remember the address as its home.
+    Adopt,
+    Cancel,
+}
+
+/// Decides about a frame going to `uri`. `home` is the plugin document the
+/// frame loaded first, if it is a plugin's frame. Such a frame may load that
+/// document again and nothing else: not another site, and not another
+/// plugin's document, which would then act with this plugin's permissions.
+#[cfg_attr(not(windows), allow(dead_code))]
+pub fn frame_navigation(home: Option<&str>, uri: &str) -> FrameNavigation {
+    match home {
+        Some(home) if home == uri => FrameNavigation::Allow,
+        Some(_) => FrameNavigation::Cancel,
+        None if uri.starts_with(&format!("{ORIGIN}/")) => FrameNavigation::Adopt,
+        None => FrameNavigation::Allow,
+    }
 }
 
 #[cfg(test)]
@@ -497,5 +522,38 @@ mod tests {
             let status = respond(dir.path(), path).status();
             assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
         }
+    }
+
+    #[test]
+    fn a_plugin_frame_may_only_load_its_own_document() {
+        let home = format!("{ORIGIN}/hello/");
+        // Frames of the page itself are none of our business.
+        assert_eq!(
+            frame_navigation(None, "https://accounts.google.com/x"),
+            FrameNavigation::Allow
+        );
+        assert_eq!(
+            frame_navigation(None, "about:blank"),
+            FrameNavigation::Allow
+        );
+        assert_eq!(frame_navigation(None, &home), FrameNavigation::Adopt);
+        assert_eq!(frame_navigation(Some(&home), &home), FrameNavigation::Allow);
+        for away in [
+            "https://example.com/?leak=song",
+            "about:blank",
+            &format!("{ORIGIN}/other/"),
+            &format!("{ORIGIN}/hello/?leak"),
+        ] {
+            assert_eq!(
+                frame_navigation(Some(&home), away),
+                FrameNavigation::Cancel,
+                "{away}"
+            );
+        }
+        // An address that only looks like the plugins' origin is not one.
+        assert_eq!(
+            frame_navigation(None, &format!("{ORIGIN}.example.com/hello/")),
+            FrameNavigation::Allow
+        );
     }
 }

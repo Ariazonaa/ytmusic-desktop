@@ -8,6 +8,7 @@ mod background;
 mod commands;
 #[cfg(all(debug_assertions, windows))]
 mod dev_inject;
+mod frames;
 mod health;
 mod install;
 mod notification;

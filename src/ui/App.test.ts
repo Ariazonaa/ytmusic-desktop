@@ -218,10 +218,14 @@ describe("settings window", () => {
     await fireEvent.click(screen.getByRole("button", { name: "Switched on (2)" }));
     expect(kinds()).toEqual(["Sound", "Tools"]);
     expect(screen.queryByText("themes")).toBeNull();
-    // Switching one off updates the count and takes it out of the list.
+    // Switching one off updates the count. It stays in the list, to be
+    // switched on again, until the filter is chosen anew.
     await fireEvent.click(switchFor("normalize"));
-    expect(await screen.findByRole("button", { name: "Switched on (1)" })).toBeTruthy();
+    const on = await screen.findByRole("button", { name: "Switched on (1)" });
+    expect(screen.getByText("normalize")).toBeTruthy();
+    await fireEvent.click(on);
     expect(screen.queryByText("normalize")).toBeNull();
+    expect(kinds()).toEqual(["Tools"]);
 
     await fireEvent.click(screen.getByRole("button", { name: "All" }));
     expect(kinds()).toEqual(["Sound", "Appearance", "Playback", "Tools"]);

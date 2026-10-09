@@ -24,7 +24,9 @@ interface Filter {
 
 // Adding 0 turns a rounded -0.4 into 0 rather than -0.
 const round = (db: number): number => Math.round(Math.min(MAX_GAIN_DB, Math.max(-MAX_GAIN_DB, db))) + 0;
-const NUMBER = String.raw`(-?\d+(?:\.\d+)?)`;
+// With a sign or without, and with a decimal point or comma.
+const NUMBER = String.raw`([+-]?\d+(?:[.,]\d+)?)`;
+const number = (text: string | undefined): number => (text === undefined ? Number.NaN : Number(text.replace(",", ".")));
 const FILTER = new RegExp(
   String.raw`^Filter\s+\d+:\s+ON\s+(PK|LSC|HSC|LS|HS)\s+Fc\s+${NUMBER}\s*Hz\s+Gain\s+${NUMBER}\s*dB(?:\s+Q\s+${NUMBER})?`,
   "i",
@@ -50,9 +52,9 @@ function parseFilters(lines: readonly string[]): Filter[] {
     const match = FILTER.exec(line.trim());
     if (!match) continue;
     const kind = (match[1] ?? "").toUpperCase();
-    const frequency = Number(match[2]);
-    const gain = Number(match[3]);
-    const q = match[4] === undefined ? 0.7 : Number(match[4]);
+    const frequency = number(match[2]);
+    const gain = number(match[3]);
+    const q = match[4] === undefined ? 0.7 : number(match[4]);
     if (!(frequency > 0) || !Number.isFinite(gain) || !(q > 0)) continue;
     filters.push({ type: kind === "PK" ? "PK" : kind.startsWith("L") ? "LSC" : "HSC", frequency, gain, q });
   }
@@ -67,8 +69,8 @@ function parseGraphic(lines: readonly string[]): [number, number][] {
     .slice(line.indexOf(":") + 1)
     .split(";")
     .map((pair): [number, number] => {
-      const [hz, db] = pair.trim().split(/\s+/).map(Number);
-      return [hz ?? Number.NaN, db ?? Number.NaN];
+      const [hz, db] = pair.trim().split(/\s+/);
+      return [number(hz), number(db)];
     })
     .filter(([hz, db]) => hz > 0 && Number.isFinite(db))
     .sort((a, b) => a[0] - b[0]);

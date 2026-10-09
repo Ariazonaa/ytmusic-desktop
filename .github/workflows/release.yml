@@ -8,7 +8,7 @@ on:
     tags: ["v*"]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   existing:
@@ -34,6 +34,8 @@ jobs:
     needs: existing
     if: needs.existing.outputs.found != 'true'
     runs-on: windows-latest
+    permissions:
+      contents: write
     defaults:
       run:
         shell: powershell

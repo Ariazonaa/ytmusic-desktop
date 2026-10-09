@@ -13,6 +13,9 @@ import { join } from "node:path";
 const REPOSITORY = "https://github.com/Ariazonaa/ytmusic-desktop";
 
 const { version } = JSON.parse(readFileSync("package.json", "utf8"));
+// Installed apps take whatever the latest release is. A version like
+// 1.2.0-beta.1 would reach all of them, so there are no releases of those.
+if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`${version} is a pre-release version: not released`);
 const tag = process.argv[2] ?? `v${version}`;
 if (tag !== `v${version}`) throw new Error(`the tag ${tag} does not fit version ${version} in package.json`);
 

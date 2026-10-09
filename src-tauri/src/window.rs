@@ -82,6 +82,8 @@ pub fn create_main_window(app: &AppHandle, hidden: bool) -> tauri::Result<()> {
     crate::offline::watch(&window, YTM_URL, move || {
         language_app.state::<SettingsStore>().get().language
     });
+    // A plugin's frame must not leave its document.
+    crate::frames::watch(&window);
     if hidden {
         background::set_hidden(&window, true);
     }

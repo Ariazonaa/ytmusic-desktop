@@ -55,6 +55,15 @@ Filter 4: OFF PK Fc 3000 Hz Gain 9.0 dB Q 1.00`);
     expect(preset?.preamp).toBe(-2);
   });
 
+  it("reads gains with a plus sign and numbers with a decimal comma", () => {
+    const preset = parseAutoEq(
+      "Preamp: -2,5 dB\nFilter 1: ON PK Fc 1000 Hz Gain +3.0 dB Q 1,41\nFilter 2: ON PK Fc 62 Hz Gain -4,2 dB Q 1.41\n",
+    );
+    expect(preset?.gains[5]).toBe(3);
+    expect(preset?.gains[1]).toBe(-4);
+    expect(parseAutoEq("GraphicEQ: 31 +6,3; 1000 -0,4; 16000 -8,0")?.gains[0]).toBe(6);
+  });
+
   it("refuses text that holds no equalizer settings", () => {
     for (const text of ["", "hello", "Preamp: -3 dB", "Filter 1: OFF PK Fc 100 Hz Gain 3 dB Q 1", "GraphicEQ:", '{ "name": "x" }']) {
       expect(parseAutoEq(text), text).toBeNull();

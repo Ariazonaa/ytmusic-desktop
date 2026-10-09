@@ -37,7 +37,9 @@ async function readCover(): Promise<void> {
   const read = ++coverRead;
   const url = artworkUrl;
   if (!api || !url || !usesCover(api.settings.getAll())) {
+    const hadColors = coverColors !== null;
     coverColors = null;
+    if (api && hadColors) apply();
     return;
   }
   // A cover that cannot be read leaves YouTube Music's own colors.

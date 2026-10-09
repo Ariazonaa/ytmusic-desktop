@@ -5,7 +5,12 @@ import type { JsonResponse, NetRequest, NetResponse } from "../../shared/types";
  * `createApi`; this only makes sure the request carries nothing about the user.
  */
 export async function getJson(url: string): Promise<JsonResponse> {
-  const response = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer" });
+  const response = await fetch(url, {
+    credentials: "omit",
+    referrerPolicy: "no-referrer",
+    // A redirect could lead to a host the plugin may not contact.
+    redirect: "error",
+  });
   const data: unknown = await response.json().catch(() => null);
   return { status: response.status, data };
 }

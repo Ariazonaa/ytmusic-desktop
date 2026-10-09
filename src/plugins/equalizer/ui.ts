@@ -303,7 +303,7 @@ export function createEqualizerUi(container: HTMLElement, handlers: Handlers): E
       return;
     }
     try {
-      const presetName = file.name.trim().slice(0, MAX_PRESET_NAME_LENGTH);
+      const presetName = file.name.trim().slice(0, MAX_PRESET_NAME_LENGTH).trim();
       const presets = withUserPreset(saved, presetName, read.gains);
       handlers.onCommit({
         presets: JSON.stringify(presets),
@@ -329,7 +329,8 @@ export function createEqualizerUi(container: HTMLElement, handlers: Handlers): E
         .replace(/\.[^.]*$/, "")
         .replace(/\s*(FixedBandEQ|ParametricEQ|GraphicEQ)$/i, "")
         .trim()
-        .slice(0, MAX_PRESET_NAME_LENGTH);
+        .slice(0, MAX_PRESET_NAME_LENGTH)
+        .trim();
       const presets = withUserPreset(saved, presetName, read.gains);
       handlers.onCommit({ presets: JSON.stringify(presets), preset: USER_PREFIX + presetName, preamp: read.preamp });
       fileMessage.textContent = t('Imported "{name}".', { name: presetName });

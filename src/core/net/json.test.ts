@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { checkRequest, sendRequest } from "./json";
+import { checkRequest, getJson, sendRequest } from "./json";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -44,6 +44,17 @@ describe("sendRequest", () => {
       method: "POST",
       headers: { "X-Test": "1" },
       body: "{}",
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      redirect: "error",
+    });
+  });
+
+  it("does not follow redirects for getJson either", async () => {
+    const fetchMock = vi.fn(() => Promise.resolve(new Response('{"a":1}', { status: 200 })));
+    vi.stubGlobal("fetch", fetchMock);
+    expect(await getJson("https://example.com/x")).toEqual({ status: 200, data: { a: 1 } });
+    expect(fetchMock).toHaveBeenCalledWith("https://example.com/x", {
       credentials: "omit",
       referrerPolicy: "no-referrer",
       redirect: "error",

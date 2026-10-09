@@ -150,10 +150,21 @@ export class AudioChain {
 
   private rewire(): void {
     if (!this.context || !this.source) return;
+    // Built before anything is taken apart: an effect that cannot be built is
+    // left out, and the others and the sound itself go on.
+    for (const entry of [...this.entries]) {
+      if (entry.effect) continue;
+      try {
+        entry.effect = entry.build(this.context);
+      } catch (error) {
+        this.entries.splice(this.entries.indexOf(entry), 1);
+        this.log.error("[ytm-desktop] an audio effect could not be built and is left out", error);
+      }
+    }
     this.disconnectAll();
-    let tail = this.source;
+    let tail: AudioNode = this.source;
     for (const entry of this.entries) {
-      entry.effect ??= entry.build(this.context);
+      if (!entry.effect) continue;
       tail.connect(entry.effect.input);
       tail = entry.effect.output;
     }

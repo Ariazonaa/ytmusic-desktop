@@ -6,6 +6,9 @@ name: Linux probe
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   webview:
     name: YouTube Music in WebKitGTK
