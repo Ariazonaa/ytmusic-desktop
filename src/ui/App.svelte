@@ -52,6 +52,28 @@
   let welcome = $state(false);
   let search = $state("");
 
+  const TABS = ["plugins", "general", "shortcuts", "updates", "backup"] as const;
+  type Tab = (typeof TABS)[number];
+  let tab = $state<Tab>("plugins");
+  const tabLabel = (id: Tab): string =>
+    ({
+      plugins: t("Plugins"),
+      general: t("General"),
+      shortcuts: t("Shortcuts"),
+      updates: t("Updates"),
+      backup: t("Backup"),
+    })[id];
+
+  /** Which plugins the list shows: all, the ones switched on, or one kind. */
+  type Filter = "all" | "on" | PluginCategory;
+  const FILTERS: readonly Filter[] = ["all", "on", ...PLUGIN_CATEGORIES];
+  let filter = $state<Filter>("all");
+  /** The plugins whose details and settings are unfolded. */
+  let unfolded = $state<string[]>([]);
+  const toggleUnfolded = (name: string): void => {
+    unfolded = unfolded.includes(name) ? unfolded.filter((other) => other !== name) : [...unfolded, name];
+  };
+
   isFirstRun().then(
     (first) => (welcome = first),
     () => {},
@@ -78,16 +100,25 @@
   /** The plugins that match the search, by category, in the order the categories are listed. */
   const groups = $derived.by(() => {
     const wanted = search.trim().toLowerCase();
+    const enabled = settings?.plugins ?? [];
     const matches = ({ manifest }: ListedPlugin): boolean =>
-      wanted === "" ||
-      manifest.name.includes(wanted) ||
-      t(manifest.description ?? "").toLowerCase().includes(wanted) ||
-      (manifest.description ?? "").toLowerCase().includes(wanted);
+      (filter === "all" || (filter === "on" ? enabled.includes(manifest.name) : (manifest.category ?? "tools") === filter)) &&
+      (wanted === "" ||
+        manifest.name.includes(wanted) ||
+        t(manifest.description ?? "").toLowerCase().includes(wanted) ||
+        (manifest.description ?? "").toLowerCase().includes(wanted));
     return PLUGIN_CATEGORIES.map((category) => ({
       category,
       plugins: plugins.filter((plugin) => (plugin.manifest.category ?? "tools") === category && matches(plugin)),
     })).filter((group) => group.plugins.length > 0);
   });
+
+  const filterLabel = (id: Filter): string =>
+    id === "all"
+      ? t("All")
+      : id === "on"
+        ? t("Switched on ({count})", { count: plugins.filter(({ manifest }) => settings?.plugins.includes(manifest.name)).length })
+        : t(CATEGORY_LABELS[id]);
 
   /** A part of YouTube Music's page, in words. */
   const pagePart = (name: string): string =>
@@ -342,7 +373,29 @@
   </button>
 {/snippet}
 
-<main class="mx-auto max-w-xl px-6 py-6 text-sm">
+{#if settings}
+<nav class="sticky top-0 z-10 border-b border-neutral-800 bg-neutral-950">
+  <div role="tablist" class="mx-auto flex max-w-xl gap-1 overflow-x-auto px-5 py-2 text-sm [scrollbar-width:none]">
+    {#each TABS as id (id)}
+      <button
+        type="button"
+        role="tab"
+        aria-selected={tab === id}
+        class="shrink-0 rounded-md px-3 py-1.5 font-medium focus-visible:outline-2 focus-visible:outline-white
+          {tab === id ? 'bg-neutral-800 text-white' : 'text-neutral-400 hover:bg-neutral-900 hover:text-neutral-100'}"
+        onclick={() => (tab = id)}
+      >
+        {tabLabel(id)}
+        {#if id === "updates" && available}
+          <span class="ml-1 inline-block size-2 rounded-full bg-emerald-400" title={t("Version {version} is available.", { version: available.version })}></span>
+        {/if}
+      </button>
+    {/each}
+  </div>
+</nav>
+{/if}
+
+<main class="mx-auto max-w-xl px-6 py-5 text-sm">
   {#if error}
     <p role="alert" class="mb-4 rounded-md border border-red-800 bg-red-950 px-3 py-2 text-red-200">
       {error}
@@ -368,10 +421,155 @@
   {/if}
 
   {#if settings}
-    <section>
-      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-        {t("General")}
-      </h2>
+    <section role="tabpanel" hidden={tab !== "plugins"}>
+      <input
+        type="search"
+        class="mb-2 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-neutral-100
+          placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-white"
+        placeholder={t("Search plugins")}
+        aria-label={t("Search plugins")}
+        bind:value={search}
+      />
+      <div class="flex flex-wrap gap-1.5">
+        {#each FILTERS as id (id)}
+          <button
+            type="button"
+            aria-pressed={filter === id}
+            class="rounded-full border px-2.5 py-0.5 text-xs focus-visible:outline-2 focus-visible:outline-white
+              {filter === id
+              ? 'border-neutral-200 bg-neutral-200 text-neutral-900'
+              : 'border-neutral-700 text-neutral-300 hover:bg-neutral-800'}"
+            onclick={() => (filter = id)}
+          >
+            {filterLabel(id)}
+          </button>
+        {/each}
+      </div>
+      {#if notice}
+        <p role="status" class="mt-2 text-amber-300">{notice}</p>
+      {/if}
+      {#each groups as group (group.category)}
+        <h3 class="mt-4 mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+          {t(CATEGORY_LABELS[group.category])}
+        </h3>
+        <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
+          {#each group.plugins as { manifest, external } (manifest.name)}
+            {@const hasSettings = Object.values(manifest.settings ?? {}).some((field) => !field.hidden)}
+            {@const open = unfolded.includes(manifest.name)}
+            <div>
+              <Toggle
+                checked={settings.plugins.includes(manifest.name)}
+                onchange={(enabled) => setPluginEnabled(manifest.name, enabled)}
+              >
+                <span class="block font-medium">
+                  {manifest.name}
+                  {#if external}
+                    <span
+                      class="ml-1 rounded border border-neutral-600 px-1.5 py-0.5 text-xs font-normal text-neutral-300"
+                    >
+                      {t("external")}
+                    </span>
+                  {/if}
+                </span>
+                {#if manifest.description}
+                  <span class="block text-neutral-400">{t(manifest.description)}</span>
+                {/if}
+              </Toggle>
+              {#each health.pluginErrors[manifest.name] ?? [] as message, index (index)}
+                <p class="pb-2 text-red-300">{t("Error: {message}", { message })}</p>
+              {/each}
+              <button
+                type="button"
+                class="-mt-1 mb-2 rounded text-xs text-neutral-400 hover:text-neutral-100
+                  focus-visible:outline-2 focus-visible:outline-white"
+                aria-expanded={open}
+                onclick={() => toggleUnfolded(manifest.name)}
+              >
+                <span aria-hidden="true">{open ? "▾" : "▸"}</span>
+                {hasSettings ? t("Settings and details") : t("Details")}
+              </button>
+              <div hidden={!open} class="pb-3">
+                <p class="text-xs text-neutral-400">
+                  <span class="block">{t("Version {version}", { version: manifest.version })}</span>
+                  <span class="block">
+                    {manifest.permissions.length > 0
+                      ? t("Permissions: {list}", { list: manifest.permissions.join(", ") })
+                      : t("No permissions")}
+                  </span>
+                  {#if manifest.hosts?.length}
+                    <span class="block">{t("Contacts: {hosts}", { hosts: manifest.hosts.join(", ") })}</span>
+                  {/if}
+                  {#if rivalsOf(manifest.name).length > 0}
+                    <span class="block">
+                      {t("Not together with: {names}", { names: rivalsOf(manifest.name).join(", ") })}
+                    </span>
+                  {/if}
+                </p>
+                {#if hasSettings}
+                  <PluginSettings
+                    {t}
+                    schema={manifest.settings ?? {}}
+                    values={resolveSettings(manifest, settings.pluginSettings[manifest.name])}
+                    onchange={(key, value) => setPluginSetting(manifest.name, key, value)}
+                    onreset={() => resetPluginSettings(manifest.name)}
+                  />
+                {/if}
+                {#if external}
+                  <div class="mt-2 flex justify-end">
+                    <button
+                      type="button"
+                      class="rounded-md border px-2 py-1 text-xs focus-visible:outline-2 focus-visible:outline-white
+                        {removing === manifest.name
+                        ? 'border-red-700 bg-red-950 text-red-100 hover:bg-red-900'
+                        : 'border-neutral-700 hover:bg-neutral-800'}"
+                      onclick={() => void remove(manifest.name)}
+                      onblur={() => (removing = null)}
+                    >
+                      {removing === manifest.name ? t("Really remove? Its files are deleted.") : t("Remove")}
+                    </button>
+                  </div>
+                {/if}
+              </div>
+            </div>
+          {/each}
+        </div>
+      {:else}
+        <p class="mt-3 rounded-lg bg-neutral-900 px-4 py-3 text-neutral-400">
+          {plugins.length === 0 ? t("No plugins installed.") : t("No plugin matches the search.")}
+        </p>
+      {/each}
+
+      {#each rejected as reason (reason)}
+        <p class="mt-2 text-amber-300">{t("Ignored plugin folder {reason}", { reason })}</p>
+      {/each}
+
+      <h3 class="mt-6 mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+        {t("Plugins from others")}
+      </h3>
+      <div class="rounded-lg bg-neutral-900 px-4 pt-3">
+        <p class="text-neutral-400">
+          {t("External plugins run in a sandbox. Reload after adding or editing one.")}
+        </p>
+        <div class="mt-2 flex flex-wrap gap-2">
+          {@render action(t("Install from a zip file"), () => void installFromZip())}
+          {@render action(t("Open plugins folder"), showPluginsFolder)}
+          {@render action(t("Reload plugins"), () => void reload())}
+        </div>
+        <div class="mt-1 border-t border-neutral-800">
+          <Toggle
+            checked={settings.reloadPluginsOnChange}
+            onchange={(reloadPluginsOnChange) => update({ reloadPluginsOnChange })}
+          >
+            <span class="block font-medium">{t("Reload when files change")}</span>
+            <span class="block text-neutral-400">
+              {t("For plugin authors: external plugins start again as soon as a file in the plugins folder changes.")}
+            </span>
+          </Toggle>
+        </div>
+      </div>
+    </section>
+
+    <section role="tabpanel" hidden={tab !== "general"}>
       <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
         <Toggle checked={settings.startup} onchange={(startup) => update({ startup })}>
           <span class="block font-medium">{t("Start with Windows")}</span>
@@ -446,10 +644,7 @@
       </div>
     </section>
 
-    <section class="mt-6">
-      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-        {t("Global shortcuts")}
-      </h2>
+    <section role="tabpanel" hidden={tab !== "shortcuts"}>
       <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
         {#each SHORTCUT_ACTIONS as action (action)}
           <ShortcutField
@@ -467,125 +662,7 @@
       </p>
     </section>
 
-    <section class="mt-6">
-      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-        {t("Plugins")}
-      </h2>
-      <input
-        type="search"
-        class="mb-2 w-full rounded-md border border-neutral-700 bg-neutral-950 px-3 py-1.5 text-neutral-100
-          placeholder:text-neutral-500 focus-visible:outline-2 focus-visible:outline-white"
-        placeholder={t("Search plugins")}
-        aria-label={t("Search plugins")}
-        bind:value={search}
-      />
-      {#each groups as group (group.category)}
-      <h3 class="mt-3 mb-1 text-xs text-neutral-400">{t(CATEGORY_LABELS[group.category])}</h3>
-      <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
-        {#each group.plugins as { manifest, external } (manifest.name)}
-          <div>
-            <Toggle
-              checked={settings.plugins.includes(manifest.name)}
-              onchange={(enabled) => setPluginEnabled(manifest.name, enabled)}
-            >
-              <span class="block font-medium">
-                {manifest.name}
-                <span class="font-normal text-neutral-500">{manifest.version}</span>
-                {#if external}
-                  <span
-                    class="ml-1 rounded border border-neutral-600 px-1.5 py-0.5 text-xs font-normal text-neutral-300"
-                  >
-                    {t("external")}
-                  </span>
-                {/if}
-              </span>
-              {#if manifest.description}
-                <span class="block text-neutral-300">{t(manifest.description)}</span>
-              {/if}
-              <span class="block text-neutral-400">
-                {manifest.permissions.length > 0
-                  ? t("Permissions: {list}", { list: manifest.permissions.join(", ") })
-                  : t("No permissions")}
-              </span>
-              {#if manifest.hosts?.length}
-                <span class="block text-neutral-400">
-                  {t("Contacts: {hosts}", { hosts: manifest.hosts.join(", ") })}
-                </span>
-              {/if}
-              {#if rivalsOf(manifest.name).length > 0}
-                <span class="block text-neutral-400">
-                  {t("Not together with: {names}", { names: rivalsOf(manifest.name).join(", ") })}
-                </span>
-              {/if}
-            </Toggle>
-            {#if Object.values(manifest.settings ?? {}).some((field) => !field.hidden)}
-              <PluginSettings
-                {t}
-                schema={manifest.settings ?? {}}
-                values={resolveSettings(manifest, settings.pluginSettings[manifest.name])}
-                onchange={(key, value) => setPluginSetting(manifest.name, key, value)}
-                onreset={() => resetPluginSettings(manifest.name)}
-              />
-            {/if}
-            {#if external}
-              <div class="flex justify-end pb-2">
-                <button
-                  type="button"
-                  class="rounded-md border px-2 py-1 text-xs focus-visible:outline-2 focus-visible:outline-white
-                    {removing === manifest.name
-                    ? 'border-red-700 bg-red-950 text-red-100 hover:bg-red-900'
-                    : 'border-neutral-700 hover:bg-neutral-800'}"
-                  onclick={() => void remove(manifest.name)}
-                  onblur={() => (removing = null)}
-                >
-                  {removing === manifest.name ? t("Really remove? Its files are deleted.") : t("Remove")}
-                </button>
-              </div>
-            {/if}
-            {#each health.pluginErrors[manifest.name] ?? [] as message, index (index)}
-              <p class="pb-2 text-red-300">{t("Error: {message}", { message })}</p>
-            {/each}
-          </div>
-        {/each}
-      </div>
-      {:else}
-        <p class="rounded-lg bg-neutral-900 px-4 py-3 text-neutral-400">
-          {plugins.length === 0 ? t("No plugins installed.") : t("No plugin matches the search.")}
-        </p>
-      {/each}
-
-      {#if notice}
-        <p role="status" class="mt-2 text-amber-300">{notice}</p>
-      {/if}
-      {#each rejected as reason (reason)}
-        <p class="mt-2 text-amber-300">{t("Ignored plugin folder {reason}", { reason })}</p>
-      {/each}
-
-      <p class="mt-3 text-neutral-400">
-        {t("External plugins run in a sandbox. Reload after adding or editing one.")}
-      </p>
-      <div class="mt-2 flex flex-wrap gap-2">
-        {@render action(t("Install from a zip file"), () => void installFromZip())}
-        {@render action(t("Open plugins folder"), showPluginsFolder)}
-        {@render action(t("Reload plugins"), () => void reload())}
-      </div>
-      <div class="mt-2 rounded-lg bg-neutral-900 px-4">
-        <Toggle
-          checked={settings.reloadPluginsOnChange}
-          onchange={(reloadPluginsOnChange) => update({ reloadPluginsOnChange })}
-        >
-          <span class="block font-medium">{t("Reload when files change")}</span>
-          <span class="block text-neutral-400">
-            {t("For plugin authors: external plugins start again as soon as a file in the plugins folder changes.")}
-          </span>
-        </Toggle>
-      </div>
-    </section>
-
-    <section class="mt-6">
-      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-        {t("Updates")}
-      </h2>
+    <section role="tabpanel" hidden={tab !== "updates"}>
       <div class="rounded-lg bg-neutral-900 px-4">
         <Toggle checked={settings.checkForUpdates} onchange={(checkForUpdates) => update({ checkForUpdates })}>
           <span class="block font-medium">{t("Look for updates at start")}</span>
@@ -626,10 +703,7 @@
       {/if}
     </section>
 
-    <section class="mt-6">
-      <h2 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
-        {t("Backup and log")}
-      </h2>
+    <section role="tabpanel" hidden={tab !== "backup"}>
       <p class="text-neutral-400">
         {t(
           "Export writes all settings, including those of the plugins, to a file. Import replaces the current settings with those from a file.",

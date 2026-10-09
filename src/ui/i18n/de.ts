@@ -35,7 +35,7 @@ const de: Readonly<Record<string, string>> = {
   "Same as Windows": "Wie Windows",
 
   // Global shortcuts
-  "Global shortcuts": "Globale Tastenkürzel",
+  Shortcuts: "Tastenkürzel",
   "Play / Pause": "Wiedergabe / Pause",
   Next: "Weiter",
   Previous: "Zurück",
@@ -104,7 +104,7 @@ const de: Readonly<Record<string, string>> = {
   " and ": " und ",
 
   // Backup and log
-  "Backup and log": "Sicherung und Protokoll",
+  Backup: "Sicherung",
   "Export writes all settings, including those of the plugins, to a file. Import replaces the current settings with those from a file.":
     "Export schreibt alle Einstellungen, auch die der Plugins, in eine Datei. Import ersetzt die aktuellen Einstellungen durch die aus einer Datei.",
   "Export settings": "Einstellungen exportieren",
@@ -286,6 +286,14 @@ const de: Readonly<Record<string, string>> = {
   "How far one notch of the mouse wheel changes the volume.":
     "Um wie viel eine Raste des Mausrads die Lautstärke ändert.",
   "Show the volume while changing it": "Lautstärke beim Ändern anzeigen",
+
+  // tabs and the list of plugins
+  All: "Alle",
+  "Switched on ({count})": "Eingeschaltet ({count})",
+  "Settings and details": "Einstellungen und Details",
+  Details: "Details",
+  "Version {version}": "Version {version}",
+  "Plugins from others": "Plugins von anderen",
 
   // updates
   Updates: "Updates",

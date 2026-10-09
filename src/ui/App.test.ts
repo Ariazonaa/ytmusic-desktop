@@ -165,7 +165,7 @@ describe("settings window", () => {
     render(App);
     await screen.findByText("General");
     const headings = [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim());
-    expect(headings).toEqual(["Sound", "Appearance", "Playback", "Tools"]);
+    expect(headings).toEqual(["Sound", "Appearance", "Playback", "Tools", "Plugins from others"]);
     expect(screen.getByText("Brings every track to the same loudness.")).toBeTruthy();
 
     await fireEvent.input(screen.getByLabelText("Search plugins"), { target: { value: "loud" } });
@@ -175,6 +175,79 @@ describe("settings window", () => {
 
     await fireEvent.input(screen.getByLabelText("Search plugins"), { target: { value: "no such plugin" } });
     expect(await screen.findByText("No plugin matches the search.")).toBeTruthy();
+  });
+
+  it("shows one tab at a time, the plugins first", async () => {
+    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "" });
+    render(App);
+    const panelOf = (text: string): HTMLElement | null => screen.getByText(text).closest<HTMLElement>("[role=tabpanel]");
+    await screen.findByText("General");
+    expect(screen.getAllByRole("tab").map((tab) => tab.textContent?.trim())).toEqual([
+      "Plugins",
+      "General",
+      "Shortcuts",
+      "Updates",
+      "Backup",
+    ]);
+    expect(panelOf("Plugins from others")?.hidden).toBe(false);
+    expect(panelOf("Start with Windows")?.hidden).toBe(true);
+    // An update that waits is marked on its tab.
+    expect(screen.getByRole("tab", { name: /Updates/ }).querySelector("[title='Version 1.1.0 is available.']")).toBeTruthy();
+
+    await fireEvent.click(screen.getByRole("tab", { name: "General" }));
+    expect(panelOf("Start with Windows")?.hidden).toBe(false);
+    expect(panelOf("Plugins from others")?.hidden).toBe(true);
+    expect(screen.getByRole("tab", { name: "General" }).getAttribute("aria-selected")).toBe("true");
+    await fireEvent.click(screen.getByRole("tab", { name: "Backup" }));
+    expect(panelOf("Export settings")?.hidden).toBe(false);
+    expect(panelOf("Start with Windows")?.hidden).toBe(true);
+  });
+
+  it("filters the plugins by kind and by what is switched on", async () => {
+    client.getSettings.mockResolvedValue(settings({ plugins: ["lyrics", "normalize"] }));
+    render(App);
+    await screen.findByText("General");
+    const kinds = (): (string | undefined)[] =>
+      [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim()).slice(0, -1);
+
+    await fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
+    expect(kinds()).toEqual(["Appearance"]);
+    expect(screen.queryByText("normalize")).toBeNull();
+    expect(screen.getByText("themes")).toBeTruthy();
+
+    await fireEvent.click(screen.getByRole("button", { name: "Switched on (2)" }));
+    expect(kinds()).toEqual(["Sound", "Tools"]);
+    expect(screen.queryByText("themes")).toBeNull();
+    // Switching one off updates the count and takes it out of the list.
+    await fireEvent.click(switchFor("normalize"));
+    expect(await screen.findByRole("button", { name: "Switched on (1)" })).toBeTruthy();
+    expect(screen.queryByText("normalize")).toBeNull();
+
+    await fireEvent.click(screen.getByRole("button", { name: "All" }));
+    expect(kinds()).toEqual(["Sound", "Appearance", "Playback", "Tools"]);
+  });
+
+  it("keeps a plugin's details and settings folded away until asked for", async () => {
+    render(App);
+    await screen.findByText("General");
+    const row = screen.getByText("lyrics").closest("label")?.parentElement as HTMLElement;
+    const details = row.querySelector<HTMLElement>(":scope > div");
+    const unfold = row.querySelector<HTMLButtonElement>(":scope > button");
+    expect(unfold?.textContent).toContain("Settings and details");
+    expect(details?.hidden).toBe(true);
+
+    await fireEvent.click(unfold as HTMLButtonElement);
+    expect(details?.hidden).toBe(false);
+    expect(unfold?.getAttribute("aria-expanded")).toBe("true");
+    expect(details?.textContent).toContain("Permissions: music.read");
+    expect(details?.textContent).toContain("Contacts: lrclib.net");
+    await fireEvent.click(unfold as HTMLButtonElement);
+    expect(details?.hidden).toBe(true);
+
+    // A plugin without settings still has details.
+    const plain = screen.getByText("prefer-opus").closest("label")?.parentElement as HTMLElement;
+    expect(plain.querySelector(":scope > button")?.textContent).toContain("Details");
+    expect(plain.querySelector(":scope > button")?.textContent).not.toContain("Settings");
   });
 
   it("resets what it shows of a plugin's settings and keeps what the plugin stores for itself", async () => {
@@ -247,6 +320,7 @@ describe("settings window", () => {
     render(App);
     await fireEvent.click(await screen.findByText("Look now"));
     expect(await screen.findByText("Could not check for updates: no connection")).toBeTruthy();
+    await fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
     await fireEvent.click(screen.getByRole("switch", { name: /Look for updates at start/ }));
     expect(client.setSettings).toHaveBeenLastCalledWith(expect.objectContaining({ checkForUpdates: false }));
   });

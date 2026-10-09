@@ -4,6 +4,13 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.6.1
+
+- The settings window is tidier: tabs for plugins, general settings,
+  shortcuts, updates and backup instead of one long page. The plugins can be
+  filtered by kind or to those switched on, and a plugin's settings and
+  details unfold on a click.
+
 ## 0.6.0
 
 - New plugin `adblock`: removes the ads between tracks for accounts without
