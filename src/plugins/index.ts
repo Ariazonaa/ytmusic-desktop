@@ -1,4 +1,5 @@
 import type { Plugin } from "../shared/types";
+import adblock from "./adblock";
 import audioOnly from "./audio-only";
 import audioTools from "./audio-tools";
 import compressor from "./compressor";
@@ -21,6 +22,7 @@ import wheelVolume from "./wheel-volume";
 
 /** Plugins compiled into the app. Which ones run is decided by `settings.json`. */
 export const builtinPlugins: readonly Plugin[] = [
+  adblock,
   audioOnly,
   audioTools,
   compressor,

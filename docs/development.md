@@ -243,7 +243,8 @@ Started from a network share, the window alone took 5.8 s to appear.
 
 Checked with a Premium account on Windows 11:
 
-- No ads are requested.
+- No ads are requested. Without Premium there are ads between tracks; the
+  `adblock` plugin removes them.
 - Audio plays in the high quality tier: AAC at 256 kbit/s. Opus at about
   270 kbit/s is offered too; the player picks AAC unless the `prefer-opus`
   plugin is on.

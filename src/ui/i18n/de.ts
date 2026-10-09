@@ -134,6 +134,8 @@ const de: Readonly<Record<string, string>> = {
     "Bringt alle Titel auf die gleiche Lautheit.",
   "Plays everything faster or slower.":
     "Spielt alles schneller oder langsamer ab.",
+  "Removes the ads YouTube Music plays between tracks without Premium.":
+    "Entfernt die Werbung, die YouTube Music ohne Premium zwischen Titeln spielt.",
   "Makes the player choose Opus audio instead of AAC.":
     "Lässt den Player Opus statt AAC wählen.",
   "Skips tracks you gave a thumbs down.":

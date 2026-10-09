@@ -1,0 +1,7 @@
+{
+  "name": "adblock",
+  "version": "0.1.0",
+  "description": "Removes the ads YouTube Music plays between tracks without Premium.",
+  "category": "playback",
+  "permissions": []
+}

@@ -26,8 +26,8 @@ app adds what a website cannot do:
   limiter.
 - **More to see:** time-synced lyrics, color themes, the cover as background,
   a spectrum behind the player bar.
-- **Less in the way:** SponsorBlock skips the talking in music videos, and
-  tracks you disliked are skipped by themselves.
+- **Less in the way:** no ads between tracks, SponsorBlock skips the talking
+  in music videos, and tracks you disliked are skipped by themselves.
 - **A real desktop app:** tray icon, global shortcuts, media keys, start with
   Windows, and it picks up the track where you stopped.
 - **Light:** the installer is under 3 MB. The app is built with
@@ -105,6 +105,7 @@ says how far that is.
 
 | Plugin | What it does |
 | --- | --- |
+| `adblock` | Removes the ads YouTube Music plays between tracks for accounts without Premium. It takes them out of what the server tells the player, so they are not loaded at all; should one start anyway, it is skipped. With Premium there are no ads and the plugin has nothing to do. See the [note on ads](#license-and-trademarks). |
 | `sponsorblock` | Skips sponsors, non-music sections and similar parts of music videos, using the [SponsorBlock](https://sponsor.ajay.app) database. Categories can be chosen one by one. A notice says what was skipped, and its button plays the part after all. |
 | `skip-disliked` | Goes on to the next track when one comes up that you gave a thumbs down. |
 | `audio-only` | When a music video comes up, switches to its audio version, as the Song button above the player does. Saves bandwidth and processor time. |
@@ -298,5 +299,8 @@ This is an independent project. It is not made, endorsed or supported by
 Google. YouTube and YouTube Music are trademarks of Google LLC; the app shows
 Google's own website and contains none of its code or content. Using it is
 subject to YouTube's terms of service, as using the site in a browser is.
+Blocking ads is against those terms, so the `adblock` plugin is off unless
+you switch it on, and that is your decision; a Premium subscription removes
+the ads and pays the artists.
 SponsorBlock, LRCLIB and lyrics.ovh are services of their own, used through
 their public interfaces; their data is under their terms.

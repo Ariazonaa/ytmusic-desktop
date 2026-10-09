@@ -5573,7 +5573,7 @@ dependencies = [
 
 [[package]]
 name = "ytmusic-desktop"
-version = "0.5.1"
+version = "0.6.0"
 dependencies = [
  "base64 0.22.1",
  "serde",
