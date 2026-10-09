@@ -131,7 +131,7 @@ pub fn open_settings_window(app: &AppHandle) {
         let result = WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, url)
             .title("Settings")
             .additional_browser_args(browser_args(&app))
-            .inner_size(520.0, 560.0)
+            .inner_size(620.0, 700.0)
             .min_inner_size(360.0, 320.0)
             .build();
         if let Err(err) = result {

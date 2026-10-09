@@ -47,7 +47,7 @@ and German.
 | ![The equalizer panel with ten sliders and the frequency response](docs/images/equalizer.png) | ![The themes panel with ready-made themes](docs/images/themes.png) |
 | **Equalizer** with presets, your own curves and [headphone corrections](#headphone-corrections). Here the colors follow the cover. | **Themes:** color schemes, accent colors, frosted glass. A look can be saved and [shared](#sharing-themes-and-presets). |
 | ![The track info panel with codec, bitrate and loudness](docs/images/track-info.png) | ![The settings window with the list of plugins](docs/images/settings-plugins.png) |
-| **Track info:** codec, bitrate, loudness and connection speed of what is playing. | **Settings window:** every plugin with a switch, its permissions and its settings. |
+| **Track info:** codec, bitrate, loudness and connection speed of what is playing. | **Settings window:** every plugin with a switch; its settings and permissions unfold on a click. |
 
 ## Install
 
