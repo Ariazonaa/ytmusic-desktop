@@ -4,6 +4,14 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.6.3
+
+- New plugin `keep-playing`: the music no longer stops with "Video paused.
+  Continue watching?" after an hour without mouse or keyboard.
+- `audio-only` now does something without Premium, where a music video has
+  no audio version to switch to: the picture is loaded in its smallest size
+  and the cover is shown in its place.
+
 ## 0.6.2
 
 Fixes from a review of the code.

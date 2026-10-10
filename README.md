@@ -108,7 +108,8 @@ says how far that is.
 | `adblock` | Removes the ads YouTube Music plays between tracks for accounts without Premium. It takes them out of what the server tells the player, so they are not loaded at all; should one start anyway, it is skipped. With Premium there are no ads and the plugin has nothing to do. See the [note on ads](#license-and-trademarks). |
 | `sponsorblock` | Skips sponsors, non-music sections and similar parts of music videos, using the [SponsorBlock](https://sponsor.ajay.app) database. Categories can be chosen one by one. A notice says what was skipped, and its button plays the part after all. |
 | `skip-disliked` | Goes on to the next track when one comes up that you gave a thumbs down. |
-| `audio-only` | When a music video comes up, switches to its audio version, as the Song button above the player does. Saves bandwidth and processor time. |
+| `audio-only` | Music videos without the video. With Premium it switches to the audio version, as the Song button above the player does. Without Premium that button is switched off, so the plugin loads the picture in its smallest size and shows the cover instead. Saves bandwidth and processor time. |
+| `keep-playing` | After about an hour without mouse or keyboard, YouTube Music stops at the next track and asks whether to go on. This plugin keeps that question away, and presses Yes should it come up anyway. |
 | `playback-speed` | Plays everything at 0.5 to 2 times the speed, with or without keeping the pitch. |
 | `prefer-opus` | Makes the player choose Opus audio instead of AAC. |
 | `wheel-volume` | Turning the mouse wheel over the player bar changes the volume. |
