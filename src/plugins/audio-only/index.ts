@@ -1,8 +1,13 @@
 // Audio only: when a music video comes up, switches to its audio version, as
 // the "Song" button above the player does. That saves the bandwidth and the
 // processor time the picture takes.
+//
+// Without Premium that button is switched off: a music video has no audio
+// version to go to. Then the picture is loaded as small as it gets and the
+// cover is shown instead, see `picture.ts`.
 import { parseManifest } from "../../core/plugin-manager/api";
 import type { Plugin, PluginApi } from "../../shared/types";
+import { COVER_CSS, SmallPicture, type QualityPlayer } from "./picture";
 import manifest from "./plugin.json";
 
 const TOGGLE = "ytmusic-av-toggle";
@@ -43,11 +48,39 @@ export class VideoChoice {
 
 let api: PluginApi | undefined;
 const choice = new VideoChoice();
+const picture = new SmallPicture();
+let removeCoverCss: (() => void) | undefined;
+
+const player = (): QualityPlayer | null => document.querySelector<HTMLElement & QualityPlayer>("#movie_player");
+
+/** Whether the page lets nobody switch between song and video for what is playing. */
+export function switchIsOff(toggle: Element | null): boolean {
+  return toggle !== null && toggle.hasAttribute("toggle-disabled") && toggle.getAttribute("toggle-disabled") !== "false";
+}
+
+/** Without a song to switch to: the smallest picture, and the cover in its place. */
+function hidePicture(): void {
+  if (!api) return;
+  removeCoverCss ??= api.ui.injectCss(COVER_CSS);
+  // The cover replaces the picture only in video mode, and only there is a picture to make small.
+  if (document.querySelector("ytmusic-player")?.hasAttribute("video-mode")) picture.lower(player());
+}
+
+function showPicture(): void {
+  removeCoverCss?.();
+  removeCoverCss = undefined;
+  picture.restore(player());
+}
 
 function act(): void {
   if (!api) return;
   // The switch is only there for tracks that exist both ways.
   const toggle = document.querySelector(TOGGLE);
+  if (switchIsOff(toggle)) {
+    hidePicture();
+    return;
+  }
+  showPicture();
   const videoSelected = toggle?.getAttribute("is-video-playback-mode-selected") === "true";
   if (choice.holdsFor(api.music.getVideoId(), videoSelected)) return;
   if (videoSelected) document.querySelector<HTMLElement>(SONG_BUTTON)?.click();
@@ -75,6 +108,7 @@ const audioOnly: Plugin = {
 
   onUnload() {
     document.removeEventListener("click", onClick, true);
+    showPicture();
     api = undefined;
     choice.clear();
   },

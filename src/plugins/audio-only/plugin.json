@@ -1,7 +1,7 @@
 {
   "name": "audio-only",
-  "version": "0.1.0",
-  "description": "When a music video comes up, switches to its audio version. Saves bandwidth and processor time.",
+  "version": "0.2.0",
+  "description": "Music videos without the video: switches to the audio version, or without Premium loads the smallest picture and shows the cover.",
   "category": "playback",
-  "permissions": ["music.read", "music.control"]
+  "permissions": ["music.read", "music.control", "ui.inject"]
 }

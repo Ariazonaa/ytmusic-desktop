@@ -1,0 +1,7 @@
+{
+  "name": "keep-playing",
+  "version": "0.1.0",
+  "description": "Presses Yes when YouTube Music stops and asks whether to go on playing.",
+  "category": "playback",
+  "permissions": []
+}

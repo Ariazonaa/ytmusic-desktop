@@ -114,8 +114,10 @@ const de: Readonly<Record<string, string>> = {
   "Settings imported.": "Einstellungen importiert.",
 
   // What each plugin does
-  "When a music video comes up, switches to its audio version. Saves bandwidth and processor time.":
-    "Schaltet bei einem Musikvideo auf die Tonfassung um. Spart Bandbreite und Rechenzeit.",
+  "Music videos without the video: switches to the audio version, or without Premium loads the smallest picture and shows the cover.":
+    "Musikvideos ohne Video: wechselt zur Audio-Version, oder lädt ohne Premium das kleinste Bild und zeigt das Cover.",
+  "Presses Yes when YouTube Music stops and asks whether to go on playing.":
+    "Drückt „Ja“, wenn YouTube Music anhält und fragt, ob es weiterspielen soll.",
   "Volume boost up to 300 %, left/right balance and mono.":
     "Lautstärke bis 300 %, Balance zwischen links und rechts und Mono.",
   "Evens out loud and quiet passages.":
