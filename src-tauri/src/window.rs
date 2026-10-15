@@ -314,7 +314,11 @@ mod tests {
     fn music_link_is_taken_from_the_arguments() {
         let args = |list: &[&str]| list.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
         assert_eq!(
-            music_link(args(&["--autostart", "https://music.youtube.com/watch?v=abc"])).map(String::from),
+            music_link(args(&[
+                "--autostart",
+                "https://music.youtube.com/watch?v=abc"
+            ]))
+            .map(String::from),
             Some("https://music.youtube.com/watch?v=abc".to_string())
         );
         for other in [

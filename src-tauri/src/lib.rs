@@ -31,12 +31,12 @@ pub fn run() {
     tauri::Builder::default()
         // Must be registered first. A second launch focuses the running app,
         // which may be hidden in the tray.
-        .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
-            match window::music_link(args.into_iter().skip(1)) {
+        .plugin(tauri_plugin_single_instance::init(
+            |app, args, _cwd| match window::music_link(args.into_iter().skip(1)) {
                 Some(link) => window::open_music_link(app, link),
                 None => window::show_main_window(app),
-            }
-        }))
+            },
+        ))
         .plugin(tauri_plugin_autostart::init(
             MacosLauncher::LaunchAgent,
             Some(vec![autostart::ARGUMENT]),
