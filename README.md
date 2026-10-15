@@ -140,7 +140,7 @@ Anyone can write a plugin: a folder with a `plugin.json` and an `index.js`.
   do.
 
 **Find plugins** in the
-[Plugins category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/plugins).
+["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell).
 Nobody checks them; read the permissions before you switch one on.
 
 **Write one:** [docs/plugins.md](docs/plugins.md) is the guide,

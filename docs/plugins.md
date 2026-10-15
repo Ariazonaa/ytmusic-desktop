@@ -326,7 +326,7 @@ plugins" for the settings window to show its new contents.
    own with the zip attached to a release. A plugin whose code nobody can
    read is one few will switch on.
 4. **Post it** in the
-   [Plugins category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/plugins).
+   ["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell).
    The form asks for the link, the permissions and why it needs them.
 
 Plugins posted there are not checked by anyone. They run in the sandbox and
