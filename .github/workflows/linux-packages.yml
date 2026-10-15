@@ -59,7 +59,7 @@ jobs:
           sudo apt-get install -y -q ./packages/*.deb
           sudo apt-get install -y -q --no-install-recommends xvfb xauth dbus-x11 imagemagick at-spi2-core
       - name: Start the installed app
-        run: bash scripts/linux-smoke.sh ytmusic-desktop shots/deb
+        run: bash scripts/linux-smoke.sh ytmusic-desktop shots/deb https://music.youtube.com/watch?v=dQw4w9WgXcQ
       - name: Start the AppImage
         run: |
           chmod +x packages/*.AppImage
@@ -105,7 +105,7 @@ jobs:
       - name: Start the app
         run: |
           mkdir -p shots && chown builder shots
-          sudo -u builder bash scripts/linux-smoke.sh ytmusic-desktop shots/arch
+          sudo -u builder bash scripts/linux-smoke.sh ytmusic-desktop shots/arch https://music.youtube.com/watch?v=dQw4w9WgXcQ
       - uses: actions/upload-artifact@v4
         if: always()
         with:

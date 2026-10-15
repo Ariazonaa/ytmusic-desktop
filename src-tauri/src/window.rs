@@ -41,16 +41,34 @@ fn browser_args(app: &AppHandle) -> &'static str {
     })
 }
 
+/// The first link to YouTube Music among the program's arguments, as in
+/// `ytmusic-desktop https://music.youtube.com/watch?v=…`.
+pub fn music_link(args: impl IntoIterator<Item = String>) -> Option<Url> {
+    args.into_iter()
+        .filter_map(|arg| arg.parse::<Url>().ok())
+        .find(|url| url.scheme() == "https" && url.host_str() == Some("music.youtube.com"))
+}
+
+/// Opens a link to YouTube Music in the main window and shows it.
+pub fn open_music_link(app: &AppHandle, url: Url) {
+    if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
+        if let Err(err) = window.navigate(url) {
+            log_error!("cannot open the link: {err}");
+        }
+    }
+    show_main_window(app);
+}
+
 /// `hidden` starts the app in the tray: the page loads, but no window shows.
-pub fn create_main_window(app: &AppHandle, hidden: bool) -> tauri::Result<()> {
+/// `link` is a page of YouTube Music to start on instead of the home page.
+pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> tauri::Result<()> {
     // In development the window starts empty: `dev_inject` registers the
     // script first and then opens the page.
-    let start_url = if cfg!(all(debug_assertions, windows)) {
-        "about:blank"
+    let url = if cfg!(all(debug_assertions, windows)) {
+        "about:blank".parse().expect("the start URL is valid")
     } else {
-        YTM_URL
+        link.unwrap_or_else(|| YTM_URL.parse().expect("the start URL is valid"))
     };
-    let url = start_url.parse().expect("the start URL is valid");
     let nav_app = app.clone();
     let popup_app = app.clone();
     let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(url))
@@ -290,6 +308,24 @@ mod tests {
 
     fn classify_str(url: &str) -> Navigation {
         classify(&url.parse().unwrap())
+    }
+
+    #[test]
+    fn music_link_is_taken_from_the_arguments() {
+        let args = |list: &[&str]| list.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        assert_eq!(
+            music_link(args(&["--autostart", "https://music.youtube.com/watch?v=abc"])).map(String::from),
+            Some("https://music.youtube.com/watch?v=abc".to_string())
+        );
+        for other in [
+            "https://www.youtube.com/watch?v=abc",
+            "http://music.youtube.com/",
+            "https://music.youtube.com.evil.com/",
+            "file:///etc/passwd",
+            "music.youtube.com",
+        ] {
+            assert_eq!(music_link(args(&[other])), None, "{other}");
+        }
     }
 
     #[test]

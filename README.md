@@ -72,7 +72,7 @@ and German.
 
 ## Install
 
-Windows 10 or 11.
+### Windows 10 or 11
 
 **[Download the installer](https://github.com/Ariazonaa/ytmusic-desktop/releases/latest)**
 (`ytmusic-desktop_…_x64-setup.exe`) and run it. It installs for your user only
@@ -97,8 +97,30 @@ zip opens the download page instead.
 To build it yourself instead, see
 [docs/development.md](docs/development.md#setup).
 
-Linux and macOS are not supported yet; [docs/platforms.md](docs/platforms.md)
-says how far that is.
+### Linux (new, see below)
+
+From the [latest release](https://github.com/Ariazonaa/ytmusic-desktop/releases/latest):
+
+- **Debian, Ubuntu, Mint and others with `apt`:** download
+  `ytmusic-desktop_…_amd64.deb` and install it with
+  `sudo apt install ./ytmusic-desktop_*_amd64.deb`. It pulls in WebKitGTK and
+  the GStreamer plugins the music needs.
+- **Arch Linux, Manjaro, EndeavourOS:** the release has a `PKGBUILD` for the
+  package `ytmusic-desktop-bin`. Put it in an empty folder and run
+  `makepkg -si`.
+- **Any other distribution:** `ytmusic-desktop_…_amd64.AppImage`. Make it
+  executable (`chmod +x`) and start it. It brings the GStreamer plugins
+  along and updates itself like the Windows version; the packages above are
+  updated with the next release's package.
+
+On Linux the app runs in WebKitGTK instead of WebView2. It starts on Ubuntu
+and Arch, and YouTube Music plays signed out; signing in with Google and
+Premium have not been tried there yet. Tracks that need DRM would not play,
+and the memory saving in the tray is Windows only.
+[docs/platforms.md](docs/platforms.md) has the details. Please report what
+works and what does not.
+
+macOS is not supported yet.
 
 ## First steps
 
