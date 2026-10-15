@@ -85,20 +85,44 @@ git commit -am "Version 1.2.3" && git push
 git tag v1.2.3 && git push origin v1.2.3
 ```
 
-`.github/workflows/release.yml` then builds the installer, and
-`scripts/release.mjs` puts together what is published: the installer, the
-portable zip (the same program with a short `README.txt`), `SHA256SUMS.txt`
-with the checksums of both, the version's part of the changelog as the
-release's text, and `latest.json`.
+`.github/workflows/release.yml` then builds the app on Windows and on Linux
+(Ubuntu 22.04, so that the AppImage also runs on older systems). On each,
+`node scripts/release.mjs collect` takes what the build made; a last job puts
+it together with `node scripts/release.mjs <tag>` and publishes:
 
-A portable copy cannot replace itself: the updater would run the installer
-and leave the copy as it was. The app tells the two apart by the
-`uninstall.exe` the installer puts next to the program; without it, the
-settings window offers the download page instead of installing.
+| File | For |
+| --- | --- |
+| `ytmusic-desktop_<v>_x64-setup.exe` | Windows, the installer |
+| `ytmusic-desktop_<v>_x64-portable.zip` | Windows, the same program with a short `README.txt` |
+| `ytmusic-desktop_<v>_amd64.deb` | Debian, Ubuntu and others with apt |
+| `ytmusic-desktop_<v>_amd64.AppImage` | any Linux; brings GStreamer along |
+| `SHA256SUMS.txt` | checksums of the four |
+| `latest.json` | what running apps ask for, see below |
+| `PKGBUILD`, `SRCINFO` | Arch Linux: the package `ytmusic-desktop-bin`, which installs the .deb |
 
-That file is how installed apps learn of the update: they fetch
+The release's text is the version's part of the changelog. After publishing,
+a job on Arch Linux builds the package from the published .deb, which also
+checks its checksum, and attaches `PKGBUILD` and `SRCINFO`. To put a version
+on the AUR, copy both into the AUR repository of `ytmusic-desktop-bin`
+(`SRCINFO` as `.SRCINFO`) and push; that needs an AUR account with an SSH key.
+
+`.github/workflows/linux-packages.yml` checks the Linux packages on every push:
+it installs the .deb on Ubuntu 24.04 and the package built from `PKGBUILD` on
+Arch Linux, starts them and the AppImage on a virtual screen with a link to a
+track (`scripts/linux-smoke.sh`) and keeps screenshots taken after 20, 45 and
+70 seconds as an artifact.
+
+Not every copy can replace itself: a portable copy on Windows (the updater
+would run the installer and leave the copy as it was) and the packages on
+Linux, which their package manager updates. The app tells them apart by the
+`uninstall.exe` the installer puts next to the program on Windows, and by
+`APPIMAGE`, which the AppImage's runtime sets, on Linux. Where it cannot
+replace itself, the settings window offers the download page instead of
+installing.
+
+`latest.json` is how installed apps learn of the update: they fetch
 `releases/latest/download/latest.json`, which names the version, the
-installer's address and its signature. The app installs an update only if the
+addresses of the Windows installer and the AppImage, and their signatures. The app installs an update only if the
 signature fits the public key in `src-tauri/tauri.conf.json`
 (`plugins.updater.pubkey`). The private key is not in the repository: the
 workflow reads it from the secrets `TAURI_SIGNING_PRIVATE_KEY` and
@@ -106,11 +130,11 @@ workflow reads it from the secrets `TAURI_SIGNING_PRIVATE_KEY` and
 every installed app accepts, and without it no update can be published for
 them, so it has to be kept both secret and safe.
 
-A release can be made by hand as well, on a computer that has the key: build
-with `--config src-tauri/tauri.release.conf.json` and the two variables set,
-run `node scripts/release.mjs`, and publish a release for the tag
-`v<version>` with the installer, the zip, `SHA256SUMS.txt` and `latest.json`
-from the `release` folder.
+A release can be made by hand as well, with the key: build with
+`--config src-tauri/tauri.release.conf.json` and the two variables set, on
+Windows and on Linux, run `node scripts/release.mjs collect` on each, copy
+both `release-parts` folders together, run `node scripts/release.mjs` and
+publish a release for the tag `v<version>` with the files from `release`.
 The workflow sees that release and does nothing.
 
 An ordinary `npm run tauri build` needs no key: only

@@ -8,7 +8,7 @@
 <p align="center">
   <a href="https://github.com/Ariazonaa/ytmusic-desktop/actions/workflows/ci.yml"><img src="https://github.com/Ariazonaa/ytmusic-desktop/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="MIT license"></a>
-  <img src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-informational.svg" alt="Windows 10 and 11">
+  <img src="https://img.shields.io/badge/platform-Windows%20%7C%20Linux-informational.svg" alt="Windows and Linux">
 </p>
 
 <p align="center">
@@ -97,7 +97,7 @@ zip opens the download page instead.
 To build it yourself instead, see
 [docs/development.md](docs/development.md#setup).
 
-### Linux (new, see below)
+### Linux (new)
 
 From the [latest release](https://github.com/Ariazonaa/ytmusic-desktop/releases/latest):
 

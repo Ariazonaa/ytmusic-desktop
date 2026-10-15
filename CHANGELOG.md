@@ -4,6 +4,15 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.7.0
+
+- Linux: the app is out for Linux as a .deb (Debian, Ubuntu and others with
+  apt), as a package for Arch Linux (`PKGBUILD` in the release, for the AUR
+  as `ytmusic-desktop-bin`) and as an AppImage, which updates itself.
+- The app opens a link given at the start, such as
+  `ytmusic-desktop https://music.youtube.com/watch?v=…`; given to a running
+  app, it opens there.
+
 ## 0.6.4
 
 - The app is also available as a portable zip: unpack it and start
