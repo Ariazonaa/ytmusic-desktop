@@ -15,6 +15,27 @@
   <img src="docs/images/lyrics.png" alt="The app playing a song, with synced lyrics in a side panel and the spectrum behind the player bar" width="860">
 </p>
 
+## Small, because it is not Electron
+
+The app uses WebView2, the browser engine Windows already has, instead of
+bringing its own copy of Chromium. Compared with
+[Pear](https://github.com/pear-devs/pear-desktop), the best-known desktop app
+for YouTube Music:
+
+| | ytmusic-desktop 0.6.4 | Pear 3.12.0 |
+| --- | --- | --- |
+| Download | **3.8 MB** installer, 5.2 MB zip | 108 MB (the web installer fetches it), 274 MB full installer |
+| On disk | **16 MB** | 396 MB |
+| Memory, idle | **367 MB** private, 616 MB working set | 551 MB private, 845 MB working set |
+| Memory, playing | **497 MB** private, 780 MB working set | 604 MB private, 877 MB working set |
+| Window closed while playing | keeps playing in the tray, working set down to about 200 MB | quits (no tray unless switched on) |
+
+Both measured in the same Windows Sandbox (8 GB), signed out, with default
+settings, while the same music video played muted; memory counts every
+process of the app, WebView2's and Electron's included, averaged over 30
+seconds. The tray value is from an ordinary Windows 11 PC. How it was
+measured: [docs/development.md](docs/development.md#compared-with-pear).
+
 ## What it is
 
 A small window around `music.youtube.com`. You get YouTube Music exactly as

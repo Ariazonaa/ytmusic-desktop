@@ -247,6 +247,42 @@ Release build on Windows 11, signed in, one plugin enabled.
 
 Started from a network share, the window alone took 5.8 s to appear.
 
+### Compared with Pear
+
+Measured on 2026-10-15 in Windows Sandbox (8 GB, vGPU on), so that both apps
+start from nothing: signed out, default settings, cookies declined. Each app
+was started, left for a minute and measured idle, then played music video
+`dQw4w9WgXcQ` muted for a minute and was measured again, then minimized, then
+its window was closed. A measurement sums private bytes and working set of the
+app's process and every process below it (WebView2's or Electron's), six
+samples five seconds apart. The page was driven over the DevTools protocol.
+
+| | ytmusic-desktop 0.6.4 | Pear 3.12.0 |
+| --- | --- | --- |
+| Installer, x64 | 3.8 MB (zip 5.2 MB) | web installer 0.7 MB, fetches 108 MB; full installer 274 MB |
+| On disk | 15.8 MB | 396.0 MB |
+| Idle: private / working set | 367 / 616 MB, 7 processes | 551 / 845 MB, 5 processes |
+| Playing | 497 / 780 MB, 9 processes | 604 / 877 MB, 5 processes |
+| Minimized, playing | 500 / 785 MB | 607 / 880 MB |
+| Window closed, playing | in the tray | quits |
+
+What to keep in mind:
+
+- WebView2 is part of Windows, so its files are not in the 15.8 MB; Pear's 396
+  MB include its Chromium. On a PC both apps run on a Chromium either way.
+- The sandbox registers WebView2 differently from a normal Windows: the
+  installer of ytmusic-desktop stops there (it tries to install WebView2,
+  which needs administrator rights), and the WebView2 loader ignores
+  `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS`. So the portable program was run
+  with `WEBVIEW2_BROWSER_EXECUTABLE_FOLDER`, from a build that differed from
+  0.6.4 only by `--remote-debugging-port` in its browser arguments.
+- Signed out and without the `adblock` plugin, ytmusic-desktop played an ad
+  before the track; Pear did not. The playing values include that.
+- In the tray the working set drops because WebView2 is told to give memory
+  back (see "Where the memory goes"). The sandbox run of that step did not get
+  the track playing; on a Windows 11 PC, signed out with default settings,
+  playing in the tray measured 460 MB private and 202 MB working set.
+
 ### Playback
 
 Checked with a Premium account on Windows 11:
