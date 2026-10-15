@@ -14,7 +14,7 @@ Write an external plugin unless you need something only a built-in one can
 do: touching YouTube Music's DOM directly, processing audio, or patching the
 page.
 
-- [External plugins](#external-plugins)
+- [External plugins](#external-plugins), and [sharing one](#sharing-a-plugin)
 - [The manifest](#the-manifest)
 - [Settings](#settings)
 - [Built-in plugins](#built-in-plugins)
@@ -52,7 +52,11 @@ Play a song: its name appears above the player bar. After every edit, click
 "Reload plugins" again; the app does not need a restart.
 
 `examples/plugins/hello` in this repository is a longer example with a button,
-a panel and a setting.
+a panel and a setting. To start a real plugin, copy
+[`examples/plugins/template`](../examples/plugins/template): a manifest with
+every field filled in, one setting, and the type files for your editor.
+
+When it works, [share it](#sharing-a-plugin).
 
 ### Rules for the folder
 
@@ -309,6 +313,28 @@ restarts the external plugins about two seconds after any file in the plugins
 folder changed, so an edit shows up when you save. Without it, "Reload
 plugins" does the same on a click. A changed `plugin.json` also needs "Reload
 plugins" for the settings window to show its new contents.
+
+### Sharing a plugin
+
+1. **Check the manifest.** A `description` that says what the plugin does,
+   a `category`, and no permission or host it does not use. People decide
+   by the list the settings window shows them.
+2. **Zip the folder.** Right-click the plugin's folder, "Send to" →
+   "Compressed (zipped) folder". The archive installs with "Install from a
+   zip file" in the settings window.
+3. **Put it somewhere people can see the code**, best a repository of its
+   own with the zip attached to a release. A plugin whose code nobody can
+   read is one few will switch on.
+4. **Post it** in the
+   [Plugins category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/plugins).
+   The form asks for the link, the permissions and why it needs them.
+
+Plugins posted there are not checked by anyone. They run in the sandbox and
+can do only what their manifest asks for, and the user sees that list before
+switching a plugin on.
+
+If the API lacks something your plugin needs,
+[ask for it](https://github.com/Ariazonaa/ytmusic-desktop/issues/new?template=plugin-api.yml).
 
 ## The manifest
 

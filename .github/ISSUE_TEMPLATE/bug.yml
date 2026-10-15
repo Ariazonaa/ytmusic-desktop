@@ -1,0 +1,43 @@
+name: Something does not work
+description: A feature of the app or a built-in plugin does the wrong thing, or nothing.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happens
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: Settings window → Updates shows it.
+      placeholder: "0.6.3"
+    validations:
+      required: true
+  - type: input
+    id: plugins
+    attributes:
+      label: Plugins switched on
+      description: Settings window → Plugins → "Switched on". If you can, try with only the plugin that misbehaves.
+  - type: dropdown
+    id: premium
+    attributes:
+      label: YouTube Music Premium
+      description: Some things work differently without it.
+      options: ["With Premium", "Without Premium", "Not signed in"]
+    validations:
+      required: true
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: Settings window → "Open log". Paste the lines from around the time it happened. They can contain web addresses; remove what you do not want to share.
+      render: text
+  - type: textarea
+    id: health
+    attributes:
+      label: Warnings in the settings window
+      description: If the settings window says something stopped working because YouTube Music changed, copy what it says.

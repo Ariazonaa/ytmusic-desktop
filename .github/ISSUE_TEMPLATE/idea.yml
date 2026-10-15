@@ -1,0 +1,17 @@
+name: An idea
+description: Something the app or a built-in plugin could do.
+labels: [idea]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What you would like
+      description: What you want to do, and what is in the way today. The why helps more than a finished solution.
+    validations:
+      required: true
+  - type: dropdown
+    id: plugin
+    attributes:
+      label: Could it be a plugin?
+      description: Many ideas can be a plugin from you or someone else, see docs/plugins.md.
+      options: ["I don't know", "Yes, and I might write it", "No, it needs the app itself"]

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Share a plugin
+    url: https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/plugins
+    about: Post your plugin in the Discussions, where others find it.
+  - name: A question
+    url: https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/q-a
+    about: How to do something, or whether something is possible.

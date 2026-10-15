@@ -1,0 +1,34 @@
+title: "[Plugin] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Share a plugin you wrote. Put the plugin's name in the title.
+        Nobody checks the plugins posted here; the permissions you list are what people decide by.
+  - type: textarea
+    id: what
+    attributes:
+      label: What it does
+      description: A few sentences, and a picture if it shows something.
+    validations:
+      required: true
+  - type: input
+    id: link
+    attributes:
+      label: Code and download
+      description: Where people can read the code and get the zip, best a repository with a release.
+      placeholder: https://github.com/you/my-plugin
+    validations:
+      required: true
+  - type: textarea
+    id: permissions
+    attributes:
+      label: Permissions and hosts
+      description: Copy `permissions` and `hosts` from your plugin.json, and say what each one is for.
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Tested with app version
+      placeholder: "0.6.3"

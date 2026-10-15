@@ -1,0 +1,14 @@
+{
+  "name": "my-plugin",
+  "version": "0.1.0",
+  "description": "Says what the plugin does, in one or two sentences.",
+  "category": "tools",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "showNotice": {
+      "type": "boolean",
+      "label": "Show the song on every change",
+      "default": true
+    }
+  }
+}

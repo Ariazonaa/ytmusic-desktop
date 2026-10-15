@@ -139,8 +139,14 @@ Anyone can write a plugin: a folder with a `plugin.json` and an `index.js`.
   lists, so only switch on plugins whose permissions make sense for what they
   do.
 
-Want to write one? [docs/plugins.md](docs/plugins.md) is the guide, and
-[`examples/plugins/hello`](examples/plugins/hello) a working example.
+**Find plugins** in the
+[Plugins category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/plugins).
+Nobody checks them; read the permissions before you switch one on.
+
+**Write one:** [docs/plugins.md](docs/plugins.md) is the guide,
+[`examples/plugins/template`](examples/plugins/template) a starting point to
+copy and [`examples/plugins/hello`](examples/plugins/hello) a longer example.
+The guide also says [how to share it](docs/plugins.md#sharing-a-plugin).
 
 ## The desktop side
 

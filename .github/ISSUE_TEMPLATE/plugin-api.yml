@@ -1,0 +1,24 @@
+name: Plugin API
+description: For plugin authors. The `ytmd` API lacks something, or does not do what docs/plugins.md says.
+labels: [plugin-api]
+body:
+  - type: textarea
+    id: plugin
+    attributes:
+      label: Your plugin
+      description: What it does, and a link to its code if there is one.
+    validations:
+      required: true
+  - type: textarea
+    id: need
+    attributes:
+      label: What you need
+      description: The call or event you are missing, or the one that misbehaves, with the code you tried.
+      render: js
+    validations:
+      required: true
+  - type: textarea
+    id: permission
+    attributes:
+      label: Permission
+      description: Which permission should it need? Plugins get only what they ask for, so a new call may need a new permission.
