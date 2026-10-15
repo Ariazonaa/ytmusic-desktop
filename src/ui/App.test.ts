@@ -178,7 +178,7 @@ describe("settings window", () => {
   });
 
   it("shows one tab at a time, the plugins first", async () => {
-    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "" });
+    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "", byHand: false });
     render(App);
     const panelOf = (text: string): HTMLElement | null => screen.getByText(text).closest<HTMLElement>("[role=tabpanel]");
     await screen.findByText("General");
@@ -301,7 +301,7 @@ describe("settings window", () => {
     await fireEvent.click(screen.getByText("Look now"));
     expect(await screen.findByText("This is the newest version.")).toBeTruthy();
 
-    client.checkUpdate.mockResolvedValue({ version: "1.1.0", notes: "- Something new" });
+    client.checkUpdate.mockResolvedValue({ version: "1.1.0", notes: "- Something new", byHand: false });
     await fireEvent.click(screen.getByText("Look now"));
     expect(await screen.findByText("Version 1.1.0 is available.")).toBeTruthy();
     expect(screen.getByText("- Something new")).toBeTruthy();
@@ -309,7 +309,7 @@ describe("settings window", () => {
   });
 
   it("offers the update found at start and installs it on a click only", async () => {
-    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "" });
+    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "", byHand: false });
     client.installUpdate.mockRejectedValue("signature does not fit");
     render(App);
     const install = await screen.findByText("Install and restart");
@@ -317,6 +317,18 @@ describe("settings window", () => {
     await fireEvent.click(install);
     expect(client.installUpdate).toHaveBeenCalledOnce();
     expect(await screen.findByText("Could not install the update: signature does not fit")).toBeTruthy();
+  });
+
+  it("sends a portable copy to the download page", async () => {
+    client.pendingUpdate.mockResolvedValue({ version: "1.1.0", notes: "", byHand: true });
+    client.installUpdate.mockResolvedValue(undefined);
+    render(App);
+    await fireEvent.click(await screen.findByText("Open the download page"));
+    expect(client.installUpdate).toHaveBeenCalledOnce();
+    expect(
+      await screen.findByText("The download page is open in your browser. Unpack the new zip over this copy."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Install and restart")).toBeNull();
   });
 
   it("says so when the check fails, and saves the switch", async () => {

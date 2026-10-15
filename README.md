@@ -60,9 +60,18 @@ and needs no administrator rights.
 The installer is not signed with a certificate, so Windows SmartScreen may
 warn about an unknown publisher; "More info" and "Run anyway" get past that.
 
+**Without installing:** the same release has
+`ytmusic-desktop_…_x64-portable.zip`. Unpack it anywhere and start
+`ytmusic-desktop.exe`. Settings and your sign-in are kept in your user
+profile all the same.
+
+`SHA256SUMS.txt` next to them holds the checksums of both, to check a
+download with `certutil -hashfile <file> SHA256`.
+
 **Updates:** the app looks for a newer version when it starts and tells you.
 You install it with one click in the settings window, under Updates; nothing
-is installed by itself. The check can be switched off there.
+is installed by itself. The check can be switched off there. A copy from the
+zip opens the download page instead.
 
 To build it yourself instead, see
 [docs/development.md](docs/development.md#setup).
@@ -295,6 +304,14 @@ Uninstalling the app leaves these folders; delete them to remove everything.
 Found a bug or have an idea? Open an
 [issue](https://github.com/Ariazonaa/ytmusic-desktop/issues). The settings
 window's log usually says what went wrong.
+
+## How it is made
+
+Large parts of the code, the tests and the documentation were written with
+an AI assistant (Claude, by Anthropic), directed and reviewed by the
+maintainer. Every change goes through the tests and the checks in CI, and
+features are tried in the running app before a release. If you find
+something that looks wrong, an issue is welcome all the same.
 
 ## License and trademarks
 

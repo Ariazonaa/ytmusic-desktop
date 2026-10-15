@@ -148,6 +148,11 @@ export interface UpdateInfo {
   version: string;
   /** What changed, as the release says it. May be empty. */
   notes: string;
+  /**
+   * This copy came from the portable zip and cannot replace itself: installing
+   * opens the release page, where the user gets the new version.
+   */
+  byHand: boolean;
 }
 
 /** One track of the play queue, with its texts as the page shows them. */

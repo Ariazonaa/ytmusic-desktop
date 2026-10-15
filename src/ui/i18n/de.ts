@@ -305,6 +305,9 @@ const de: Readonly<Record<string, string>> = {
   "Version {version} is available.": "Version {version} ist verfügbar.",
   "Install and restart": "Installieren und neu starten",
   "Installing…": "Wird installiert…",
+  "Open the download page": "Download-Seite öffnen",
+  "The download page is open in your browser. Unpack the new zip over this copy.":
+    "Die Download-Seite ist im Browser offen. Entpacke das neue ZIP über diese Kopie.",
   "Looking…": "Suche läuft…",
   "Look now": "Jetzt suchen",
   "Installed: version {version}": "Installiert: Version {version}",

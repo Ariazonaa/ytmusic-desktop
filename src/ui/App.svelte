@@ -329,8 +329,12 @@
     updateBusy = "installing";
     updateNotice = null;
     try {
-      // On success the app ends here and comes back as the new version.
+      // On success the app ends here and comes back as the new version,
+      // unless it is a portable copy: then the release page opens.
       await installUpdate();
+      if (available?.byHand) {
+        updateNotice = t("The download page is open in your browser. Unpack the new zip over this copy.");
+      }
     } catch (reason) {
       updateNotice = t("Could not install the update: {reason}", { reason: String(reason) });
     }
@@ -699,7 +703,11 @@
             disabled={updateBusy !== null}
             onclick={() => void installAvailable()}
           >
-            {updateBusy === "installing" ? t("Installing…") : t("Install and restart")}
+            {available.byHand
+              ? t("Open the download page")
+              : updateBusy === "installing"
+                ? t("Installing…")
+                : t("Install and restart")}
           </button>
         </div>
       {/if}

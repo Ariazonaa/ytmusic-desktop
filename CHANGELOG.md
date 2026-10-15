@@ -4,6 +4,14 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.6.4
+
+- The app is also available as a portable zip: unpack it and start
+  `ytmusic-desktop.exe`, nothing is installed. A copy from the zip offers the
+  download page when there is a new version.
+- Every release has `SHA256SUMS.txt` with the checksums of the installer and
+  the zip.
+
 ## 0.6.3
 
 - New plugin `keep-playing`: the music no longer stops with "Video paused.

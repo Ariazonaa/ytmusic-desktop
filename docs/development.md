@@ -87,7 +87,14 @@ git tag v1.2.3 && git push origin v1.2.3
 
 `.github/workflows/release.yml` then builds the installer, and
 `scripts/release.mjs` puts together what is published: the installer, the
-version's part of the changelog as the release's text, and `latest.json`.
+portable zip (the same program with a short `README.txt`), `SHA256SUMS.txt`
+with the checksums of both, the version's part of the changelog as the
+release's text, and `latest.json`.
+
+A portable copy cannot replace itself: the updater would run the installer
+and leave the copy as it was. The app tells the two apart by the
+`uninstall.exe` the installer puts next to the program; without it, the
+settings window offers the download page instead of installing.
 
 That file is how installed apps learn of the update: they fetch
 `releases/latest/download/latest.json`, which names the version, the
@@ -102,7 +109,8 @@ them, so it has to be kept both secret and safe.
 A release can be made by hand as well, on a computer that has the key: build
 with `--config src-tauri/tauri.release.conf.json` and the two variables set,
 run `node scripts/release.mjs`, and publish a release for the tag
-`v<version>` with the installer and `latest.json` from the `release` folder.
+`v<version>` with the installer, the zip, `SHA256SUMS.txt` and `latest.json`
+from the `release` folder.
 The workflow sees that release and does nothing.
 
 An ordinary `npm run tauri build` needs no key: only

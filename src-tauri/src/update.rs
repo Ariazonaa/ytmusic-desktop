@@ -10,12 +10,15 @@ use crate::window;
 use serde::Serialize;
 use std::{sync::Mutex, time::Duration};
 use tauri::{AppHandle, Manager};
+use tauri_plugin_opener::OpenerExt;
 use tauri_plugin_updater::{Update, UpdaterExt};
 
 /// The check at start waits this long: the page has to load first, and the
 /// notice about an update needs it.
 const START_DELAY: Duration = Duration::from_secs(25);
 const MAX_NOTES_CHARS: usize = 2000;
+/// Where a copy that is not installed gets the new version.
+const RELEASES: &str = "https://github.com/Ariazonaa/ytmusic-desktop/releases/latest";
 
 /// The update found by the last check.
 #[derive(Default)]
@@ -23,14 +26,32 @@ pub struct UpdateStore(Mutex<Option<Update>>);
 
 /// What the settings window shows about an update.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UpdateInfo {
     pub version: String,
     /// What changed, as the release says it.
     pub notes: String,
+    /// This copy was not installed, it came from the portable zip: the
+    /// updater would run the installer and leave this copy as it is, so the
+    /// new version is fetched from the release page by hand.
+    pub by_hand: bool,
+}
+
+/// Whether this copy was set up by the installer, which puts its uninstaller
+/// next to the program. The portable zip has none.
+fn installed() -> bool {
+    if !cfg!(windows) {
+        return true;
+    }
+    std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join("uninstall.exe").is_file()))
+        .unwrap_or(true)
 }
 
 fn info(version: &str, notes: Option<&str>) -> UpdateInfo {
     UpdateInfo {
+        by_hand: !installed(),
         version: version.to_owned(),
         notes: notes
             .unwrap_or_default()
@@ -70,9 +91,16 @@ pub async fn check(app: &AppHandle) -> Result<Option<UpdateInfo>, String> {
 }
 
 /// Downloads the update the last check found, checks its signature, installs
-/// it and starts the new version.
+/// it and starts the new version. A copy from the portable zip opens the
+/// release page instead.
 pub async fn install(app: &AppHandle) -> Result<(), String> {
     let update = stored(app).ok_or("no update was found")?;
+    if !installed() {
+        return app
+            .opener()
+            .open_url(RELEASES, None::<&str>)
+            .map_err(|err| err.to_string());
+    }
     update
         .download_and_install(|_, _| {}, || {})
         .await
@@ -112,7 +140,8 @@ mod tests {
             info("1.2.3", Some("  - one\n- two\n")),
             UpdateInfo {
                 version: "1.2.3".into(),
-                notes: "- one\n- two".into()
+                notes: "- one\n- two".into(),
+                by_hand: !installed()
             }
         );
         assert_eq!(info("1.2.3", None).notes, "");
