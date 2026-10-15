@@ -1,6 +1,7 @@
 # Package for the AUR: installs the .deb of a release.
 # scripts/release.mjs fills in pkgver and sha256sums for each release; the
 # release workflow builds it on Arch Linux and attaches PKGBUILD and .SRCINFO.
+# Maintainer: Ariazonaa <96840802+Ariazonaa@users.noreply.github.com>
 pkgname=ytmusic-desktop-bin
 pkgver=0.0.0
 pkgrel=1
@@ -17,5 +18,5 @@ sha256sums=('SKIP')
 
 package() {
   bsdtar -xf data.tar.* -C "${pkgdir}"
-  install -Dm644 "${pkgdir}/usr/share/doc/ytmusic-desktop/copyright" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" 2>/dev/null || true
+  install -Dm644 "${pkgdir}/usr/share/doc/ytmusic-desktop/copyright" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
 }

@@ -1,6 +1,10 @@
 {
+  "productName": "ytmusic-desktop",
   "bundle": {
     "targets": ["deb", "appimage"],
+    "category": "Music",
+    "shortDescription": "Desktop app for YouTube Music",
+    "longDescription": "YouTube Music in a small window, with an equalizer, lyrics, themes, a tray icon, global shortcuts and plugins.",
     "icon": ["icons/32x32.png", "icons/128x128.png", "icons/128x128@2x.png", "icons/icon.png"],
     "linux": {
       "deb": {
@@ -9,7 +13,10 @@
           "gstreamer1.0-plugins-bad",
           "gstreamer1.0-libav",
           "libayatana-appindicator3-1"
-        ]
+        ],
+        "files": {
+          "/usr/share/doc/ytmusic-desktop/copyright": "../LICENSE"
+        }
       },
       "appimage": {
         "bundleMediaFramework": true

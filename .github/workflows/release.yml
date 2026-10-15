@@ -1,8 +1,9 @@
 name: Release
 
-# A tag like v1.2.3 builds the installer, signs it for the app's updater and
-# publishes a release with it. Running apps learn of the new version from the
-# release's latest.json.
+# A tag like v1.2.3 builds the app for Windows and Linux, signs what the
+# updater installs and publishes a release with it. Running apps learn of the
+# new version from the release's latest.json. Afterwards the package for Arch
+# Linux is built from the release's .deb and attached with its .SRCINFO.
 on:
   push:
     tags: ["v*"]
@@ -29,13 +30,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
 
-  release:
-    name: Build and publish
+  windows:
+    name: Build for Windows
     needs: existing
     if: needs.existing.outputs.found != 'true'
     runs-on: windows-latest
-    permissions:
-      contents: write
     defaults:
       run:
         shell: powershell
@@ -65,12 +64,96 @@ jobs:
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-      - run: node scripts/release.mjs "${{ github.ref_name }}"
+      - run: node scripts/release.mjs collect
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-windows
+          path: release-parts/windows/
+
+  linux:
+    name: Build for Linux
+    needs: existing
+    if: needs.existing.outputs.found != 'true'
+    # The oldest Ubuntu with WebKitGTK 4.1: the AppImage then runs on older systems too.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends build-essential curl file pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: npm run tauri build -- --config src-tauri/tauri.release.conf.json
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+      - run: node scripts/release.mjs collect
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-linux
+          path: release-parts/linux/
+
+  publish:
+    name: Publish
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-windows
+          path: release-parts/windows
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-linux
+          path: release-parts/linux
+      - run: node scripts/release.mjs "$GITHUB_REF_NAME"
       - name: Publish
         run: |
-          $installer = (Get-ChildItem release -Filter *.exe).FullName
-          $portable = (Get-ChildItem release -Filter *.zip).FullName
-          gh release create "${{ github.ref_name }}" $installer $portable release/SHA256SUMS.txt release/latest.json --title "${{ github.ref_name }}" --notes-file release/notes.md
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          gh release create "$GITHUB_REF_NAME" release/*.exe release/*.zip release/*.deb release/*.AppImage \
+            release/SHA256SUMS.txt release/latest.json --title "$GITHUB_REF_NAME" --notes-file release/notes.md
+        env:
+          GH_TOKEN: ${{ github.token }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pkgbuild
+          path: release/PKGBUILD
+
+  arch:
+    name: Package for Arch Linux
+    needs: publish
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    permissions:
+      contents: write
+    steps:
+      - name: Set up Arch
+        run: |
+          pacman -Syu --noconfirm --needed base-devel github-cli
+          useradd -m builder
+      - uses: actions/download-artifact@v4
+        with:
+          name: pkgbuild
+          path: /tmp/aur
+      # Builds from the published .deb, which also checks its checksum.
+      - name: Build
+        working-directory: /tmp/aur
+        run: |
+          chown -R builder /tmp/aur
+          sudo -u builder makepkg --nodeps --noconfirm
+          sudo -u builder makepkg --printsrcinfo > .SRCINFO
+          cp .SRCINFO SRCINFO
+      - name: Attach PKGBUILD and .SRCINFO
+        working-directory: /tmp/aur
+        run: gh release upload "$GITHUB_REF_NAME" PKGBUILD SRCINFO --repo "$GITHUB_REPOSITORY"
         env:
           GH_TOKEN: ${{ github.token }}
