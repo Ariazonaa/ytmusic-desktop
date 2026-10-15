@@ -326,7 +326,7 @@ describe("settings window", () => {
     await fireEvent.click(await screen.findByText("Open the download page"));
     expect(client.installUpdate).toHaveBeenCalledOnce();
     expect(
-      await screen.findByText("The download page is open in your browser. Unpack the new zip over this copy."),
+      await screen.findByText("The download page is open in your browser. A copy from the zip is replaced by unpacking the new one over it; a package for Linux is updated by your package manager."),
     ).toBeTruthy();
     expect(screen.queryByText("Install and restart")).toBeNull();
   });

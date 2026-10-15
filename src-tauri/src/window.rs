@@ -9,6 +9,10 @@ use tauri_plugin_opener::OpenerExt;
 pub const MAIN_WINDOW_LABEL: &str = "main";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 const YTM_URL: &str = "https://music.youtube.com";
+/// What Chrome on Linux sends. WebKitGTK's own user agent gets "browser not
+/// supported" from YouTube Music; WebView2 on Windows sends a Chrome one anyway.
+#[cfg(target_os = "linux")]
+const LINUX_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
 // Development builds on Windows load the script from disk instead, see `dev_inject`.
 #[cfg(not(all(debug_assertions, windows)))]
 const INJECT_SCRIPT: &str = include_str!("../../dist-inject/inject.js");
@@ -70,6 +74,8 @@ pub fn create_main_window(app: &AppHandle, hidden: bool) -> tauri::Result<()> {
             }
             NewWindowResponse::Deny
         });
+    #[cfg(target_os = "linux")]
+    let builder = builder.user_agent(LINUX_USER_AGENT);
 
     #[cfg(not(all(debug_assertions, windows)))]
     let window = builder.initialization_script(INJECT_SCRIPT).build()?;

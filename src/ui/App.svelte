@@ -333,7 +333,7 @@
       // unless it is a portable copy: then the release page opens.
       await installUpdate();
       if (available?.byHand) {
-        updateNotice = t("The download page is open in your browser. Unpack the new zip over this copy.");
+        updateNotice = t("The download page is open in your browser. A copy from the zip is replaced by unpacking the new one over it; a package for Linux is updated by your package manager.");
       }
     } catch (reason) {
       updateNotice = t("Could not install the update: {reason}", { reason: String(reason) });

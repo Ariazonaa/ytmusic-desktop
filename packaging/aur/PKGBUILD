@@ -1,0 +1,21 @@
+# Package for the AUR: installs the .deb of a release.
+# scripts/release.mjs fills in pkgver and sha256sums for each release; the
+# release workflow builds it on Arch Linux and attaches PKGBUILD and .SRCINFO.
+pkgname=ytmusic-desktop-bin
+pkgver=0.0.0
+pkgrel=1
+pkgdesc="Desktop app for YouTube Music with equalizer, lyrics, themes and plugins"
+arch=('x86_64')
+url="https://github.com/Ariazonaa/ytmusic-desktop"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'libayatana-appindicator' 'gst-plugins-base' 'gst-plugins-good' 'gst-plugins-bad' 'gst-libav')
+provides=('ytmusic-desktop')
+conflicts=('ytmusic-desktop')
+options=('!strip' '!debug')
+source=("https://github.com/Ariazonaa/ytmusic-desktop/releases/download/v${pkgver}/ytmusic-desktop_${pkgver}_amd64.deb")
+sha256sums=('SKIP')
+
+package() {
+  bsdtar -xf data.tar.* -C "${pkgdir}"
+  install -Dm644 "${pkgdir}/usr/share/doc/ytmusic-desktop/copyright" "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE" 2>/dev/null || true
+}

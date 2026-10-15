@@ -1,0 +1,113 @@
+name: Linux packages
+
+# Builds the .deb and the AppImage, installs them on Ubuntu and on Arch Linux
+# and starts the app on a virtual screen. The screenshots are kept as an
+# artifact: they show whether YouTube Music came up in the app.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build .deb and AppImage
+    # The oldest Ubuntu with WebKitGTK 4.1: the AppImage then runs on older systems too.
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q --no-install-recommends build-essential curl file pkg-config libssl-dev \
+            libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev \
+            gstreamer1.0-plugins-base gstreamer1.0-plugins-good gstreamer1.0-plugins-bad gstreamer1.0-libav
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
+      - run: npm ci
+      - run: npm run tauri build
+      - name: Packages
+        run: |
+          mkdir packages
+          cp src-tauri/target/release/bundle/deb/*.deb src-tauri/target/release/bundle/appimage/*.AppImage packages/
+          ls -la packages
+          dpkg-deb --info packages/*.deb
+          dpkg-deb --contents packages/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-packages
+          path: packages/
+
+  ubuntu:
+    name: Run on Ubuntu (.deb and AppImage)
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: packages
+      - name: Install the .deb
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q ./packages/*.deb
+          sudo apt-get install -y -q --no-install-recommends xvfb xauth dbus-x11 imagemagick at-spi2-core
+      - name: Start the installed app
+        run: bash scripts/linux-smoke.sh ytmusic-desktop shots/deb
+      - name: Start the AppImage
+        run: |
+          chmod +x packages/*.AppImage
+          APPIMAGE_EXTRACT_AND_RUN=1 bash scripts/linux-smoke.sh "$(ls packages/*.AppImage)" shots/appimage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots-ubuntu
+          path: shots/
+
+  arch:
+    name: Build the AUR package and run on Arch Linux
+    needs: build
+    runs-on: ubuntu-latest
+    container: archlinux:latest
+    steps:
+      - name: Set up Arch
+        run: |
+          pacman -Syu --noconfirm --needed base-devel git namcap xorg-server-xvfb xorg-xauth dbus imagemagick nodejs
+          useradd -m builder
+          echo "builder ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/builder
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-packages
+          path: packages
+      - name: Build the package from the local .deb
+        run: |
+          version=$(node -p "require('./package.json').version")
+          mkdir -p /tmp/aur && cp packaging/aur/PKGBUILD /tmp/aur/
+          cp packages/*.deb "/tmp/aur/ytmusic-desktop_${version}_amd64.deb"
+          cd /tmp/aur
+          sed -i "s/^pkgver=.*/pkgver=${version}/" PKGBUILD
+          # The release URL does not exist yet: point the source at the file beside it.
+          sed -i 's#^source=.*#source=("ytmusic-desktop_${pkgver}_amd64.deb")#' PKGBUILD
+          chown -R builder /tmp/aur
+          sudo -u builder makepkg --syncdeps --noconfirm
+          sudo -u builder makepkg --printsrcinfo
+          namcap PKGBUILD || true
+          namcap ./*.pkg.tar.zst || true
+          pacman -U --noconfirm ./*.pkg.tar.zst
+          pacman -Ql ytmusic-desktop-bin
+      - name: Start the app
+        run: |
+          mkdir -p shots && chown builder shots
+          sudo -u builder bash scripts/linux-smoke.sh ytmusic-desktop shots/arch
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: shots-arch
+          path: shots/

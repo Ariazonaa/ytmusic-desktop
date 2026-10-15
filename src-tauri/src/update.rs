@@ -37,9 +37,14 @@ pub struct UpdateInfo {
     pub by_hand: bool,
 }
 
-/// Whether this copy was set up by the installer, which puts its uninstaller
-/// next to the program. The portable zip has none.
+/// Whether this copy can replace itself. On Windows: set up by the installer,
+/// which puts its uninstaller next to the program; the portable zip has none.
+/// On Linux only the AppImage can, which its runtime tells through
+/// `APPIMAGE`; a package from the distribution's tools is updated by them.
 fn installed() -> bool {
+    if cfg!(target_os = "linux") {
+        return std::env::var_os("APPIMAGE").is_some();
+    }
     if !cfg!(windows) {
         return true;
     }
