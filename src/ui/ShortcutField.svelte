@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Translate } from "./i18n";
-  import { describeShortcut, shortcutFrom } from "../shared/shortcut";
+  import { describeShortcut, isReservedInWindow, shortcutFrom } from "../shared/shortcut";
 
   interface Props {
     t: Translate;
@@ -9,8 +9,13 @@
     description?: string | undefined;
     value: string;
     onchange: (shortcut: string) => void;
+    /** For a shortcut in the app's window: refuse the ones the window keeps for itself. */
+    windowOnly?: boolean;
   }
-  let { t, label, description, value, onchange }: Props = $props();
+  let { t, label, description, value, onchange, windowOnly = false }: Props = $props();
+
+  /** A combination the window keeps, just pressed: shown until the next one. */
+  let reserved = $state("");
 
   /** True while the field waits for the user to press a combination. */
   let recording = $state(false);
@@ -23,7 +28,12 @@
       return;
     }
     const shortcut = shortcutFrom(event);
+    if (shortcut && windowOnly && isReservedInWindow(shortcut)) {
+      reserved = shortcut;
+      return;
+    }
     if (shortcut) {
+      reserved = "";
       recording = false;
       onchange(shortcut);
     }
@@ -43,11 +53,19 @@
       class="w-44 rounded-md border px-2 py-1.5 text-left focus-visible:outline-2 focus-visible:outline-white
         {recording ? 'border-red-600 bg-neutral-950 text-neutral-300' : 'border-neutral-700 bg-neutral-950'}"
       aria-label={t("{label} shortcut", { label })}
-      onclick={() => (recording = !recording)}
-      onblur={() => (recording = false)}
+      onclick={() => {
+        recording = !recording;
+        reserved = "";
+      }}
+      onblur={() => {
+        recording = false;
+        reserved = "";
+      }}
       {onkeydown}
     >
-      {recording ? t("Press the keys…") : value === "" ? t("Not set") : describeShortcut(value)}
+      {recording && reserved !== ""
+        ? t("{keys} is taken by the app", { keys: describeShortcut(reserved) })
+        : recording ? t("Press the keys…") : value === "" ? t("Not set") : describeShortcut(value)}
     </button>
     <button
       type="button"

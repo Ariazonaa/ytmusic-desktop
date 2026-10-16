@@ -408,6 +408,19 @@ export interface SharedFile {
 }
 
 /** A plugin found in the user's plugins folder, as reported by the backend. */
+/** A plugin in the public list of plugins from others. Mirrors `Entry` in `src-tauri/src/marketplace.rs`. */
+export interface MarketEntry {
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  homepage: string | null;
+  permissions: string[];
+  hosts: string[];
+  url: string;
+  sha256: string;
+}
+
 export interface ExternalPluginInfo {
   /** The folder name. */
   name: string;

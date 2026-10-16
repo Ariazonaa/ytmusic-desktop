@@ -1,7 +1,11 @@
 // Runs inside a plugin's sandboxed iframe, before the plugin's own script.
 // It defines the global `ytmd` API, which talks to the injected script in the
-// YouTube Music page through messages. The iframe has no other way out.
+// YouTube Music page through messages. The iframe has no other way out:
+// `installGuard` closes the ones its policy leaves open.
+import { installGuard } from "./guard";
 import { PROTOCOL, type FrameMessage, type HostMessage, type SandboxApi } from "./protocol";
+
+installGuard();
 
 type Handler = (payload: unknown) => void;
 

@@ -69,4 +69,12 @@ describe("addShortcut", () => {
     expect(() => addShortcut("KeyL", () => {})).toThrow("not a shortcut");
     expect(() => addShortcut("", () => {})).toThrow("not a shortcut");
   });
+
+  it("leaves the window the combinations it keeps for itself", () => {
+    for (const shortcut of ["Ctrl+KeyC", "Ctrl+KeyV", "Ctrl+KeyF", "F5", "Ctrl+Equal", "Alt+ArrowLeft", "F12"]) {
+      expect(() => addShortcut(shortcut, () => {}), shortcut).toThrow("kept by the app");
+    }
+    expect(() => addShortcut("Ctrl+Shift+KeyC", () => {})).toThrow("kept by the app");
+    addShortcut("Ctrl+Alt+KeyC", () => {})();
+  });
 });

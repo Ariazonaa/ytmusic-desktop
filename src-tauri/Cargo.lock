@@ -5573,11 +5573,14 @@ dependencies = [
 
 [[package]]
 name = "ytmusic-desktop"
-version = "0.7.0"
+version = "0.8.0"
 dependencies = [
  "base64 0.22.1",
+ "reqwest",
+ "rustls",
  "serde",
  "serde_json",
+ "sha2",
  "sys-locale",
  "tauri",
  "tauri-build",

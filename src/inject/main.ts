@@ -34,7 +34,7 @@ import {
   openSettings,
   reportHealth,
   setNowPlaying,
-  setSettings,
+  updatePluginSettings,
 } from "../core/settings/client";
 import { builtinPlugins } from "../plugins";
 import { validateExternalPlugins } from "../plugins/external";
@@ -131,14 +131,10 @@ async function start(): Promise<void> {
     net: { getJson, request: sendRequest },
     notify: { show: (title, body, options) => notifier.show(title, body, options) },
     reportPluginError: (plugin, message) => health.addPluginError(plugin, message),
-    saveSettings(plugin, values) {
-      // The backend sends the saved settings back through `applySettings`.
-      const pluginSettings = {
-        ...current.pluginSettings,
-        [plugin]: { ...current.pluginSettings[plugin], ...values },
-      };
-      current = { ...current, pluginSettings };
-      return setSettings(current);
+    async saveSettings(plugin, values) {
+      // Only the changed values: the settings window may have changed others meanwhile.
+      // The backend also sends the saved settings back through `applySettings`.
+      current = await updatePluginSettings(plugin, values);
     },
   }, log);
   let pageChecked = false;

@@ -7,7 +7,10 @@ build, no Rust and no change to the app.
 
 - Write one with [docs/plugins.md](docs/plugins.md), starting from
   [`examples/plugins/template`](examples/plugins/template).
-- Share it in the
+- Add it to the [plugin list](plugins/index.json) with a pull request, so
+  that the settings window offers it under "Find plugins". How:
+  [The plugin list](docs/plugins.md#the-plugin-list).
+- Show it in the
   ["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell).
 - Missing something in the API? Open a
   [Plugin API issue](https://github.com/Ariazonaa/ytmusic-desktop/issues/new?template=plugin-api.yml).

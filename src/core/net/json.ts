@@ -1,5 +1,8 @@
 import type { JsonResponse, NetRequest, NetResponse } from "../../shared/types";
 
+/** An answer longer than this is cut off, and then not parsed. */
+const MAX_RESPONSE_LENGTH = 2 * 1024 * 1024;
+
 /**
  * Fetches JSON for a plugin. Which hosts a plugin may reach is enforced in
  * `createApi`; this only makes sure the request carries nothing about the user.
@@ -11,8 +14,49 @@ export async function getJson(url: string): Promise<JsonResponse> {
     // A redirect could lead to a host the plugin may not contact.
     redirect: "error",
   });
-  const data: unknown = await response.json().catch(() => null);
-  return { status: response.status, data };
+  const { text, complete } = await readLimited(response, MAX_RESPONSE_LENGTH);
+  return { status: response.status, data: complete ? parseJson(text) : null };
+}
+
+/**
+ * Reads at most `maxBytes` of an answer and stops the download there, so that
+ * a huge answer does not have to arrive, nor fit in memory, before it is cut.
+ */
+export async function readLimited(response: Response, maxBytes: number): Promise<{ text: string; complete: boolean }> {
+  if (!response.body) return { text: "", complete: true };
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  let complete = true;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (length + value.length > maxBytes) {
+      chunks.push(value.subarray(0, maxBytes - length));
+      length = maxBytes;
+      complete = false;
+      await reader.cancel().catch(() => undefined);
+      break;
+    }
+    chunks.push(value);
+    length += value.length;
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  // `stream` leaves a character cut in two at the end out instead of garbling it.
+  return { text: new TextDecoder().decode(bytes, { stream: !complete }), complete };
+}
+
+function parseJson(text: string): unknown {
+  try {
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
 }
 
 const METHODS = ["GET", "POST", "PUT", "PATCH", "DELETE"];
@@ -21,7 +65,6 @@ const HEADER_NAME = /^[A-Za-z0-9!#$%&'*+.^_`|~-]{1,64}$/;
 const MAX_HEADERS = 20;
 const MAX_HEADER_VALUE_LENGTH = 2000;
 const MAX_BODY_LENGTH = 256 * 1024;
-const MAX_RESPONSE_LENGTH = 2 * 1024 * 1024;
 
 /**
  * Checks a request a plugin wants to make and returns it in a fixed shape.
@@ -55,7 +98,7 @@ export function checkRequest(request: unknown): Required<NetRequest> {
 /**
  * Makes a request for a plugin, without cookies and without a referrer.
  * `request` must have passed `checkRequest`. The answer's text is given as it
- * is, and parsed as well if it is JSON.
+ * is, and parsed as well if it is JSON and complete.
  */
 export async function sendRequest(url: string, request: Required<NetRequest>): Promise<NetResponse> {
   const response = await fetch(url, {
@@ -67,12 +110,6 @@ export async function sendRequest(url: string, request: Required<NetRequest>): P
     // A redirect could lead to a host the plugin may not contact.
     redirect: "error",
   });
-  const text = (await response.text()).slice(0, MAX_RESPONSE_LENGTH);
-  let data: unknown = null;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    // Not JSON: `text` has it.
-  }
-  return { status: response.status, text, data };
+  const { text, complete } = await readLimited(response, MAX_RESPONSE_LENGTH);
+  return { status: response.status, text, data: complete ? parseJson(text) : null };
 }

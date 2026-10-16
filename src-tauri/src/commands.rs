@@ -2,6 +2,7 @@
 //! `capabilities/ytm.json`, so keep that surface small.
 
 use crate::autostart;
+use crate::discord::{self, ActivityRequest, Discord};
 use crate::health::{Health, HealthStore};
 use crate::notification::{self, Notification};
 use crate::plugins::{self, ExternalPlugin};
@@ -27,37 +28,92 @@ pub fn get_settings(store: State<'_, SettingsStore>) -> Settings {
     store.get()
 }
 
+/// Opens or focuses the settings window. A call shortly after the last one
+/// does nothing, so that the page cannot keep taking the focus.
 #[tauri::command]
-pub fn open_settings(app: AppHandle) {
-    window::open_settings_window(&app);
+pub fn open_settings(app: AppHandle, limit: State<'_, OpenLimit>) {
+    if limit.allow() {
+        window::open_settings_window(&app);
+    }
 }
 
+/// When the page last opened something outside itself: the settings window or
+/// a folder. Shared, so that alternating between them is no way around it.
+#[derive(Default)]
+pub struct OpenLimit(Mutex<Option<Instant>>);
+
+const OPEN_INTERVAL: Duration = Duration::from_secs(1);
+
+impl OpenLimit {
+    /// Whether opening is allowed now; if so, counts it.
+    fn allow(&self) -> bool {
+        let mut last = self.0.lock().unwrap_or_else(|err| err.into_inner());
+        if last.is_some_and(|at| at.elapsed() < OPEN_INTERVAL) {
+            return false;
+        }
+        *last = Some(Instant::now());
+        true
+    }
+}
+
+/// Changes the given top-level settings and keeps the rest as they are now.
+/// Resolves with all settings as saved. Settings window only.
 #[tauri::command]
-pub fn set_settings(
+pub fn update_settings(
     app: AppHandle,
     store: State<'_, SettingsStore>,
-    settings: Settings,
-) -> Result<(), String> {
-    apply(&app, &store, settings)
+    changes: serde_json::Map<String, Value>,
+) -> Result<Settings, String> {
+    commit(&app, &store, |current| {
+        crate::settings::merged(current, changes)
+    })
+}
+
+/// Changes some of one plugin's settings; with `replace`, the plugin keeps
+/// only `values`. Resolves with all settings as saved. For the page, whose
+/// plugins save their own settings, and for the settings window.
+#[tauri::command]
+pub fn update_plugin_settings(
+    app: AppHandle,
+    store: State<'_, SettingsStore>,
+    plugin: String,
+    values: BTreeMap<String, Value>,
+    replace: bool,
+) -> Result<Settings, String> {
+    commit(&app, &store, |current| {
+        Ok(crate::settings::with_plugin_settings(
+            current, &plugin, values, replace,
+        ))
+    })
 }
 
 /// Validates, saves and applies new settings.
 fn apply(app: &AppHandle, store: &SettingsStore, settings: Settings) -> Result<(), String> {
-    let app = app.clone();
-    settings.validate()?;
-    let previous = store.get().shortcuts;
-    if settings.shortcuts != previous {
-        if let Err(err) = shortcuts::apply(&app, &settings.shortcuts) {
-            // Keep what worked before; the rejected settings are not saved.
-            let _ = shortcuts::apply(&app, &previous);
-            return Err(err);
+    commit(app, store, |_| Ok(settings)).map(|_| ())
+}
+
+/// Makes the change to the current settings, validates, saves and applies
+/// the result. Reading and writing happen in one step, so two changes at the
+/// same time cannot undo each other.
+fn commit(
+    app: &AppHandle,
+    store: &SettingsStore,
+    change: impl FnOnce(&Settings) -> Result<Settings, String>,
+) -> Result<Settings, String> {
+    let settings = store.edit(change, |current, next| {
+        if next.shortcuts != current.shortcuts {
+            if let Err(err) = shortcuts::apply(app, &next.shortcuts) {
+                // Keep what worked before; the rejected settings are not saved.
+                let _ = shortcuts::apply(app, &current.shortcuts);
+                return Err(err);
+            }
         }
-    }
-    store.set(settings.clone())?;
-    autostart::sync(&app, settings.startup);
-    tray::set_language(&app, &settings.language);
-    window::apply_settings(&app, &settings);
-    Ok(())
+        Ok(())
+    })?;
+    autostart::sync(app, settings.startup);
+    tray::set_language(app, &settings.language);
+    window::apply_settings(app, &settings);
+    Ok(settings)
 }
 
 /// The plugins found in the user's plugins folder.
@@ -220,6 +276,50 @@ pub async fn install_plugin(
     Ok(Some(name))
 }
 
+/// Fetches the public list of plugins from others. Settings window only.
+#[tauri::command]
+pub async fn marketplace_list(
+    store: State<'_, crate::marketplace::MarketStore>,
+) -> Result<Vec<crate::marketplace::Entry>, String> {
+    let entries = crate::marketplace::fetch_list().await?;
+    store.set(entries.clone());
+    Ok(entries)
+}
+
+/// Downloads and installs a plugin from the list fetched last, by its name.
+/// It is not switched on. Settings window only.
+#[tauri::command]
+pub async fn marketplace_install(
+    app: AppHandle,
+    store: State<'_, crate::marketplace::MarketStore>,
+    name: String,
+) -> Result<String, String> {
+    let entry = store.find(&name).ok_or("the plugin is not in the list")?;
+    let bytes = crate::marketplace::fetch_plugin(&entry).await?;
+    let dir = plugins::dir(&app).ok_or("no config directory")?;
+    std::fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
+    let installed = crate::marketplace::install(&dir, &entry, &bytes)?;
+    window::reload_plugins(&app);
+    Ok(installed)
+}
+
+/// Opens the homepage of a plugin from the list fetched last in the browser.
+/// Settings window only.
+#[tauri::command]
+pub fn marketplace_open_homepage(
+    app: AppHandle,
+    store: State<'_, crate::marketplace::MarketStore>,
+    name: String,
+) -> Result<(), String> {
+    let homepage = store
+        .find(&name)
+        .and_then(|entry| entry.homepage)
+        .ok_or("the plugin has no homepage in the list")?;
+    app.opener()
+        .open_url(homepage, None::<&str>)
+        .map_err(|err| err.to_string())
+}
+
 /// Deletes an external plugin and switches it off. Settings window only.
 #[tauri::command]
 pub fn remove_plugin(
@@ -331,7 +431,14 @@ pub async fn import_settings(
 
 /// Shows the folder for files to share of one kind in the file manager.
 #[tauri::command]
-pub fn open_shared_folder(app: AppHandle, kind: Kind) -> Result<(), String> {
+pub fn open_shared_folder(
+    app: AppHandle,
+    limit: State<'_, OpenLimit>,
+    kind: Kind,
+) -> Result<(), String> {
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
     let dir = themes::dir(&app, kind).ok_or("no config directory")?;
     std::fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
     app.opener()
@@ -347,4 +454,42 @@ pub fn open_plugins_folder(app: AppHandle) -> Result<(), String> {
     app.opener()
         .open_path(dir.to_string_lossy(), None::<&str>)
         .map_err(|err| err.to_string())
+}
+
+/// Shows in Discord what is playing. Checked in `discord::check`. Page only.
+#[tauri::command]
+pub fn discord_set_activity(presence: State<'_, Discord>, activity: ActivityRequest) {
+    presence.set(Some(discord::check(&activity, discord::now_ms())));
+}
+
+/// Takes the status out of Discord. Page only.
+#[tauri::command]
+pub fn discord_clear_activity(presence: State<'_, Discord>) {
+    presence.set(None);
+}
+
+/// What Discord was last asked to show, for the preview. With `sample` and
+/// nothing shown, the sample as Discord would get it. Settings window only.
+#[tauri::command]
+pub fn discord_preview(
+    presence: State<'_, Discord>,
+    sample: Option<ActivityRequest>,
+) -> Option<discord::Activity> {
+    presence
+        .last()
+        .or_else(|| sample.map(|request| discord::check(&request, discord::now_ms())))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn opening_again_at_once_is_refused() {
+        let limit = OpenLimit::default();
+        assert!(limit.allow());
+        assert!(!limit.allow());
+        *limit.0.lock().unwrap() = Some(Instant::now() - OPEN_INTERVAL);
+        assert!(limit.allow());
+    }
 }

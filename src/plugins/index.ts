@@ -5,6 +5,7 @@ import audioTools from "./audio-tools";
 import compressor from "./compressor";
 import crossfade from "./crossfade";
 import demo from "./demo";
+import discord from "./discord";
 import equalizer from "./equalizer";
 import headphones from "./headphones";
 import keepPlaying from "./keep-playing";
@@ -29,6 +30,7 @@ export const builtinPlugins: readonly Plugin[] = [
   compressor,
   crossfade,
   demo,
+  discord,
   equalizer,
   headphones,
   keepPlaying,

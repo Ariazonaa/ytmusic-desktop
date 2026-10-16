@@ -82,7 +82,7 @@ impl Default for Settings {
 
 impl Settings {
     /// Rejects values that could not have come from a well-behaved client.
-    /// `set_settings` is callable from the remote page, so its input is untrusted.
+    /// `update_plugin_settings` is callable from the remote page, so its input is untrusted.
     pub fn validate(&self) -> Result<(), String> {
         if self.plugins.len() > MAX_PLUGINS {
             return Err(format!("too many plugins (max {MAX_PLUGINS})"));
@@ -229,6 +229,41 @@ fn backup_path(path: &Path) -> PathBuf {
     path.with_extension("json.bak")
 }
 
+/// `current` with the top-level fields in `changes` replaced. The settings
+/// window and the page each send only what they change, so that neither
+/// writes back an old copy of what the other changed meanwhile.
+pub fn merged(
+    current: &Settings,
+    changes: serde_json::Map<String, Value>,
+) -> Result<Settings, String> {
+    let mut value = serde_json::to_value(current).map_err(|err| err.to_string())?;
+    let fields = value.as_object_mut().ok_or("settings are not an object")?;
+    for (key, change) in changes {
+        if !fields.contains_key(&key) {
+            return Err(format!("unknown setting {key:?}"));
+        }
+        fields.insert(key, change);
+    }
+    serde_json::from_value(value).map_err(|err| err.to_string())
+}
+
+/// `current` with some of one plugin's settings changed. With `replace`,
+/// the plugin keeps only `values`.
+pub fn with_plugin_settings(
+    current: &Settings,
+    plugin: &str,
+    values: BTreeMap<String, Value>,
+    replace: bool,
+) -> Settings {
+    let mut next = current.clone();
+    let entry = next.plugin_settings.entry(plugin.to_owned()).or_default();
+    if replace {
+        entry.clear();
+    }
+    entry.extend(values);
+    next
+}
+
 /// Settings shared across commands, kept in sync with the file on disk.
 pub struct SettingsStore {
     path: PathBuf,
@@ -265,6 +300,23 @@ impl SettingsStore {
         Ok(())
     }
 
+    /// Changes the settings in one step: no other change can come between
+    /// reading them and writing the result. `check` sees the new settings
+    /// before they are saved and can refuse them.
+    pub fn edit(
+        &self,
+        change: impl FnOnce(&Settings) -> Result<Settings, String>,
+        check: impl FnOnce(&Settings, &Settings) -> Result<(), String>,
+    ) -> Result<Settings, String> {
+        let mut current = self.lock();
+        let next = change(&current)?;
+        next.validate()?;
+        check(&current, &next)?;
+        save(&self.path, &next).map_err(|err| err.to_string())?;
+        *current = next.clone();
+        Ok(next)
+    }
+
     fn lock(&self) -> std::sync::MutexGuard<'_, Settings> {
         // Settings stay consistent even if a holder panicked: they are replaced whole.
         self.current.lock().unwrap_or_else(|err| err.into_inner())
@@ -274,6 +326,91 @@ impl SettingsStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_change_keeps_what_others_changed_meanwhile() {
+        // The page saved a plugin setting after the settings window had loaded.
+        let mut current = Settings::default();
+        current
+            .plugin_settings
+            .entry("lyrics".into())
+            .or_default()
+            .insert("offsets".into(), serde_json::json!({ "abc": 0.5 }));
+        // The window changes something else.
+        let changes = serde_json::json!({ "startup": true, "plugins": ["lyrics"] });
+        let next = merged(&current, changes.as_object().unwrap().clone()).unwrap();
+        assert!(next.startup);
+        assert_eq!(next.plugins, ["lyrics"]);
+        assert_eq!(next.plugin_settings, current.plugin_settings);
+
+        let unknown = serde_json::json!({ "nonsense": 1 });
+        assert!(merged(&current, unknown.as_object().unwrap().clone()).is_err());
+        let wrong_type = serde_json::json!({ "startup": "yes" });
+        assert!(merged(&current, wrong_type.as_object().unwrap().clone()).is_err());
+    }
+
+    #[test]
+    fn plugin_settings_change_one_plugin_only() {
+        let mut current = Settings::default();
+        current
+            .plugin_settings
+            .entry("a".into())
+            .or_default()
+            .insert("x".into(), 1.into());
+        current
+            .plugin_settings
+            .entry("b".into())
+            .or_default()
+            .insert("y".into(), 2.into());
+        let one = BTreeMap::from([("z".to_string(), Value::from(3))]);
+
+        let next = with_plugin_settings(&current, "a", one.clone(), false);
+        assert_eq!(next.plugin_settings["a"].len(), 2);
+        assert_eq!(next.plugin_settings["b"], current.plugin_settings["b"]);
+
+        let replaced = with_plugin_settings(&current, "a", one, true);
+        assert_eq!(
+            replaced.plugin_settings["a"],
+            BTreeMap::from([("z".to_string(), Value::from(3))])
+        );
+    }
+
+    #[test]
+    fn edit_saves_the_result_or_nothing() {
+        let dir = tempfile::tempdir().unwrap();
+        let store = SettingsStore::open(settings_path(&dir));
+        let saved = store
+            .edit(
+                |current| {
+                    merged(
+                        current,
+                        serde_json::json!({ "startup": true })
+                            .as_object()
+                            .unwrap()
+                            .clone(),
+                    )
+                },
+                |_, _| Ok(()),
+            )
+            .unwrap();
+        assert!(saved.startup && store.get().startup);
+        assert!(load(&settings_path(&dir)).startup);
+
+        let refused = store.edit(
+            |current| {
+                merged(
+                    current,
+                    serde_json::json!({ "startup": false })
+                        .as_object()
+                        .unwrap()
+                        .clone(),
+                )
+            },
+            |_, _| Err("no".into()),
+        );
+        assert!(refused.is_err());
+        assert!(store.get().startup);
+    }
 
     fn settings_path(dir: &tempfile::TempDir) -> PathBuf {
         dir.path().join("settings.json")

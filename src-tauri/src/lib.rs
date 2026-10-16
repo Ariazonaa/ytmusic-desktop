@@ -8,9 +8,11 @@ mod background;
 mod commands;
 #[cfg(all(debug_assertions, windows))]
 mod dev_inject;
+mod discord;
 mod frames;
 mod health;
 mod install;
+mod marketplace;
 mod notification;
 mod offline;
 mod plugins;
@@ -20,6 +22,7 @@ mod themes;
 mod tray;
 mod update;
 mod watch;
+mod webview_runtime;
 mod window;
 
 use settings::SettingsStore;
@@ -28,6 +31,8 @@ use tauri_plugin_autostart::MacosLauncher;
 use tauri_plugin_window_state::StateFlags;
 
 pub fn run() {
+    #[cfg(windows)]
+    webview_runtime::use_unregistered_runtime();
     tauri::Builder::default()
         // Must be registered first. A second launch focuses the running app,
         // which may be hidden in the tray.
@@ -60,7 +65,8 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
-            commands::set_settings,
+            commands::update_settings,
+            commands::update_plugin_settings,
             commands::open_settings,
             commands::list_external_plugins,
             commands::open_plugins_folder,
@@ -85,7 +91,13 @@ pub fn run() {
             commands::app_version,
             commands::pending_update,
             commands::check_update,
-            commands::install_update
+            commands::install_update,
+            commands::discord_set_activity,
+            commands::discord_clear_activity,
+            commands::discord_preview,
+            commands::marketplace_list,
+            commands::marketplace_install,
+            commands::marketplace_open_homepage
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -106,7 +118,10 @@ pub fn run() {
             app.manage(store);
             app.manage(health::HealthStore::default());
             app.manage(commands::NotifyLimit::default());
+            app.manage(commands::OpenLimit::default());
+            app.manage(marketplace::MarketStore::default());
             app.manage(update::UpdateStore::default());
+            app.manage(discord::Discord::default());
             tray::create(app.handle(), &app.state::<SettingsStore>().get().language)?;
             let link = window::music_link(std::env::args().skip(1));
             window::create_main_window(app.handle(), hidden, link)?;

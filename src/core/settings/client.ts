@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import type {
   ExternalPluginInfo,
+  MarketEntry,
   Health,
   PluginSettingValues,
   Settings,
@@ -18,9 +19,25 @@ export function openSettings(): Promise<void> {
   return invoke("open_settings");
 }
 
-/** Rejects if the backend refuses the settings, e.g. because of an invalid plugin name. */
-export function setSettings(settings: Settings): Promise<void> {
-  return invoke("set_settings", { settings });
+/**
+ * Changes the given top-level settings and keeps the rest as the backend has
+ * them now. Resolves with all settings as saved; rejects if the backend refuses
+ * them, e.g. because of an invalid plugin name. Settings window only.
+ */
+export function updateSettings(changes: Partial<Omit<Settings, "pluginSettings">>): Promise<Settings> {
+  return invoke<Settings>("update_settings", { changes });
+}
+
+/**
+ * Changes some settings of one plugin; with `replace`, the plugin keeps only
+ * `values`. Resolves with all settings as saved.
+ */
+export function updatePluginSettings(
+  plugin: string,
+  values: PluginSettingValues,
+  replace = false,
+): Promise<Settings> {
+  return invoke<Settings>("update_plugin_settings", { plugin, values, replace });
 }
 
 /** The plugins found in the user's plugins folder. Their manifests are not validated yet. */
@@ -97,6 +114,21 @@ export function installPlugin(): Promise<string | null> {
   return invoke<string | null>("install_plugin");
 }
 
+/** Fetches the public list of plugins from others. Settings window only. */
+export function marketplaceList(): Promise<MarketEntry[]> {
+  return invoke<MarketEntry[]>("marketplace_list");
+}
+
+/** Installs a plugin from the list fetched last, without switching it on. Resolves with its name. Settings window only. */
+export function marketplaceInstall(name: string): Promise<string> {
+  return invoke<string>("marketplace_install", { name });
+}
+
+/** Opens the homepage of a plugin from the list fetched last. Settings window only. */
+export function marketplaceOpenHomepage(name: string): Promise<void> {
+  return invoke("marketplace_open_homepage", { name });
+}
+
 /** Deletes an external plugin and switches it off. Resolves with the settings after that. Settings window only. */
 export function removePlugin(name: string): Promise<Settings> {
   return invoke<Settings>("remove_plugin", { name });
@@ -155,4 +187,57 @@ export function installUpdate(): Promise<void> {
 /** Shows the plugins folder in the file manager. Only the settings window may call this. */
 export function openPluginsFolder(): Promise<void> {
   return invoke("open_plugins_folder");
+}
+
+/** What the Discord status shows; the backend checks and shortens it. Mirrors `ActivityRequest` in `discord.rs`. */
+export interface DiscordActivity {
+  title: string;
+  artist: string;
+  album: string;
+  coverUrl: string | null;
+  /** Milliseconds since 1970, for Discord's progress bar. */
+  startMs: number | null;
+  endMs: number | null;
+  videoId: string | null;
+  paused: boolean;
+  /** What the member list names after "Listening to": `app`, `artist` or `title`. */
+  display: string;
+  showCover: boolean;
+  showProgress: boolean;
+  showLinks: boolean;
+  /** Text of the small icon on the cover; `null` leaves the icon out. */
+  smallText: string | null;
+  /** Texts of the buttons; `null` leaves a button out. */
+  listenLabel: string | null;
+  appLabel: string | null;
+}
+
+/** Shows in the user's Discord profile what is playing. Does nothing while Discord is not running. */
+export function discordSetActivity(activity: DiscordActivity): Promise<void> {
+  return invoke("discord_set_activity", { activity });
+}
+
+/** Takes the status out of Discord. */
+export function discordClearActivity(): Promise<void> {
+  return invoke("discord_clear_activity");
+}
+
+/** The status as Discord gets it, checked by the backend. */
+export interface DiscordPreview {
+  status_display_type: number;
+  details: string;
+  details_url?: string;
+  state: string;
+  state_url?: string;
+  timestamps?: { start: number; end?: number };
+  assets: { large_image?: string; large_text?: string; small_image?: string; small_text?: string };
+  buttons?: { label: string; url: string }[];
+}
+
+/**
+ * What Discord was last asked to show, or `sample` as Discord would get it
+ * while nothing is shown. Settings window only.
+ */
+export function discordPreview(sample: DiscordActivity | null): Promise<DiscordPreview | null> {
+  return invoke<DiscordPreview | null>("discord_preview", { sample });
 }

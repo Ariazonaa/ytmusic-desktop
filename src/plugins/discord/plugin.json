@@ -1,0 +1,50 @@
+{
+  "name": "discord",
+  "version": "0.2.0",
+  "description": "Shows in your Discord profile what you are listening to, with cover, progress and a button to listen along. Your friends on Discord see it.",
+  "category": "tools",
+  "permissions": ["music.read"],
+  "settings": {
+    "display": {
+      "type": "select",
+      "label": "Name in the member list",
+      "description": "What your friends see next to your name, after \"Listening to\".",
+      "default": "artist",
+      "options": [
+        { "value": "app", "label": "YouTube Music" },
+        { "value": "artist", "label": "The artist" },
+        { "value": "title", "label": "The title" }
+      ]
+    },
+    "cover": { "type": "boolean", "label": "Show the cover", "default": true },
+    "progress": { "type": "boolean", "label": "Show how far the track is", "default": true },
+    "links": {
+      "type": "boolean",
+      "label": "Title and artist open YouTube Music",
+      "description": "Clicking the title opens the track, clicking the artist searches for them.",
+      "default": true
+    },
+    "icon": {
+      "type": "boolean",
+      "label": "Small icon on the cover",
+      "description": "The app's icon; hovering it shows whether you like the track.",
+      "default": true
+    },
+    "listenButton": { "type": "boolean", "label": "Button \"Listen on YouTube Music\"", "default": true },
+    "appButton": {
+      "type": "boolean",
+      "label": "Button \"Get the app\"",
+      "description": "Leads to this app's page on GitHub.",
+      "default": false
+    },
+    "whenPaused": {
+      "type": "select",
+      "label": "While paused",
+      "default": "hide",
+      "options": [
+        { "value": "hide", "label": "Show nothing" },
+        { "value": "keep", "label": "Keep the track, marked as paused" }
+      ]
+    }
+  }
+}

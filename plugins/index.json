@@ -1,0 +1,18 @@
+{
+  "plugins": [
+    {
+      "name": "hello",
+      "version": "0.1.0",
+      "description": "A panel with the songs played so far, and a notice on every song change. The example from the plugin guide.",
+      "author": "Ariazonaa",
+      "homepage": "https://github.com/Ariazonaa/ytmusic-desktop/tree/main/examples/plugins/hello",
+      "permissions": [
+        "music.read",
+        "ui.inject"
+      ],
+      "hosts": [],
+      "url": "https://raw.githubusercontent.com/Ariazonaa/ytmusic-desktop/main/plugins/zips/hello-0.1.0.zip",
+      "sha256": "ccb3d422b621c52c803cbc329cc5b2266db621552a2256d5d5ea84f08fe15c5d"
+    }
+  ]
+}

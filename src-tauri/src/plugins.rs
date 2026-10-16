@@ -257,8 +257,11 @@ fn frame_document(manifest: &Value) -> Response<Cow<'static, [u8]>> {
     // scheme, and nothing may be contacted. Styles and images may be inline
     // or come from the plugin's own folder, which this scheme serves; images
     // from the network are limited to the sources the plugin's permissions cover.
+    // HTML from strings goes through the Trusted Types policies of
+    // `src/sandbox/guard.ts`, which keep out what could reach the network anyway.
     let mut policy = format!(
         "sandbox allow-scripts; default-src 'none'; form-action 'none'; base-uri 'none'; \
+         require-trusted-types-for 'script'; trusted-types default ytmd-sanitizer; \
          script-src {ORIGIN}; \
          style-src 'unsafe-inline' {ORIGIN}; img-src data: blob: {ORIGIN}"
     );
@@ -384,6 +387,9 @@ mod tests {
         assert!(policy.contains("sandbox allow-scripts;"));
         assert!(policy.contains("default-src 'none'"));
         assert!(!policy.contains("allow-same-origin"));
+        // Only the guard's policies: a plugin cannot make its own.
+        assert!(policy
+            .contains("require-trusted-types-for 'script'; trusted-types default ytmd-sanitizer;"));
         // Nothing in the policy may name a network scheme or a wildcard.
         for forbidden in ["https:", "wss:", "*", "connect-src", "frame-src"] {
             assert!(!policy.contains(forbidden), "{forbidden}");

@@ -94,6 +94,19 @@ export function segmentAt(
   );
 }
 
+/** Played this far into a track, a jump back to its first seconds is a new run. */
+const RESTART_FROM_SECONDS = 5;
+const RESTART_TO_SECONDS = 3;
+
+/**
+ * Whether the track started over, as with "repeat one" or a click on its
+ * start: then its segments are skipped again. A jump back within the track
+ * is not, so that seeking back into a skipped segment still plays it.
+ */
+export function startedOver(previous: number | null, position: number): boolean {
+  return previous !== null && previous >= RESTART_FROM_SECONDS && position < RESTART_TO_SECONDS;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }

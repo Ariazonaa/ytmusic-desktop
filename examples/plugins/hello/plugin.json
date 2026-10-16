@@ -1,6 +1,8 @@
 {
   "name": "hello",
   "version": "0.1.0",
+  "description": "A panel with the songs played so far, and a notice on every song change. The example from the plugin guide.",
+  "category": "tools",
   "permissions": ["music.read", "ui.inject"],
   "settings": {
     "greeting": {

@@ -1,6 +1,6 @@
 // Keyboard shortcuts that work while the app's window has the focus. Global
 // shortcuts, which work everywhere, are the backend's business.
-import { isShortcut, shortcutFrom } from "../../shared/shortcut";
+import { isReservedInWindow, isShortcut, shortcutFrom } from "../../shared/shortcut";
 
 const handlers = new WeakMap<Document, Map<string, Set<() => void>>>();
 
@@ -37,6 +37,7 @@ function listen(doc: Document): Map<string, Set<() => void>> {
  */
 export function addShortcut(shortcut: string, onPress: () => void, doc: Document = document): () => void {
   if (!isShortcut(shortcut)) throw new Error(`not a shortcut: ${JSON.stringify(shortcut)}`);
+  if (isReservedInWindow(shortcut)) throw new Error(`${shortcut} is kept by the app, such as for copying or reloading`);
   let registered = handlers.get(doc);
   if (!registered) {
     registered = listen(doc);

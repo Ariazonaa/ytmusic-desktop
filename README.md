@@ -47,11 +47,13 @@ app adds what a website cannot do:
   limiter.
 - **More to see:** time-synced lyrics, color themes, the cover as background,
   a spectrum behind the player bar.
-- **Less in the way:** no ads between tracks, SponsorBlock skips the talking
-  in music videos, and tracks you disliked are skipped by themselves.
+- **Plugins:** switch on what you want, such as skipping tracks you disliked
+  or keeping the music going when YouTube Music asks whether you are still
+  there, and leave the rest off. Each one is listed with what it does and may
+  do; you can [write your own](docs/plugins.md).
 - **A real desktop app:** tray icon, global shortcuts, media keys, start with
   Windows, and it picks up the track where you stopped.
-- **Light:** the installer is under 3 MB. The app is built with
+- **Light:** the installer is under 4 MB. The app is built with
   [Tauri](https://tauri.app) and uses the browser engine Windows already has,
   instead of bringing its own.
 - **Private:** no statistics, no account, no server of its own; the one thing
@@ -172,6 +174,7 @@ macOS is not supported yet.
 | --- | --- |
 | `lyrics` | A side panel with time-synced lyrics from [LRCLIB](https://lrclib.net); clicking a line jumps to it. Plain lyrics from [lyrics.ovh](https://lyrics.ovh) if LRCLIB has none. A large view fills the window, and plus and minus shift lyrics that run ahead of or behind the sound, remembered per track. |
 | `track-info` | A panel with codec, bitrate, sample rate, loudness and connection speed of the playing track. |
+| `discord` | Shows in your Discord profile what you are listening to: title, artist, cover, how far the track is, and a button for others to listen too. What shows, and whether it stays while paused, is up to you; a preview in the settings window shows how it looks. Needs the Discord app running on the same computer. |
 | `demo` | A working template for people who write plugins. |
 
 ### Plugins from others
@@ -191,14 +194,19 @@ Anyone can write a plugin: a folder with a `plugin.json` and an `index.js`.
   lists, so only switch on plugins whose permissions make sense for what they
   do.
 
-**Find plugins** in the
+**Find plugins** in the settings window: "Load the list" under "Find
+plugins" shows the plugins in this repository's
+[plugin list](plugins/index.json), with what each one may do, and installs
+one with a click. A download is installed only if it matches the checksum
+and the permissions in the list. Nobody checks the plugins' code; read the
+permissions before you switch one on. More are shown in the
 ["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell).
-Nobody checks them; read the permissions before you switch one on.
 
 **Write one:** [docs/plugins.md](docs/plugins.md) is the guide,
 [`examples/plugins/template`](examples/plugins/template) a starting point to
 copy and [`examples/plugins/hello`](examples/plugins/hello) a longer example.
-The guide also says [how to share it](docs/plugins.md#sharing-a-plugin).
+The guide also says [how to share it](docs/plugins.md#sharing-a-plugin)
+and [how to add it to the list](docs/plugins.md#the-plugin-list).
 
 ## The desktop side
 
@@ -283,13 +291,16 @@ What leaves your computer because of this app, as opposed to because of
 YouTube Music itself.
 
 **The app.** It sends no statistics and no crash reports, and it has no
-server. The one request of its own is the look for updates: at each start it
+server. Its one request without being asked is the look for updates: at each start it
 fetches a small file from this project's releases on `github.com`, which
 names the newest version. The request carries nothing about you or the app;
 GitHub sees your IP address, as every server does. "Look for updates at
 start" in the settings window switches it off. An update itself is downloaded
 from there too, only when you click to install it, and only installed if it
-carries this project's signature. The window is a browser showing
+carries this project's signature. "Load the list" under "Find plugins"
+fetches the plugin list from `raw.githubusercontent.com`, only when you
+click it; installing a plugin from it downloads its zip from the address
+listed there, often `github.com`. The window is a browser showing
 `music.youtube.com`, so Google sees what it would see in any browser, with
 your Google account if you sign in. The browser engine is Microsoft's WebView2,
 which is part of Windows.
@@ -302,6 +313,10 @@ they are switched on:
 | `sponsorblock` | `sponsor.ajay.app` | the first four characters of a hash of the video id, not the id itself | once for every track |
 | `lyrics` | `lrclib.net` | title and artist of the playing song | once for every track |
 | `lyrics` | `api.lyrics.ovh` | title and first artist | only if LRCLIB has no lyrics |
+
+`discord` hands title, artist, album, the cover's address and the track's
+link to the Discord app on your computer, which shows them in your profile to
+anyone who can see it there.
 
 These requests carry no cookies and no referrer. The servers see your IP
 address, as every server does. `themes` loads the cover of the playing song a

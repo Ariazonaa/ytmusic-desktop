@@ -184,6 +184,8 @@ describe("createExternalPlugin", () => {
 
     ready();
     expect(sent).toEqual([
+      // What played when it was switched on, then the change after.
+      { ytmd: PROTOCOL, type: "event", name: "songChange", payload: song },
       { ytmd: PROTOCOL, type: "event", name: "songChange", payload: song },
       { ytmd: PROTOCOL, type: "event", name: "uiReady", payload: undefined },
     ]);
@@ -260,8 +262,9 @@ describe("createExternalPlugin", () => {
     expect(frame.isConnected).toBe(false);
     expect(log.error).toHaveBeenCalledWith('[ytm-desktop] plugin "ext":', "left its sandboxed document and was stopped");
     // Whatever it went to hears nothing more.
+    const before = sent.length;
     manager.notifySongChange(song);
-    expect(sent.filter((message) => message.type === "event" && message.name === "songChange")).toEqual([]);
+    expect(sent.slice(before)).toEqual([]);
   });
 
   it("logs errors the plugin reports", () => {

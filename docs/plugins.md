@@ -89,7 +89,14 @@ Your code runs in a hidden iframe with its own, opaque origin. Inside it:
 | the iframe's own `document` and DOM | the YouTube Music page: `parent.document` throws |
 | `<style>` elements and inline styles | cookies, `localStorage`, IndexedDB |
 | images from `data:` and `blob:` URLs, and from the network [where your permissions reach](#images) | other images, fonts or media from the network |
+| `<link rel="stylesheet">` for your own `.css` files | other `<link>` kinds (`preconnect`, `prefetch`, …), WebRTC |
+| | `<iframe>`, `<object>`, `<embed>`, `<meta>` |
 | | opening windows, navigating the app, the Tauri backend |
+
+The second column is enforced, also where the browser's content security
+policy alone would let something through: a `<link>` other than a stylesheet
+throws, HTML from strings (`innerHTML` and its relatives) loses such elements,
+and `RTCPeerConnection` does not exist.
 
 Everything else goes through the global `ytmd`. Each call is a message to the
 app, which checks it against the permissions in your manifest. That makes
@@ -144,7 +151,7 @@ Requests carry no cookies and no referrer.
 | `ytmd.ui.addNavButton(label, onClick)` | `ui.inject` | label at most 40 characters; resolves with a remove function |
 | `ytmd.ui.showPanel(title?)`, `hidePanel()` | `ui.inject` | title at most 60 characters |
 | `ytmd.ui.addShortcut(shortcut, onPress)` | `ui.inject` | a key combination for the app's window, see below; resolves with a remove function |
-| `ytmd.ui.navigate(target)` | `ui.inject` | goes to a page of YouTube Music without interrupting the music, see below |
+| `ytmd.ui.navigate(target)` | `ui.inject`, for a track also `music.control` | goes to a page of YouTube Music without interrupting the music, see below |
 
 Events for `ytmd.on`:
 
@@ -159,6 +166,11 @@ Events for `ytmd.on`:
 `playbackChange` does not fire as the position advances. To follow the
 position, poll `getPlaybackState()` on a timer.
 
+A plugin switched on while a track plays gets `songChange` and
+`playbackChange` for it right after it started. Only handlers that exist by
+then hear them: register them before the script's first `await`, or ask with
+`getCurrentSong()` where you register them later.
+
 A plugin may hold at most 32 injected styles and buttons at a time.
 
 ### Shortcuts and navigation
@@ -169,7 +181,12 @@ user types in a field. A shortcut is written as its modifiers in the order
 `Ctrl`, `Alt`, `Shift`, `Super`, then the key's
 [code](https://developer.mozilla.org/docs/Web/API/KeyboardEvent/code):
 `KeyL`, `Digit1`, `ArrowUp`, `F9`. It needs `Ctrl`, `Alt` or `Super`, or must
-be a function key; anything else rejects. To let the user choose the keys,
+be a function key; anything else rejects. Combinations the window keeps for
+itself reject as well: copying, pasting, selecting and undoing (`Ctrl+KeyC`,
+`Ctrl+KeyV`, `Ctrl+KeyA`, `Ctrl+KeyZ`, …), searching the page (`Ctrl+KeyF`,
+`F3`), reloading (`F5`, `Ctrl+KeyR`), zooming (`Ctrl+Equal`, `Ctrl+Minus`,
+`Ctrl+Digit0`), back and forward (`Alt+ArrowLeft`, `Alt+ArrowRight`),
+`F7`, `F11`, `F12` and the developer tools. To let the user choose the keys,
 declare a setting of type `shortcut` and register its value.
 
 `ytmd.ui.navigate(target)` goes to a page inside YouTube Music:
@@ -177,7 +194,7 @@ declare a setting of type `shortcut` and register its value.
 | Target | Goes to |
 | --- | --- |
 | `{ type: "search", query: "abba" }` | the search results |
-| `{ type: "track", videoId: "dQw4w9WgXcQ" }` | the track, which starts playing |
+| `{ type: "track", videoId: "dQw4w9WgXcQ" }` | the track, which starts playing; needs `music.control` |
 | `{ type: "page", browseId: "FEmusic_explore" }` | a page by its id: an album (`MPREb_…`), an artist (`UC…`), a playlist (`VL…`), or `FEmusic_home`, `FEmusic_explore`, `FEmusic_library_landing` |
 
 ### The queue
@@ -251,7 +268,9 @@ const { status, data, text } = await ytmd.net.request("https://api.example.com/l
 - `headers` takes at most 20 entries. The browser sets some itself and does
   not let a page change them, `Cookie`, `Origin` and `Host` among them.
 - `body` is text of at most 256 kB; a GET has none.
-- The answer comes as `text` (at most 2 MB) and, if it is JSON, parsed as `data`.
+- The answer comes as `text` and, if it is JSON, parsed as `data`. An answer
+  longer than 2 MB is cut off there, the download stopped, and `data` is
+  `null`; the same goes for `getJson`.
 - Redirects are not followed, since they could lead to another host.
 - The request is made by a web page, so the other server has to allow it
   (CORS). A server that does not answers with a network error.
@@ -325,13 +344,56 @@ plugins" for the settings window to show its new contents.
 3. **Put it somewhere people can see the code**, best a repository of its
    own with the zip attached to a release. A plugin whose code nobody can
    read is one few will switch on.
-4. **Post it** in the
-   ["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell).
-   The form asks for the link, the permissions and why it needs them.
+4. **Add it to the plugin list** with a pull request, see below. The
+   settings window then offers it under "Find plugins".
+5. **Tell people about it** in the
+   ["Show and tell" category of the Discussions](https://github.com/Ariazonaa/ytmusic-desktop/discussions/categories/show-and-tell),
+   if you like.
 
-Plugins posted there are not checked by anyone. They run in the sandbox and
-can do only what their manifest asks for, and the user sees that list before
-switching a plugin on.
+#### The plugin list
+
+[`plugins/index.json`](../plugins/index.json) in this repository lists the
+plugins the settings window offers under "Find plugins". The app fetches it
+when the user clicks "Load the list", and installs a plugin from the address
+given there. To add yours, open a pull request with an entry like this:
+
+```json
+{
+  "plugins": [
+    {
+      "name": "hello",
+      "version": "1.0.0",
+      "description": "A panel with the songs played so far.",
+      "author": "your-github-name",
+      "homepage": "https://github.com/you/ytmd-hello",
+      "permissions": ["music.read", "ui.inject"],
+      "hosts": [],
+      "url": "https://github.com/you/ytmd-hello/releases/download/v1.0.0/hello.zip",
+      "sha256": "…"
+    }
+  ]
+}
+```
+
+- `name`, `version`, `permissions` and `hosts` are those in your
+  `plugin.json`. The app installs the download only if they match: the
+  user sees permissions and hosts before installing, and gets exactly those.
+- `url` is the zip over HTTPS, at most 20 MB. A release asset suits best,
+  since it does not change.
+- `sha256` is the zip's checksum, in PowerShell
+  `(Get-FileHash hello.zip).Hash`, elsewhere `sha256sum hello.zip`. The
+  app refuses a download that does not match it, so a new version needs a
+  new entry with its own address and checksum.
+- `description` at most 300 characters, `author` at most 60, `homepage`
+  optional and over HTTPS.
+
+A check runs on every pull request to the list: it downloads each zip and
+compares it with its entry. `node scripts/check-plugin-list.mjs --download`
+runs the same check on your computer.
+
+Nobody reviews the code of listed plugins. They run in the sandbox and can do
+only what their manifest asks for; the settings window shows that before
+installing and again before switching a plugin on.
 
 If the API lacks something your plugin needs,
 [ask for it](https://github.com/Ariazonaa/ytmusic-desktop/issues/new?template=plugin-api.yml).

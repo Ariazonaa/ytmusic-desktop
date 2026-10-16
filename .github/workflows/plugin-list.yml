@@ -1,0 +1,21 @@
+name: Plugin list
+
+# A pull request that adds or changes a plugin in plugins/index.json: every
+# entry must be usable, and every zip must match its entry.
+on:
+  pull_request:
+    paths: [plugins/index.json]
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: Check the plugin list and its downloads
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/check-plugin-list.mjs --download

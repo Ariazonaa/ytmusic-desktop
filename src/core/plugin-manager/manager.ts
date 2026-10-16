@@ -84,8 +84,22 @@ export class PluginManager {
       entry.dispose = dispose;
       this.active.set(name, entry);
       this.call(name, "onLoad", () => plugin.onLoad?.(api));
-      if (this.uiReady) this.call(name, "onUIReady", () => plugin.onUIReady?.());
+      if (this.uiReady && this.active.has(name)) this.call(name, "onUIReady", () => plugin.onUIReady?.());
+      if (this.active.has(name)) this.catchUp(name, plugin);
     }
+  }
+
+  /**
+   * A plugin switched on while a track plays learns of it now, as it would
+   * have at the track's start; not only at the next one.
+   */
+  private catchUp(name: string, plugin: Plugin): void {
+    if (!plugin.manifest.permissions.includes("music.read")) return;
+    const song = this.services.music.getCurrentSong();
+    if (!song) return;
+    this.call(name, "onSongChange", () => plugin.onSongChange?.(song));
+    const state = this.services.music.getPlaybackState();
+    if (state && this.active.has(name)) this.call(name, "onPlaybackChange", () => plugin.onPlaybackChange?.(state));
   }
 
   /** Makes exactly the named plugins active: loads the missing ones, unloads the rest. */

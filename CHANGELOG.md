@@ -4,6 +4,39 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.8.0
+
+- New plugin `discord`: your Discord profile shows what you are listening
+  to, with cover, progress and a button to listen too, as "Listening to
+  YouTube Music". Works with the Discord app on Windows and Linux.
+- Its settings choose what the member list shows next to your name (the
+  artist, the title or YouTube Music), whether title and artist link to
+  YouTube Music, the cover, the progress, a small icon that tells whether you
+  like the track, the buttons, and what happens while paused. A preview in
+  the settings window shows the status as Discord gets it.
+- After Discord was restarted, the status comes back by itself.
+- Equalizer, "preset per output device": a device also brings back your own
+  curve, not only the name of the preset.
+- SponsorBlock skips the chosen parts again on every run of a repeated track.
+- A plugin switched on while a track plays knows the track at once, not only
+  from the next one.
+- Changes from the settings window and from plugins no longer overwrite each
+  other when they come at the same time.
+- Plugins from others are held tighter: their frame cannot reach the network
+  through link hints (`preconnect`, `prerender`) or WebRTC, their keyboard
+  shortcuts cannot take copying, reloading or zooming from the window,
+  opening a track needs `music.control`, and an answer to `net` requests is
+  read up to 2 MB and no further.
+- "Find plugins" in the settings window: a list of plugins by others, kept
+  in this repository, with what each may do. One click installs a plugin;
+  the download must match the checksum and the permissions in the list. A
+  newer version in the list is offered as an update. Authors add their
+  plugins by pull request, see docs/plugins.md. The list starts with the
+  example plugin `hello`.
+- The page can open the settings window or a folder at most once a second.
+- The app starts where WebView2 is part of Windows but not registered, as in
+  Windows Sandbox, and the installer no longer gives up there.
+
 ## 0.7.0
 
 - Linux: the app is out for Linux as a .deb (Debian, Ubuntu and others with

@@ -160,6 +160,25 @@ describe("PluginManager", () => {
     expect(other.onSongChange).not.toHaveBeenCalled();
   });
 
+  it("tells a plugin switched on during a track what plays", () => {
+    const reader = makePlugin("reader", ["music.read"], { onSongChange: vi.fn(), onPlaybackChange: vi.fn() });
+    const other = makePlugin("other", ["ui.inject"], { onSongChange: vi.fn() });
+    const manager = new PluginManager([reader, other], makeServices().services, silent);
+    manager.enable(["reader", "other"]);
+
+    expect(reader.onSongChange).toHaveBeenCalledExactlyOnceWith(song);
+    expect(reader.onPlaybackChange).toHaveBeenCalledExactlyOnceWith(playback);
+    expect(other.onSongChange).not.toHaveBeenCalled();
+  });
+
+  it("tells a new plugin nothing while nothing plays", () => {
+    const reader = makePlugin("reader", ["music.read"], { onSongChange: vi.fn() });
+    const { services } = makeServices();
+    services.music.getCurrentSong = () => null;
+    new PluginManager([reader], services, silent).enable(["reader"]);
+    expect(reader.onSongChange).not.toHaveBeenCalled();
+  });
+
   it("sends playback changes only to plugins with music.read", () => {
     const reader = makePlugin("reader", ["music.read"], { onPlaybackChange: vi.fn() });
     const other = makePlugin("other", ["ui.inject"], { onPlaybackChange: vi.fn() });
@@ -183,6 +202,8 @@ describe("PluginManager", () => {
     });
     const healthy = makePlugin("healthy", ["music.read"], { onSongChange: vi.fn() });
     const log = { warn: vi.fn(), error: vi.fn() };
+    // Nothing plays yet, so switching them on sends no song.
+    services.music.getCurrentSong = () => null;
     const manager = new PluginManager([broken, healthy], services, log);
     manager.enable(["broken", "healthy"]);
 
@@ -234,6 +255,14 @@ describe("plugin API permissions", () => {
     expect(() => api.player).toThrow(PermissionError);
     expect(() => api.ui).toThrow(PermissionError);
     expect(() => api.net).toThrow(PermissionError);
+  });
+
+  it("opens a track, which plays it, only with music.control", () => {
+    const api = loadWith(["ui.inject"]);
+    expect(() => api.ui.navigate({ type: "track", videoId: "dQw4w9WgXcQ" })).toThrow(PermissionError);
+    expect(() => api.ui.navigate({ type: "search", query: "abba" })).not.toThrow();
+    const controlling = loadWith(["ui.inject", "music.control"]);
+    expect(() => controlling.ui.navigate({ type: "track", videoId: "dQw4w9WgXcQ" })).not.toThrow();
   });
 
   it("limits network access to HTTPS on the hosts in the manifest", async () => {

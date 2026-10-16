@@ -2,9 +2,9 @@
 // that shows the resulting frequency response.
 import { parseManifest } from "../../core/plugin-manager/api";
 import { listShared, openSharedFolder, saveShared } from "../../core/settings/client";
-import type { Panel, Plugin, PluginApi } from "../../shared/types";
-import { dbToGain, gainsFor, presetFileSettings } from "./bands";
-import { parseDevicePresets, withDevicePreset } from "./devices";
+import type { Panel, Plugin, PluginApi, PluginSettingValues } from "../../shared/types";
+import { bandKey, dbToGain, FREQUENCIES, gainsFor, presetFileSettings } from "./bands";
+import { parseDevicePresets, sameChoice, withDevicePreset, type DeviceChoice } from "./devices";
 import { createFilters } from "./filters";
 import manifest from "./plugin.json";
 import { UI_CSS, createEqualizerUi, type EqualizerUi } from "./ui";
@@ -43,11 +43,18 @@ function applySettings(): void {
 
 const describe = (error: unknown): string => (error instanceof Error ? error.message : String(error));
 
-const save = (values: Record<string, string>): void => {
+const save = (values: Record<string, string | number>): void => {
   api?.settings.update(values).catch((error: unknown) => {
     console.warn("[equalizer] could not save settings", error);
   });
 };
+
+/** What the device in use should bring back: the preset, and for the own curve its bands. */
+function currentChoice(settings: PluginSettingValues): DeviceChoice | null {
+  if (typeof settings.preset !== "string") return null;
+  if (settings.preset !== "custom") return { preset: settings.preset };
+  return { preset: "custom", bands: gainsFor(settings) };
+}
 
 /** The sound goes to `name` now: bring back the preset last chosen with that device. */
 function deviceChanged(name: string | null): void {
@@ -58,7 +65,13 @@ function deviceChanged(name: string | null): void {
   ui?.setDevice(perDevice ? name : null);
   if (!perDevice || name === null) return;
   const remembered = parseDevicePresets(settings.devicePresets).get(name);
-  if (remembered !== undefined && remembered !== settings.preset) save({ preset: remembered });
+  if (!remembered || sameChoice(remembered, currentChoice(settings) ?? undefined)) return;
+  const values: Record<string, string | number> = { preset: remembered.preset };
+  for (const [index, frequency] of FREQUENCIES.entries()) {
+    const gain = remembered.bands?.[index];
+    if (gain !== undefined) values[bandKey(frequency)] = gain;
+  }
+  save(values);
 }
 
 /** Notes the chosen preset for the device in use, so that it comes back with it. */
@@ -67,9 +80,10 @@ function rememberForDevice(): void {
   const settings = api.settings.getAll();
   const perDevice = settings.perDevice === true;
   ui?.setDevice(perDevice ? device : null);
-  if (!perDevice || device === null || typeof settings.preset !== "string") return;
+  const choice = currentChoice(settings);
+  if (!perDevice || device === null || !choice) return;
   const choices = parseDevicePresets(settings.devicePresets);
-  if (choices.get(device) !== settings.preset) save({ devicePresets: withDevicePreset(choices, device, settings.preset) });
+  if (!sameChoice(choices.get(device), choice)) save({ devicePresets: withDevicePreset(choices, device, choice) });
 }
 
 async function refreshFiles(): Promise<void> {

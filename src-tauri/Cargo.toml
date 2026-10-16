@@ -1,6 +1,6 @@
 [package]
 name = "ytmusic-desktop"
-version = "0.7.0"
+version = "0.8.0"
 edition = "2021"
 license = "MIT"
 
@@ -26,6 +26,12 @@ serde_json = "1"
 sys-locale = "0.3"
 base64 = "0.22"
 zip = { version = "2", default-features = false, features = ["deflate"] }
+# The plugin list. The same HTTP client and TLS setup as tauri-plugin-updater,
+# so nothing new is built.
+reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "system-proxy"] }
+rustls = { version = "0.23", default-features = false, features = ["ring"] }
+sha2 = "0.10"
+tempfile = "3"
 
 [target.'cfg(windows)'.dependencies]
 # Must match the versions Tauri itself uses, see Cargo.lock.
@@ -42,5 +48,3 @@ windows = { version = "0.62", features = [
     "Win32_UI_Shell_PropertiesSystem",
 ] }
 
-[dev-dependencies]
-tempfile = "3"

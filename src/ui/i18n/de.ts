@@ -47,6 +47,7 @@ const de: Readonly<Record<string, string>> = {
   "Not set": "Nicht belegt",
   Clear: "Löschen",
   "Press the keys…": "Tasten drücken…",
+  "{keys} is taken by the app": "{keys} gehört der App",
   "{label} shortcut": "Tastenkürzel für {label}",
 
   // Welcome and problems
@@ -94,6 +95,19 @@ const de: Readonly<Record<string, string>> = {
   "Install from a zip file": "Aus Zip-Datei installieren",
   "Installed {name}. Switch it on in the list above.": "{name} installiert. Schalte es in der Liste oben ein.",
   "Could not install the plugin: {reason}": "Das Plugin ließ sich nicht installieren: {reason}",
+  "Find plugins": "Plugins finden",
+  "Plugins by others, from a list in the app's repository on GitHub. Loading the list asks GitHub for it, nothing more. Nobody checks the plugins: read what each one may do before you install it.":
+    "Plugins von anderen, aus einer Liste im Repository der App auf GitHub. Zum Laden wird GitHub nach der Liste gefragt, sonst nichts. Niemand prüft die Plugins: Lies vor dem Installieren, was jedes darf.",
+  "Load the list": "Liste laden",
+  "Load again": "Neu laden",
+  "Loading…": "Lädt…",
+  "The list is empty so far.": "Die Liste ist bisher leer.",
+  "Could not load the list: {reason}": "Die Liste ließ sich nicht laden: {reason}",
+  Installed: "Installiert",
+  "Update to {version}": "Auf {version} aktualisieren",
+  "Updated {name} to {version}.": "{name} auf {version} aktualisiert.",
+  Install: "Installieren",
+  "More about it": "Mehr dazu",
   Remove: "Entfernen",
   "Really remove? Its files are deleted.": "Wirklich entfernen? Seine Dateien werden gelöscht.",
   "Removed {name}.": "{name} entfernt.",
@@ -118,6 +132,41 @@ const de: Readonly<Record<string, string>> = {
     "Musikvideos ohne Video: wechselt zur Audio-Version, oder lädt ohne Premium das kleinste Bild und zeigt das Cover.",
   "Presses Yes when YouTube Music stops and asks whether to go on playing.":
     "Drückt „Ja“, wenn YouTube Music anhält und fragt, ob es weiterspielen soll.",
+  "Shows in your Discord profile what you are listening to, with cover, progress and a button to listen along. Your friends on Discord see it.":
+    "Zeigt in deinem Discord-Profil, was du hörst, mit Cover, Fortschritt und einem Knopf zum Mithören. Deine Freunde auf Discord sehen das.",
+  "Name in the member list": "Name in der Mitgliederliste",
+  'What your friends see next to your name, after "Listening to".':
+    "Was deine Freunde neben deinem Namen sehen, nach „Hört“.",
+  "The artist": "Den Künstler",
+  "The title": "Den Titel",
+  "Show the cover": "Cover zeigen",
+  "Show how far the track is": "Fortschritt des Titels zeigen",
+  "Title and artist open YouTube Music": "Titel und Künstler öffnen YouTube Music",
+  "Clicking the title opens the track, clicking the artist searches for them.":
+    "Ein Klick auf den Titel öffnet ihn, ein Klick auf den Künstler sucht nach ihm.",
+  "Small icon on the cover": "Kleines Symbol auf dem Cover",
+  "The app's icon; hovering it shows whether you like the track.":
+    "Das Symbol der App; darüber steht, ob dir der Titel gefällt.",
+  'Button "Listen on YouTube Music"': "Knopf „Auf YouTube Music anhören“",
+  'Button "Get the app"': "Knopf „Hol dir die App“",
+  "Leads to this app's page on GitHub.": "Führt zur Seite dieser App auf GitHub.",
+  "While paused": "Bei Pause",
+  "Show nothing": "Nichts zeigen",
+  "Keep the track, marked as paused": "Titel stehen lassen, als pausiert markiert",
+  Preview: "Vorschau",
+  "Preview: what Discord shows right now.": "Vorschau: Das zeigt Discord gerade.",
+  "Preview with a sample track: Discord shows nothing right now.":
+    "Vorschau mit einem Beispieltitel: Discord zeigt gerade nichts.",
+  "Listening to {name}": "Hört {name}",
+  "Listening to {name} now": "Hört {name} zu",
+  "On the small icon: {text}": "Am kleinen Symbol: {text}",
+  "You, in the member list": "Du, in der Mitgliederliste",
+  "The buttons show to others only; Discord leaves them out of your own profile.":
+    "Die Knöpfe sehen nur andere; im eigenen Profil lässt Discord sie weg.",
+  Paused: "Pausiert",
+  "You like this track": "Gefällt dir",
+  "Listen on YouTube Music": "Auf YouTube Music anhören",
+  "Get the app": "Hol dir die App",
   "Volume boost up to 300 %, left/right balance and mono.":
     "Lautstärke bis 300 %, Balance zwischen links und rechts und Mono.",
   "Evens out loud and quiet passages.":

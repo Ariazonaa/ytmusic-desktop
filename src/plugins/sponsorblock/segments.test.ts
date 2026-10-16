@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { enabledCategories, formatDuration, parseSegments, segmentAt, segmentsUrl, type Segment } from "./segments";
+import { enabledCategories, formatDuration, parseSegments, segmentAt, segmentsUrl, startedOver, type Segment } from "./segments";
 
 describe("formatDuration", () => {
   it("reads as seconds, minutes or hours", () => {
@@ -84,5 +84,19 @@ describe("segmentsUrl", () => {
     expect(url).toMatch(/^https:\/\/sponsor\.ajay\.app\/api\/skipSegments\/[0-9a-f]{4}\?categories=/);
     expect(url).not.toContain("dQw4w9WgXcQ");
     expect(decodeURIComponent(url)).toContain('"music_offtopic"');
+  });
+});
+
+describe("startedOver", () => {
+  it("is a jump from later in the track back to its first seconds", () => {
+    expect(startedOver(212.5, 0.3)).toBe(true);
+    expect(startedOver(60, 2)).toBe(true);
+  });
+
+  it("is not the first look, the start itself or a jump back within the track", () => {
+    expect(startedOver(null, 0)).toBe(false);
+    expect(startedOver(1, 1.25)).toBe(false);
+    expect(startedOver(4, 0.5)).toBe(false);
+    expect(startedOver(120, 40)).toBe(false);
   });
 });

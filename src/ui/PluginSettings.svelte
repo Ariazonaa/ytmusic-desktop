@@ -48,6 +48,7 @@
         description={field.description ? t(field.description) : undefined}
         value={String(values[key] ?? "")}
         onchange={(shortcut) => onchange(key, shortcut)}
+        windowOnly
       />
     {:else if field.type === "boolean"}
       <Toggle checked={values[key] === true} onchange={(checked) => onchange(key, checked)}>

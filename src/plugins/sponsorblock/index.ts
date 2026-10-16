@@ -10,6 +10,7 @@ import {
   parseSegments,
   segmentAt,
   segmentsUrl,
+  startedOver,
   type Segment,
 } from "./segments";
 import { t } from "../../core/i18n";
@@ -21,6 +22,10 @@ let timer: ReturnType<typeof setInterval> | undefined;
 let videoId: string | null = null;
 let segments: Segment[] = [];
 const skipped = new Set<string>();
+/** Where the last look found the track, to notice when it starts over. */
+let lastPosition: number | null = null;
+/** Until then, a jump to the start is the user's "Play it", not a new run. */
+let replayUntil = 0;
 
 async function loadSegments(pluginApi: PluginApi, id: string): Promise<void> {
   const { status, data } = await pluginApi.net.getJson(await segmentsUrl(id));
@@ -39,6 +44,7 @@ function tick(): void {
     videoId = currentId;
     segments = [];
     skipped.clear();
+    lastPosition = null;
     if (currentId) {
       loadSegments(pluginApi, currentId).catch((error: unknown) => {
         console.warn("[sponsorblock] could not load segments", error);
@@ -48,6 +54,9 @@ function tick(): void {
 
   const playback = pluginApi.music.getPlaybackState();
   if (!playback || playback.paused) return;
+  // "Repeat one" plays the same track again: skip its segments again too.
+  if (startedOver(lastPosition, playback.positionSeconds) && Date.now() > replayUntil) skipped.clear();
+  lastPosition = playback.positionSeconds;
   const settings = pluginApi.settings.getAll();
   const segment = segmentAt(segments, playback.positionSeconds, enabledCategories(settings), skipped);
   if (!segment) return;
@@ -68,6 +77,7 @@ function tick(): void {
     pluginApi.ui.showNotice(text, {
       label: t("Play it"),
       onClick: () => {
+        replayUntil = Date.now() + 2000;
         pluginApi.player.seekTo(segment.start);
         addSaved(pluginApi, -length);
       },
@@ -99,6 +109,7 @@ const sponsorblock: Plugin = {
     videoId = null;
     segments = [];
     skipped.clear();
+    lastPosition = null;
   },
 };
 

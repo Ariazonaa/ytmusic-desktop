@@ -70,6 +70,48 @@ export function describeShortcut(shortcut: string): string {
 const MODIFIERS = ["Ctrl", "Alt", "Shift", "Super"];
 
 /**
+ * Combinations the app's window keeps for itself: copying and pasting,
+ * selecting, undoing, searching the page, reloading, zooming, going back and
+ * the developer tools. A plugin cannot take them.
+ */
+const RESERVED_IN_WINDOW = new Set([
+  "Ctrl+KeyA",
+  "Ctrl+KeyC",
+  "Ctrl+KeyV",
+  "Ctrl+KeyX",
+  "Ctrl+KeyZ",
+  "Ctrl+KeyY",
+  "Ctrl+Shift+KeyZ",
+  "Ctrl+KeyF",
+  "Ctrl+KeyR",
+  "Ctrl+Shift+KeyR",
+  "Ctrl+KeyP",
+  "Ctrl+Equal",
+  "Ctrl+Shift+Equal",
+  "Ctrl+Minus",
+  "Ctrl+Digit0",
+  "Ctrl+NumpadAdd",
+  "Ctrl+NumpadSubtract",
+  "Ctrl+Numpad0",
+  "Alt+ArrowLeft",
+  "Alt+ArrowRight",
+  "Ctrl+Shift+KeyI",
+  "Ctrl+Shift+KeyJ",
+  "Ctrl+Shift+KeyC",
+  "F3",
+  "F5",
+  "Ctrl+F5",
+  "F7",
+  "F11",
+  "F12",
+]);
+
+/** Whether the app's window keeps `shortcut` for itself, so that a plugin cannot use it. */
+export function isReservedInWindow(shortcut: string): boolean {
+  return RESERVED_IN_WINDOW.has(shortcut);
+}
+
+/**
  * Whether `text` is a shortcut as `shortcutFrom` writes them: modifiers in
  * the order Ctrl, Alt, Shift, Super, then one key, with the same rule about
  * which keys may stand without a modifier.

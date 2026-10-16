@@ -5,7 +5,8 @@ import App from "./App.svelte";
 
 const client = vi.hoisted(() => ({
   getSettings: vi.fn(),
-  setSettings: vi.fn(),
+  updateSettings: vi.fn(),
+  updatePluginSettings: vi.fn(),
   listExternalPlugins: vi.fn(),
   restartRequired: vi.fn(),
   restartApp: vi.fn(),
@@ -22,6 +23,9 @@ const client = vi.hoisted(() => ({
   pendingUpdate: vi.fn(),
   checkUpdate: vi.fn(),
   installUpdate: vi.fn(),
+  marketplaceList: vi.fn(),
+  marketplaceInstall: vi.fn(),
+  marketplaceOpenHomepage: vi.fn(),
 }));
 const setTitle = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
@@ -50,12 +54,26 @@ const switchFor = (label: string): HTMLInputElement => {
   if (!input) throw new Error(`no switch for ${label}`);
   return input;
 };
-const lastSaved = (): Settings => client.setSettings.mock.calls.at(-1)?.[0] as Settings;
+/** The settings as the backend has them after the window's last change. */
+let saved: Settings = settings();
+const lastSaved = (): Settings => saved;
 
 beforeEach(() => {
   vi.clearAllMocks();
-  client.getSettings.mockResolvedValue(settings());
-  client.setSettings.mockResolvedValue(undefined);
+  saved = settings();
+  client.getSettings.mockImplementation(() => Promise.resolve(saved));
+  // Like the backend: merges the change into what it has and answers with the result.
+  client.updateSettings.mockImplementation((changes: Partial<Settings>) => {
+    saved = { ...saved, ...changes };
+    return Promise.resolve(saved);
+  });
+  client.updatePluginSettings.mockImplementation(
+    (plugin: string, values: Record<string, unknown>, replace: boolean) => {
+      const current = replace ? {} : (saved.pluginSettings[plugin] ?? {});
+      saved = { ...saved, pluginSettings: { ...saved.pluginSettings, [plugin]: { ...current, ...values } } } as Settings;
+      return Promise.resolve(saved);
+    },
+  );
   client.listExternalPlugins.mockResolvedValue([]);
   client.restartRequired.mockResolvedValue(false);
   client.exportSettings.mockResolvedValue(true);
@@ -76,13 +94,13 @@ describe("settings window", () => {
 
     await fireEvent.click(switchFor("Start in the tray"));
 
-    await waitFor(() => expect(client.setSettings).toHaveBeenCalledOnce());
+    await waitFor(() => expect(client.updateSettings).toHaveBeenCalledExactlyOnceWith({ startInTray: true }));
     expect(lastSaved()).toEqual(settings({ startInTray: true }));
     expect(switchFor("Start in the tray").checked).toBe(true);
   });
 
   it("flips a switch back and says why when saving fails", async () => {
-    client.setSettings.mockRejectedValue("too many plugins");
+    client.updateSettings.mockRejectedValue("too many plugins");
     render(App);
     await screen.findByText("General");
 
@@ -126,7 +144,7 @@ describe("settings window", () => {
 
     await fireEvent.click(crossfade);
 
-    await waitFor(() => expect(client.setSettings).toHaveBeenCalledOnce());
+    await waitFor(() => expect(client.updateSettings).toHaveBeenCalledOnce());
     expect(lastSaved().plugins).toEqual(["crossfade"]);
     expect(await screen.findByText("Switched off track-fade, which cannot run together with crossfade.")).toBeTruthy();
   });
@@ -146,7 +164,8 @@ describe("settings window", () => {
     expect(await screen.findByText("Einstellungen importiert.")).toBeTruthy();
     expect(switchFor("In den Tray minimieren").checked).toBe(false);
     // The backend saved them already; the window must not save them again.
-    expect(client.setSettings).not.toHaveBeenCalled();
+    expect(client.updateSettings).not.toHaveBeenCalled();
+    expect(client.updatePluginSettings).not.toHaveBeenCalled();
   });
 
   it("says nothing when a file dialog was cancelled, and reports a refused file", async () => {
@@ -165,7 +184,7 @@ describe("settings window", () => {
     render(App);
     await screen.findByText("General");
     const headings = [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim());
-    expect(headings).toEqual(["Sound", "Appearance", "Playback", "Tools", "Plugins from others"]);
+    expect(headings).toEqual(["Sound", "Appearance", "Playback", "Tools", "Plugins from others", "Find plugins"]);
     expect(screen.getByText("Brings every track to the same loudness.")).toBeTruthy();
 
     await fireEvent.input(screen.getByLabelText("Search plugins"), { target: { value: "loud" } });
@@ -203,12 +222,82 @@ describe("settings window", () => {
     expect(panelOf("Start with Windows")?.hidden).toBe(true);
   });
 
+  it("loads the plugin list only when asked, and installs from it", async () => {
+    const entry = {
+      name: "hello",
+      version: "1.0.0",
+      description: "Says hello.",
+      author: "someone",
+      homepage: "https://example.org/hello",
+      permissions: ["music.read", "network"],
+      hosts: ["api.example.org"],
+      url: "https://example.org/hello.zip",
+      sha256: "a".repeat(64),
+    };
+    client.marketplaceList.mockResolvedValue([entry]);
+    client.marketplaceInstall.mockResolvedValue("hello");
+    render(App);
+    await screen.findByText("General");
+    expect(client.marketplaceList).not.toHaveBeenCalled();
+
+    await fireEvent.click(screen.getByRole("button", { name: "Load the list" }));
+    await screen.findByText("Says hello.");
+    expect(screen.getByText("Permissions: music.read, network", { exact: false })).toBeTruthy();
+    expect(screen.getByText("Contacts: api.example.org", { exact: false })).toBeTruthy();
+
+    await fireEvent.click(screen.getByRole("button", { name: "More about it" }));
+    expect(client.marketplaceOpenHomepage).toHaveBeenCalledWith("hello");
+
+    // Once installed, the list knows it.
+    client.listExternalPlugins.mockResolvedValue([
+      { name: "hello", manifest: { name: "hello", version: "1.0.0", permissions: ["music.read", "network"], hosts: ["api.example.org"] }, frameUrl: "x" },
+    ]);
+    await fireEvent.click(screen.getByRole("button", { name: "Install" }));
+    expect(client.marketplaceInstall).toHaveBeenCalledWith("hello");
+    expect(await screen.findByText("Installed hello. Switch it on in the list above.")).toBeTruthy();
+    const installed = await screen.findByRole("button", { name: "Installed" });
+    expect((installed as HTMLButtonElement).disabled).toBe(true);
+
+    // Loading again asks again.
+    await fireEvent.click(screen.getByRole("button", { name: "Load again" }));
+    await waitFor(() => expect(client.marketplaceList).toHaveBeenCalledTimes(2));
+  });
+
+  it("offers an update for an installed plugin the list has newer", async () => {
+    client.listExternalPlugins.mockResolvedValue([
+      { name: "hello", manifest: { name: "hello", version: "0.9.0", permissions: [] }, frameUrl: "x" },
+    ]);
+    client.marketplaceList.mockResolvedValue([
+      { name: "hello", version: "1.0.0", description: "Says hello.", author: "someone", homepage: null, permissions: [], hosts: [], url: "https://example.org/hello.zip", sha256: "a".repeat(64) },
+    ]);
+    render(App);
+    await screen.findByText("General");
+    await fireEvent.click(screen.getByRole("button", { name: "Load the list" }));
+    const update = await screen.findByRole("button", { name: "Update to 1.0.0" });
+    expect(screen.queryByRole("button", { name: "More about it" })).toBeNull();
+
+    client.marketplaceInstall.mockResolvedValue("hello");
+    client.listExternalPlugins.mockResolvedValue([
+      { name: "hello", manifest: { name: "hello", version: "1.0.0", permissions: [] }, frameUrl: "x" },
+    ]);
+    await fireEvent.click(update);
+    expect(await screen.findByText("Updated hello to 1.0.0.")).toBeTruthy();
+  });
+
+  it("says why the list could not be loaded", async () => {
+    client.marketplaceList.mockRejectedValue("cannot reach raw.githubusercontent.com");
+    render(App);
+    await screen.findByText("General");
+    await fireEvent.click(screen.getByRole("button", { name: "Load the list" }));
+    expect(await screen.findByText("Could not load the list: cannot reach raw.githubusercontent.com")).toBeTruthy();
+  });
+
   it("filters the plugins by kind and by what is switched on", async () => {
     client.getSettings.mockResolvedValue(settings({ plugins: ["lyrics", "normalize"] }));
     render(App);
     await screen.findByText("General");
     const kinds = (): (string | undefined)[] =>
-      [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim()).slice(0, -1);
+      [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim()).slice(0, -2);
 
     await fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
     expect(kinds()).toEqual(["Appearance"]);
@@ -255,9 +344,7 @@ describe("settings window", () => {
   });
 
   it("resets what it shows of a plugin's settings and keeps what the plugin stores for itself", async () => {
-    client.getSettings.mockResolvedValue(
-      settings({ pluginSettings: { lyrics: { fontSize: 22, offsets: '{"dQw4w9WgXcQ":1}' }, themes: { blur: 10 } } }),
-    );
+    saved = settings({ pluginSettings: { lyrics: { fontSize: 22, offsets: '{"dQw4w9WgXcQ":1}' }, themes: { blur: 10 } } });
     render(App);
     await screen.findByText("General");
     const block = screen.getByText("Font size").closest("div");
@@ -267,7 +354,7 @@ describe("settings window", () => {
 
     await fireEvent.click(reset);
 
-    await waitFor(() => expect(client.setSettings).toHaveBeenCalledOnce());
+    await waitFor(() => expect(client.updatePluginSettings).toHaveBeenCalledOnce());
     expect(lastSaved().pluginSettings).toEqual({ lyrics: { offsets: '{"dQw4w9WgXcQ":1}' }, themes: { blur: 10 } });
   });
 
@@ -338,7 +425,7 @@ describe("settings window", () => {
     expect(await screen.findByText("Could not check for updates: no connection")).toBeTruthy();
     await fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
     await fireEvent.click(screen.getByRole("switch", { name: /Look for updates at start/ }));
-    expect(client.setSettings).toHaveBeenLastCalledWith(expect.objectContaining({ checkForUpdates: false }));
+    expect(client.updateSettings).toHaveBeenLastCalledWith({ checkForUpdates: false });
   });
 
   it("says so when the settings cannot be loaded", async () => {

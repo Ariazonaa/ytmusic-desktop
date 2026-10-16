@@ -3,7 +3,8 @@ fn main() {
     // only call them through a capability that allows them.
     let manifest = tauri_build::AppManifest::new().commands(&[
         "get_settings",
-        "set_settings",
+        "update_settings",
+        "update_plugin_settings",
         "open_settings",
         "list_external_plugins",
         "open_plugins_folder",
@@ -29,6 +30,12 @@ fn main() {
         "pending_update",
         "check_update",
         "install_update",
+        "discord_set_activity",
+        "discord_clear_activity",
+        "discord_preview",
+        "marketplace_list",
+        "marketplace_install",
+        "marketplace_open_homepage",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run tauri-build");

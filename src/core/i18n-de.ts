@@ -101,6 +101,12 @@ const de: Readonly<Record<string, string>> = {
   Normal: "Normal",
   High: "Hoch",
 
+  // Discord
+  "Listen on YouTube Music": "Auf YouTube Music anhören",
+  "Get the app": "Hol dir die App",
+  Paused: "Pausiert",
+  "You like this track": "Gefällt dir",
+
   // notices
   "Volume {volume} %": "Lautstärke {volume} %",
   "Skipped a track you disliked": "Einen Titel übersprungen, der dir nicht gefällt",

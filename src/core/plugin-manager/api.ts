@@ -294,7 +294,11 @@ export function createApi(
     showNotice: (text, action) => services.ui.showNotice(text, action),
     addNavButton: (label, onClick) => tracked(services.ui.addNavButton(label, onClick)),
     addShortcut: (shortcut, onPress) => tracked(services.ui.addShortcut(shortcut, onPress)),
-    navigate: (target) => services.ui.navigate(target),
+    navigate: (target) => {
+      // Opening a track plays it, which is controlling the music.
+      if ((target as { type?: unknown } | null)?.type === "track") require("music.control");
+      services.ui.navigate(target);
+    },
     addPanel(title) {
       const panel = services.ui.addPanel(title);
       const remove = tracked(() => panel.remove());

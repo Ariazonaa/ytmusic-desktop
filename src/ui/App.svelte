@@ -10,6 +10,9 @@
     importSettings,
     installPlugin,
     installUpdate,
+    marketplaceInstall,
+    marketplaceList,
+    marketplaceOpenHomepage,
     openLog,
     openPluginsFolder,
     pendingUpdate,
@@ -17,13 +20,23 @@
     removePlugin,
     restartApp,
     restartRequired,
-    setSettings,
+    updatePluginSettings,
+    updateSettings,
   } from "../core/settings/client";
   import { conflict, resolveSettings } from "../core/plugin-manager/api";
   import { PLUGIN_CATEGORIES } from "../shared/types";
-  import type { Health, PluginCategory, Settings, SettingValue, Shortcuts, UpdateInfo } from "../shared/types";
+  import type {
+    Health,
+    MarketEntry,
+    PluginCategory,
+    Settings,
+    SettingValue,
+    Shortcuts,
+    UpdateInfo,
+  } from "../shared/types";
   import { resolveLanguage, translator } from "./i18n";
   import { listPlugins, type ListedPlugin } from "./plugins";
+  import DiscordPreview from "./DiscordPreview.svelte";
   import PluginSettings from "./PluginSettings.svelte";
   import ShortcutField from "./ShortcutField.svelte";
   import Toggle from "./Toggle.svelte";
@@ -186,19 +199,33 @@
   }
 
   // Every change is saved at once. The switch flips immediately and flips
-  // back if the backend refuses the change.
-  async function update(patch: Partial<Settings>): Promise<void> {
-    if (!settings) return;
+  // back if the backend refuses the change. Only the change is sent: the page
+  // may have saved other settings since this window read them, and the backend
+  // answers with all settings as they are now.
+  async function save(shown: Settings, send: () => Promise<Settings>): Promise<void> {
     const previous = settings;
-    settings = { ...previous, ...patch };
+    settings = shown;
     try {
-      await setSettings(settings);
+      settings = await send();
       error = null;
       void checkRestart();
     } catch (reason) {
       settings = previous;
       error = t("Could not save settings: {reason}", { reason: String(reason) });
     }
+  }
+
+  async function update(patch: Partial<Omit<Settings, "pluginSettings">>): Promise<void> {
+    if (!settings) return;
+    await save({ ...settings, ...patch }, () => updateSettings(patch));
+  }
+
+  async function updatePlugin(name: string, values: Settings["pluginSettings"][string], replace: boolean): Promise<void> {
+    if (!settings) return;
+    const merged = replace ? values : { ...settings.pluginSettings[name], ...values };
+    await save({ ...settings, pluginSettings: { ...settings.pluginSettings, [name]: merged } }, () =>
+      updatePluginSettings(name, values, replace),
+    );
   }
 
   /** Says which plugins were switched off to make room for another, or what a button did. */
@@ -230,22 +257,19 @@
   }
 
   /** Puts the settings the window shows for a plugin back to their defaults. What the plugin keeps for itself stays. */
-  function resetPluginSettings(name: string): void {
+  async function resetPluginSettings(name: string): Promise<void> {
     if (!settings) return;
     const schema = plugins.find((plugin) => plugin.manifest.name === name)?.manifest.settings ?? {};
+    // What the plugin keeps may have changed since this window read it.
+    const fresh = await getSettings().catch(() => settings);
     const kept = Object.fromEntries(
-      Object.entries(settings.pluginSettings[name] ?? {}).filter(([key]) => schema[key]?.hidden === true),
+      Object.entries(fresh?.pluginSettings[name] ?? {}).filter(([key]) => schema[key]?.hidden === true),
     );
-    void update({ pluginSettings: { ...settings.pluginSettings, [name]: kept } });
+    await updatePlugin(name, kept, true);
   }
 
   function setPluginSetting(name: string, key: string, value: SettingValue): void {
-    if (!settings) return;
-    const pluginSettings = {
-      ...settings.pluginSettings,
-      [name]: { ...settings.pluginSettings[name], [key]: value },
-    };
-    void update({ pluginSettings });
+    void updatePlugin(name, { [key]: value }, false);
   }
 
   const SHORTCUT_ACTIONS: (keyof Shortcuts)[] = [
@@ -299,6 +323,47 @@
       error = null;
     } catch (reason) {
       error = t("Could not remove the plugin: {reason}", { reason: String(reason) });
+    }
+  }
+
+  /** The public plugin list, once loaded: only when the user asks, since it means asking GitHub. */
+  let market = $state<MarketEntry[] | null>(null);
+  /** What the list is busy with: loading it, or installing the plugin of that name. */
+  let marketBusy = $state<string | null>(null);
+  let marketError = $state<string | null>(null);
+  const LOADING_LIST = " list";
+
+  /** The version of an installed external plugin, by name. */
+  const installedVersions = $derived(
+    new Map(plugins.filter((plugin) => plugin.external).map((plugin) => [plugin.manifest.name, plugin.manifest.version])),
+  );
+
+  async function loadMarket(): Promise<void> {
+    marketBusy = LOADING_LIST;
+    try {
+      market = await marketplaceList();
+      marketError = null;
+    } catch (reason) {
+      marketError = t("Could not load the list: {reason}", { reason: String(reason) });
+    } finally {
+      marketBusy = null;
+    }
+  }
+
+  async function installFromList(name: string): Promise<void> {
+    marketBusy = name;
+    const update = installedVersions.has(name);
+    try {
+      const installed = await marketplaceInstall(name);
+      await refreshPlugins();
+      notice = update
+        ? t("Updated {name} to {version}.", { name: installed, version: installedVersions.get(installed) ?? "" })
+        : t("Installed {name}. Switch it on in the list above.", { name: installed });
+      marketError = null;
+    } catch (reason) {
+      marketError = t("Could not install the plugin: {reason}", { reason: String(reason) });
+    } finally {
+      marketBusy = null;
     }
   }
 
@@ -531,6 +596,9 @@
                     onreset={() => resetPluginSettings(manifest.name)}
                   />
                 {/if}
+                {#if manifest.name === "discord" && open}
+                  <DiscordPreview {t} values={resolveSettings(manifest, settings.pluginSettings[manifest.name])} />
+                {/if}
                 {#if external}
                   <div class="mt-2 flex justify-end">
                     <button
@@ -583,6 +651,76 @@
             </span>
           </Toggle>
         </div>
+      </div>
+
+      <h3 class="mt-6 mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+        {t("Find plugins")}
+      </h3>
+      <div class="rounded-lg bg-neutral-900 px-4 py-3">
+        <p class="text-neutral-400">
+          {t("Plugins by others, from a list in the app's repository on GitHub. Loading the list asks GitHub for it, nothing more. Nobody checks the plugins: read what each one may do before you install it.")}
+        </p>
+        <div class="mt-2">
+          {@render action(
+            marketBusy === LOADING_LIST ? t("Loading…") : market === null ? t("Load the list") : t("Load again"),
+            () => void loadMarket(),
+          )}
+        </div>
+        {#if market === null}
+          <!-- Nothing is asked of GitHub before the click. -->
+        {:else if market.length === 0}
+          <p class="mt-2">{t("The list is empty so far.")}</p>
+        {:else}
+          <ul class="mt-2 divide-y divide-neutral-800" aria-label={t("Find plugins")}>
+            {#each market as entry (entry.name)}
+              {@const installed = installedVersions.get(entry.name)}
+              <li class="py-3">
+                <div class="flex items-start justify-between gap-3">
+                  <span class="min-w-0">
+                    <span class="font-medium">{entry.name}</span>
+                    <span class="text-neutral-400">{entry.version} · {entry.author}</span>
+                  </span>
+                  <button
+                    type="button"
+                    class="shrink-0 rounded-md border border-neutral-700 px-3 py-1.5 hover:bg-neutral-800
+                      disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-white"
+                    disabled={marketBusy !== null || installed === entry.version}
+                    onclick={() => void installFromList(entry.name)}
+                  >
+                    {marketBusy === entry.name
+                      ? t("Installing…")
+                      : installed === entry.version
+                        ? t("Installed")
+                        : installed !== undefined
+                          ? t("Update to {version}", { version: entry.version })
+                          : t("Install")}
+                  </button>
+                </div>
+                <p class="mt-1">{entry.description}</p>
+                <p class="mt-1 text-neutral-400">
+                  {entry.permissions.length === 0
+                    ? t("No permissions")
+                    : t("Permissions: {list}", { list: entry.permissions.join(", ") })}
+                  {#if entry.hosts.length > 0}
+                    <br />{t("Contacts: {hosts}", { hosts: entry.hosts.join(", ") })}
+                  {/if}
+                </p>
+                {#if entry.homepage}
+                  <button
+                    type="button"
+                    class="mt-1 text-neutral-300 underline hover:text-white focus-visible:outline-2 focus-visible:outline-white"
+                    onclick={() => void marketplaceOpenHomepage(entry.name)}
+                  >
+                    {t("More about it")}
+                  </button>
+                {/if}
+              </li>
+            {/each}
+          </ul>
+        {/if}
+        {#if marketError}
+          <p class="mt-2 text-red-400">{marketError}</p>
+        {/if}
       </div>
     </section>
 
