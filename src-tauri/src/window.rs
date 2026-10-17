@@ -10,10 +10,13 @@ pub const MAIN_WINDOW_LABEL: &str = "main";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 pub const OVERLAY_WINDOW_LABEL: &str = "lyrics-overlay";
 const YTM_URL: &str = "https://music.youtube.com";
-/// What Chrome on Linux sends. WebKitGTK's own user agent gets "browser not
-/// supported" from YouTube Music; WebView2 on Windows sends a Chrome one anyway.
+/// Safari on Linux, as GNOME Web sends it. WebKitGTK's own user agent names a
+/// Safari version that does not exist and gets "browser not supported" from
+/// YouTube Music. A Chrome one gets the page, but YouTube then runs its bot
+/// check for Chrome, which fails in WebKit: without its token the video
+/// servers stop after about a minute of a track.
 #[cfg(target_os = "linux")]
-const LINUX_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36";
+const LINUX_USER_AGENT: &str = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.6 Safari/605.1.15";
 // Development builds on Windows load the script from disk instead, see `dev_inject`.
 #[cfg(not(all(debug_assertions, windows)))]
 const INJECT_SCRIPT: &str = include_str!("../../dist-inject/inject.js");

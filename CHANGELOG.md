@@ -6,6 +6,9 @@ this file needs a new heading.
 
 ## 0.9.0
 
+- Linux: playback no longer stops after about a minute of a track. The app
+  now presents itself as Safari on Linux, as GNOME Web does, instead of as
+  Chrome, so that YouTube's check of the browser succeeds.
 - YouTube Music shows some page loads with a new player bar. Next, previous,
   volume, mute, the time, the progress bar and the thumbs work in it as in the
   old one, and the settings window no longer says YouTube Music has changed.

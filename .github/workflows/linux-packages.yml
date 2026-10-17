@@ -88,7 +88,8 @@ jobs:
           path: packages
       - name: Build the package from the local .deb
         run: |
-          version=$(node -p "require('./package.json').version")
+          # A pkgver has no hyphens: a pre-release like 1.2.0-beta.1 is tried as 1.2.0_beta.1.
+          version=$(node -p "require('./package.json').version.replace(/-/g, '_')")
           mkdir -p /tmp/aur && cp packaging/aur/PKGBUILD /tmp/aur/
           cp packages/*.deb "/tmp/aur/ytmusic-desktop_${version}_amd64.deb"
           cd /tmp/aur
