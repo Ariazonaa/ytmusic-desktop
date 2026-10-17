@@ -1,0 +1,7 @@
+{
+  "name": "playlist-tools",
+  "version": "0.1.0",
+  "description": "Saves the open playlist as a text file or as a CSV for a spreadsheet, and lists the tracks that are in it more than once.",
+  "category": "tools",
+  "permissions": ["music.read", "ui.inject"]
+}

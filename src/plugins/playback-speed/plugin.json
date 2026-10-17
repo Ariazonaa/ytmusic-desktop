@@ -1,17 +1,28 @@
 {
   "name": "playback-speed",
-  "version": "0.1.0",
-  "description": "Plays everything faster or slower.",
+  "version": "0.2.0",
+  "description": "Plays music and podcasts faster or slower, each at its own speed.",
   "category": "playback",
   "permissions": ["music.read", "music.control"],
-  "conflicts": ["crossfade"],
+  "conflicts": ["crossfade", "skip-silence"],
   "settings": {
     "speed": {
       "type": "range",
       "label": "Speed",
+      "description": "For songs and music videos. A speed chosen in YouTube Music's menu is kept here.",
       "default": 1,
       "min": 0.5,
-      "max": 2,
+      "max": 3,
+      "step": 0.05,
+      "unit": "×"
+    },
+    "podcastSpeed": {
+      "type": "range",
+      "label": "Speed for podcasts",
+      "description": "For podcast episodes. A speed chosen in YouTube Music's menu while one plays is kept here.",
+      "default": 1,
+      "min": 0.5,
+      "max": 3,
       "step": 0.05,
       "unit": "×"
     },

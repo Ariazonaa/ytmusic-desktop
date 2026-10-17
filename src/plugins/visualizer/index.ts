@@ -21,7 +21,7 @@ ${SELECTORS.playerBar} { position: relative; }
   pointer-events: none;
 }
 /* The bar's own content stays above the canvas. */
-${SELECTORS.playerBar} > :not(.${CANVAS_CLASS}) { position: relative; z-index: 1; }
+:is(${SELECTORS.playerBar}) > :not(.${CANVAS_CLASS}) { position: relative; z-index: 1; }
 `;
 
 let api: PluginApi | undefined;

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-open-now-playing-folder"
+description = "Enables the open_now_playing_folder command without any pre-configured scope."
+commands.allow = ["open_now_playing_folder"]
+
+[[permission]]
+identifier = "deny-open-now-playing-folder"
+description = "Denies the open_now_playing_folder command without any pre-configured scope."
+commands.deny = ["open_now_playing_folder"]

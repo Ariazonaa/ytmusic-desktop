@@ -110,6 +110,13 @@ export interface Settings {
   /** Only values the user changed are stored; the rest come from the schema defaults. */
   pluginSettings: StoredPluginSettings;
   shortcuts: Shortcuts;
+  windowShortcuts: WindowShortcuts;
+}
+
+/** Key combinations of the app's window for what no plugin owns. An empty one is switched off. */
+export interface WindowShortcuts {
+  like: string;
+  dislike: string;
 }
 
 /**
@@ -136,6 +143,9 @@ export type PlayerAction =
 
 /** How the user rated a track with the thumbs. */
 export type LikeStatus = "like" | "dislike" | "none";
+
+/** What the playing track is: a song, a music video, a podcast episode, or something else. */
+export type TrackType = "song" | "video" | "podcast" | "other";
 
 /** A button on a notice. */
 export interface NoticeAction {
@@ -197,6 +207,8 @@ export interface MusicApi {
   getLoudnessLkfs(): number | null;
   /** How the user rated the current track, or `null` while the page has not said yet. */
   getLikeStatus(): LikeStatus | null;
+  /** Whether the current track is a song, a music video or a podcast episode; `null` before there is one. */
+  getTrackType(): TrackType | null;
   /** The play queue in order: played, playing and upcoming tracks. Empty before there is one. */
   getQueue(): QueueItem[];
 }
@@ -314,6 +326,11 @@ export interface NetApi {
    * not followed. The other server must allow requests from web pages (CORS).
    */
   request(url: string, request?: NetRequest): Promise<NetResponse>;
+  /**
+   * Opens an address in the user's browser, for a service's sign-in page,
+   * under the same rules as `getJson`: HTTPS, a host from the manifest.
+   */
+  openInBrowser(url: string): Promise<void>;
 }
 
 export interface NotifyOptions {

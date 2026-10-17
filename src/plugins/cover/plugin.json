@@ -1,0 +1,15 @@
+{
+  "name": "cover",
+  "version": "0.1.0",
+  "description": "Shows the cover of the playing track large, and saves it as a picture.",
+  "category": "appearance",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "shortcut": {
+      "type": "shortcut",
+      "label": "Shortcut",
+      "description": "Shows the cover over the whole window, and hides it again, while the app's window has the focus.",
+      "default": ""
+    }
+  }
+}

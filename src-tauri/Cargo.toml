@@ -1,6 +1,6 @@
 [package]
 name = "ytmusic-desktop"
-version = "0.8.0"
+version = "0.9.0-beta.1"
 edition = "2021"
 license = "MIT"
 
@@ -19,13 +19,15 @@ tauri-plugin-global-shortcut = "2"
 tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
-tauri-plugin-updater = "2"
+# Without "zip": updates are the installer and the AppImage themselves, not
+# archives, so nothing is unpacked.
+tauri-plugin-updater = { version = "2", default-features = false, features = ["rustls-tls", "system-proxy"] }
 tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 sys-locale = "0.3"
 base64 = "0.22"
-zip = { version = "2", default-features = false, features = ["deflate"] }
+zip = { version = "9", default-features = false, features = ["deflate"] }
 # The plugin list. The same HTTP client and TLS setup as tauri-plugin-updater,
 # so nothing new is built.
 reqwest = { version = "0.13", default-features = false, features = ["rustls-no-provider", "system-proxy"] }

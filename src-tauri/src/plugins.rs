@@ -245,12 +245,15 @@ fn image_sources(manifest: &Value) -> Vec<String> {
 
 fn frame_document(manifest: &Value) -> Response<Cow<'static, [u8]>> {
     // The styles are defaults for a plugin that shows its document as a panel.
+    // The bootstrap is a module as well: WebKitGTK does not load a classic
+    // script from this scheme into the sandboxed frame. Modules run in the
+    // order they appear, so `ytmd` exists before the plugin's code runs.
     const HTML: &str = "<!doctype html><meta charset=\"utf-8\">\
         <style>html{color-scheme:dark}\
         body{margin:0;padding:16px;background:#0f0f0f;color:#fff;\
         font:14px/1.5 Roboto,Arial,sans-serif}</style>\
         <body>\
-        <script src=\"/_bootstrap.js\"></script>\
+        <script type=\"module\" src=\"/_bootstrap.js\"></script>\
         <script type=\"module\" src=\"index.js\"></script>";
     // `sandbox` gives the document an opaque origin: no cookies, no storage,
     // no access to the embedding page. Scripts may only come from this

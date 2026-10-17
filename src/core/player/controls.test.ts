@@ -109,3 +109,18 @@ describe("controlPlayer", () => {
     }).not.toThrow();
   });
 });
+
+describe("the newer player bar", () => {
+  it("presses its next and previous buttons", () => {
+    const bar = document.body.appendChild(document.createElement("ytmusic-miniplayer"));
+    const clicks: string[] = [];
+    for (const name of ["Previous", "Next"]) {
+      const holder = bar.appendChild(document.createElement("div"));
+      holder.className = `ytmusicPlayerControls${name}Button`;
+      holder.appendChild(document.createElement("button")).addEventListener("click", () => clicks.push(name));
+    }
+    controlPlayer("next");
+    controlPlayer("previous");
+    expect(clicks).toEqual(["Next", "Previous"]);
+  });
+});

@@ -6,18 +6,22 @@ mod audio_device;
 mod autostart;
 mod background;
 mod commands;
+mod cover;
 #[cfg(all(debug_assertions, windows))]
 mod dev_inject;
 mod discord;
+mod download;
 mod frames;
 mod health;
 mod install;
 mod marketplace;
 mod notification;
+mod now_playing;
 mod offline;
 mod plugins;
 mod settings;
 mod shortcuts;
+mod stats;
 mod themes;
 mod tray;
 mod update;
@@ -97,7 +101,18 @@ pub fn run() {
             commands::discord_preview,
             commands::marketplace_list,
             commands::marketplace_install,
-            commands::marketplace_open_homepage
+            commands::marketplace_open_homepage,
+            commands::save_cover,
+            commands::now_playing_update,
+            commands::now_playing_serve,
+            commands::open_now_playing_folder,
+            commands::stats_record,
+            commands::stats_summary,
+            commands::stats_clear,
+            commands::save_text,
+            commands::lyrics_overlay,
+            commands::lyrics_overlay_line,
+            commands::open_link
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -120,6 +135,8 @@ pub fn run() {
             app.manage(commands::NotifyLimit::default());
             app.manage(commands::OpenLimit::default());
             app.manage(marketplace::MarketStore::default());
+            app.manage(now_playing::NowPlaying::default());
+            app.manage(stats::StatsStore::default());
             app.manage(update::UpdateStore::default());
             app.manage(discord::Discord::default());
             tray::create(app.handle(), &app.state::<SettingsStore>().get().language)?;

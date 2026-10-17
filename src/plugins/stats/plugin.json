@@ -1,0 +1,7 @@
+{
+  "name": "stats",
+  "version": "0.1.0",
+  "description": "Your most heard tracks and artists and your listening time per day, counted on this computer only.",
+  "category": "tools",
+  "permissions": ["music.read", "ui.inject"]
+}

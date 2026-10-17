@@ -27,6 +27,8 @@ export function setVolume(percent: number, doc: Document = document): number | n
   if (!slider || !Number.isFinite(percent)) return getVolume(doc);
   const volume = clamp(percent);
   slider.value = volume;
+  // The newer player bar has a plain range input, which the page follows as it moves.
+  if (slider instanceof HTMLInputElement) slider.dispatchEvent(new Event("input", { bubbles: true }));
   // The page listens for the slider's own change event.
   slider.dispatchEvent(new CustomEvent("change", { bubbles: true }));
   // A second slider is shown when the window is narrow.

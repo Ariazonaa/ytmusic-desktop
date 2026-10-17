@@ -43,8 +43,8 @@ describe("manifest", () => {
     const shown = Object.entries(manifest.settings ?? {})
       .filter(([, field]) => field.hidden !== true)
       .map(([key]) => key);
-    // The one switch the panel has no place for.
-    expect(shown).toEqual(["perDevice"]);
+    // What the panel has no place for: a switch, and the shortcut that opens it.
+    expect(shown).toEqual(["perDevice", "shortcut"]);
   });
 
   it("accepts built-in, saved and custom presets in the preset setting", () => {

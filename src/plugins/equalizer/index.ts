@@ -7,6 +7,7 @@ import { bandKey, dbToGain, FREQUENCIES, gainsFor, presetFileSettings } from "./
 import { parseDevicePresets, sameChoice, withDevicePreset, type DeviceChoice } from "./devices";
 import { createFilters } from "./filters";
 import manifest from "./plugin.json";
+import { SettingShortcut } from "../setting-shortcut";
 import { UI_CSS, createEqualizerUi, type EqualizerUi } from "./ui";
 import { t } from "../../core/i18n";
 
@@ -104,6 +105,17 @@ async function exportPreset(name: string, gains: readonly number[], preampDb: nu
   }
 }
 
+function togglePanel(): void {
+  if (panel?.open) {
+    panel.hide();
+  } else {
+    panel?.show();
+    void refreshFiles();
+  }
+}
+
+const shortcut = new SettingShortcut(togglePanel);
+
 const equalizer: Plugin = {
   manifest: parseManifest(manifest),
 
@@ -122,14 +134,8 @@ const equalizer: Plugin = {
       return { input: preamp, output: tail };
     });
     api.ui.injectCss(UI_CSS);
-    api.ui.addNavButton(t("Equalizer"), () => {
-      if (panel?.open) {
-        panel.hide();
-      } else {
-        panel?.show();
-        void refreshFiles();
-      }
-    });
+    api.ui.addNavButton(t("Equalizer"), togglePanel);
+    shortcut.apply(api);
   },
 
   onUIReady() {
@@ -160,10 +166,12 @@ const equalizer: Plugin = {
   onSettingsChange() {
     applySettings();
     rememberForDevice();
+    shortcut.apply(api);
   },
 
   onUnload() {
-    // The API removes the effect, the button, the panel and the CSS.
+    // The API removes the effect, the button, the panel, the shortcut and the CSS.
+    shortcut.clear();
     api = context = preamp = panel = ui = undefined;
     device = null;
     filters = [];

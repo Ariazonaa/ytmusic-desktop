@@ -88,6 +88,7 @@ fn manifest_prefix<R: Read + Seek>(zip: &mut zip::ZipArchive<R>) -> Result<Strin
     let mut found: Vec<String> = zip
         .file_names()
         .filter_map(|file| {
+            let file = file.ok()?;
             let prefix = file.strip_suffix(MANIFEST)?;
             // At the top, or exactly one folder down.
             (prefix.is_empty() || (prefix.ends_with('/') && prefix.matches('/').count() == 1))
@@ -133,10 +134,12 @@ fn unpack<R: Read + Seek>(
     let mut total = 0u64;
     for index in 0..zip.len() {
         let mut entry = zip.by_index(index).map_err(|err| err.to_string())?;
-        if entry.is_dir() {
+        // A link is passed over: a plugin consists of plain files.
+        if entry.is_dir() || entry.is_symlink() {
             continue;
         }
-        let Some(file) = entry.name().strip_prefix(prefix).map(str::to_owned) else {
+        let name = entry.name().map_err(|err| err.to_string())?.into_owned();
+        let Some(file) = name.strip_prefix(prefix).map(str::to_owned) else {
             continue;
         };
         if file != MANIFEST && !plugins::is_servable(&file) {
@@ -198,6 +201,28 @@ mod tests {
         assert!(hello.join("plugin.json").is_file());
         // Nothing of the unpacking is left behind.
         assert_eq!(fs::read_dir(dir.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn passes_over_links_in_the_archive() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut writer = zip::ZipWriter::new(Cursor::new(Vec::new()));
+        for (name, contents) in [
+            ("plugin.json", MANIFEST_JSON),
+            ("index.js", b"// index".as_slice()),
+        ] {
+            writer
+                .start_file(name, SimpleFileOptions::default())
+                .unwrap();
+            writer.write_all(contents).unwrap();
+        }
+        writer
+            .add_symlink("extra.js", "../../outside.js", SimpleFileOptions::default())
+            .unwrap();
+        let zip = Cursor::new(writer.finish().unwrap().into_inner());
+        assert_eq!(install(dir.path(), zip), Ok("hello".into()));
+        let extra = dir.path().join("hello").join("extra.js");
+        assert!(fs::symlink_metadata(&extra).is_err());
     }
 
     #[test]

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-stats-summary"
+description = "Enables the stats_summary command without any pre-configured scope."
+commands.allow = ["stats_summary"]
+
+[[permission]]
+identifier = "deny-stats-summary"
+description = "Denies the stats_summary command without any pre-configured scope."
+commands.deny = ["stats_summary"]

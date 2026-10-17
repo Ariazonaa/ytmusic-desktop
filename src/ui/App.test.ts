@@ -27,6 +27,9 @@ const client = vi.hoisted(() => ({
   marketplaceInstall: vi.fn(),
   marketplaceOpenHomepage: vi.fn(),
 }));
+/** The first tab's panel, with the plugins. */
+const pluginsTab = (): HTMLElement => document.querySelector<HTMLElement>("[role=tabpanel]")!;
+
 const setTitle = vi.hoisted(() => vi.fn(() => Promise.resolve()));
 
 vi.mock("../core/settings/client", () => client);
@@ -44,6 +47,7 @@ const settings = (changes: Partial<Settings> = {}): Settings => ({
   checkForUpdates: true,
   pluginSettings: {},
   shortcuts: { playPause: "", next: "", previous: "", volumeUp: "", volumeDown: "", toggleMute: "" },
+  windowShortcuts: { like: "", dislike: "" },
   ...changes,
 });
 
@@ -116,9 +120,9 @@ describe("settings window", () => {
     await screen.findByText("General");
     expect(setTitle).toHaveBeenLastCalledWith("Settings");
 
-    const language = screen.getByText("Language").closest("label")?.querySelector("select");
-    if (!language) throw new Error("no language field");
-    await fireEvent.change(language, { target: { value: "de" } });
+    await fireEvent.click(screen.getByRole("tab", { name: "General" }));
+    await fireEvent.click(screen.getByRole("combobox", { name: "Language" }));
+    await fireEvent.mouseDown(screen.getByRole("option", { name: "Deutsch" }));
 
     await screen.findByText("Allgemein");
     expect(screen.getByText("Letzten Titel wieder laden")).toBeTruthy();
@@ -183,7 +187,7 @@ describe("settings window", () => {
   it("lists plugins by kind, with what they do, and filters them", async () => {
     render(App);
     await screen.findByText("General");
-    const headings = [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim());
+    const headings = [...pluginsTab().querySelectorAll("h3")].map((heading) => heading.textContent?.trim());
     expect(headings).toEqual(["Sound", "Appearance", "Playback", "Tools", "Plugins from others", "Find plugins"]);
     expect(screen.getByText("Brings every track to the same loudness.")).toBeTruthy();
 
@@ -209,17 +213,17 @@ describe("settings window", () => {
       "Backup",
     ]);
     expect(panelOf("Plugins from others")?.hidden).toBe(false);
-    expect(panelOf("Start with Windows")?.hidden).toBe(true);
+    expect(panelOf("Start at sign-in")?.hidden).toBe(true);
     // An update that waits is marked on its tab.
     expect(screen.getByRole("tab", { name: /Updates/ }).querySelector("[title='Version 1.1.0 is available.']")).toBeTruthy();
 
     await fireEvent.click(screen.getByRole("tab", { name: "General" }));
-    expect(panelOf("Start with Windows")?.hidden).toBe(false);
+    expect(panelOf("Start at sign-in")?.hidden).toBe(false);
     expect(panelOf("Plugins from others")?.hidden).toBe(true);
     expect(screen.getByRole("tab", { name: "General" }).getAttribute("aria-selected")).toBe("true");
     await fireEvent.click(screen.getByRole("tab", { name: "Backup" }));
     expect(panelOf("Export settings")?.hidden).toBe(false);
-    expect(panelOf("Start with Windows")?.hidden).toBe(true);
+    expect(panelOf("Start at sign-in")?.hidden).toBe(true);
   });
 
   it("loads the plugin list only when asked, and installs from it", async () => {
@@ -292,12 +296,37 @@ describe("settings window", () => {
     expect(await screen.findByText("Could not load the list: cannot reach raw.githubusercontent.com")).toBeTruthy();
   });
 
+  it("sets the window's shortcuts, also those of plugins", async () => {
+    client.getSettings.mockResolvedValue(settings({ plugins: ["equalizer"] }));
+    render(App);
+    await screen.findByText("General");
+    await fireEvent.click(screen.getByRole("tab", { name: "Shortcuts" }));
+    const record = async (label: string, init: KeyboardEventInit): Promise<HTMLElement> => {
+      const field = screen.getByRole("button", { name: `${label} shortcut` });
+      await fireEvent.click(field);
+      await fireEvent.keyDown(field, init);
+      return field;
+    };
+
+    await record("Like", { code: "KeyL", ctrlKey: true, shiftKey: true });
+    expect(client.updateSettings).toHaveBeenCalledWith({ windowShortcuts: { like: "Ctrl+Shift+KeyL", dislike: "" } });
+
+    await record("Equalizer", { code: "KeyE", ctrlKey: true, shiftKey: true });
+    expect(client.updatePluginSettings).toHaveBeenCalledWith("equalizer", { shortcut: "Ctrl+Shift+KeyE" }, false);
+    // A plugin that is off says when its shortcut works.
+    expect(screen.getByText("Opens and closes its panel, while the plugin themes is on.")).toBeTruthy();
+
+    // What the window keeps is refused here too.
+    const dislike = await record("Dislike", { code: "KeyC", ctrlKey: true });
+    expect(dislike.textContent).toContain("is taken by the app");
+  });
+
   it("filters the plugins by kind and by what is switched on", async () => {
     client.getSettings.mockResolvedValue(settings({ plugins: ["lyrics", "normalize"] }));
     render(App);
     await screen.findByText("General");
     const kinds = (): (string | undefined)[] =>
-      [...document.querySelectorAll("h3")].map((heading) => heading.textContent?.trim()).slice(0, -2);
+      [...pluginsTab().querySelectorAll("h3")].map((heading) => heading.textContent?.trim()).slice(0, -2);
 
     await fireEvent.click(screen.getByRole("button", { name: "Appearance" }));
     expect(kinds()).toEqual(["Appearance"]);

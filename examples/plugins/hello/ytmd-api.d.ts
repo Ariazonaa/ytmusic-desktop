@@ -36,6 +36,9 @@ export interface JsonResponse {
 /** How the user rated a track with the thumbs. */
 export type LikeStatus = "like" | "dislike" | "none";
 
+/** What the playing track is: a song, a music video, a podcast episode, or something else. */
+export type TrackType = "song" | "video" | "podcast" | "other";
+
 /** One track of the play queue, with its texts as the page shows them. */
 export interface QueueItem {
   title: string;
@@ -109,6 +112,8 @@ export interface Ytmd {
     getLoudnessLkfs(): Promise<number | null>;
     /** How the user rated the current track, or `null` while the page has not said yet. */
     getLikeStatus(): Promise<LikeStatus | null>;
+    /** Whether the current track is a song, a music video or a podcast episode; `null` before there is one. */
+    getTrackType(): Promise<TrackType | null>;
     /** The play queue in order: played, playing and upcoming tracks. */
     getQueue(): Promise<QueueItem[]>;
   };
@@ -164,6 +169,11 @@ export interface Ytmd {
      * followed. The other server must allow requests from web pages (CORS).
      */
     request(url: string, request?: NetRequest): Promise<NetResponse>;
+    /**
+     * Opens an address in the user's browser, for a service's sign-in page.
+     * Over HTTPS, on a host listed under `hosts`; at most one a second.
+     */
+    openInBrowser(url: string): Promise<void>;
   };
 
   /** Needs the `notify` permission. */

@@ -113,3 +113,18 @@ describe("volume", () => {
     expect(slider.value).toBe(43);
   });
 });
+
+describe("the newer player bar", () => {
+  it("moves its range input and tells the page as the input does", () => {
+    const bar = document.body.appendChild(document.createElement("ytmusic-miniplayer"));
+    const slider = bar.appendChild(document.createElement("input"));
+    Object.assign(slider, { type: "range", id: "slider", min: "0", max: "100", value: "44" });
+    const events: string[] = [];
+    slider.addEventListener("input", () => events.push("input"));
+    slider.addEventListener("change", () => events.push("change"));
+    expect(getVolume()).toBe(44);
+    expect(setVolume(60)).toBe(60);
+    expect(slider.value).toBe("60");
+    expect(events).toEqual(["input", "change"]);
+  });
+});

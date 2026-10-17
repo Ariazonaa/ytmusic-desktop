@@ -1,0 +1,35 @@
+{
+  "name": "now-playing",
+  "version": "0.1.0",
+  "description": "Hands the playing track to streaming software such as OBS: as text files and a cover in a folder, and if you like as a page for a browser source.",
+  "category": "tools",
+  "permissions": ["music.read", "ui.inject"],
+  "settings": {
+    "format": {
+      "type": "string",
+      "label": "Text",
+      "description": "What now-playing.txt says. {title}, {artist} and {album} stand for the track.",
+      "default": "{artist} – {title}"
+    },
+    "page": {
+      "type": "boolean",
+      "label": "Page for a browser source",
+      "description": "Cover and track on http://127.0.0.1 at the port below, for OBS's browser source. Only this computer can open it.",
+      "default": false
+    },
+    "port": {
+      "type": "number",
+      "label": "Port",
+      "default": 47800,
+      "min": 1024,
+      "max": 65535,
+      "step": 1
+    },
+    "told": {
+      "type": "boolean",
+      "label": "Told where the files are",
+      "default": false,
+      "hidden": true
+    }
+  }
+}

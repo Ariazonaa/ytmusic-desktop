@@ -13,7 +13,7 @@ function setup(permissions: Permission[], hosts?: string[]) {
   const removeButton = vi.fn();
   let clickButton: (() => void) | undefined;
   const services: Services = {
-    music: { getCurrentSong: () => song, getPlaybackState: () => null, getVideoId: () => "abc", getLoudnessLkfs: () => null, getLikeStatus: () => null, getQueue: () => [] },
+    music: { getCurrentSong: () => song, getPlaybackState: () => null, getVideoId: () => "abc", getLoudnessLkfs: () => null, getLikeStatus: () => null, getTrackType: () => null, getQueue: () => [] },
     player: { seekTo: vi.fn(), setPlaybackRate: vi.fn(), getVolume: () => 50, setVolume: vi.fn(() => 50), next: vi.fn(), setLikeStatus: vi.fn(() => true), addToQueue: vi.fn(() => Promise.resolve()), removeFromQueue: vi.fn(), moveInQueue: vi.fn() },
     audio: { addEffect: vi.fn(() => vi.fn()), setOutputDelay: vi.fn(), getOutputDevice: vi.fn(() => Promise.resolve(null)), onOutputDeviceChange: vi.fn(() => vi.fn()) },
     ui: {
@@ -28,7 +28,7 @@ function setup(permissions: Permission[], hosts?: string[]) {
       }),
       addPanel: (title: string) => createPanel(title, document, () => {}),
     },
-    net: { getJson: vi.fn(() => Promise.resolve({ status: 200, data: 1 })), request: vi.fn(() => Promise.resolve({ status: 200, text: "{}", data: {} })) },
+    net: { getJson: vi.fn(() => Promise.resolve({ status: 200, data: 1 })), request: vi.fn(() => Promise.resolve({ status: 200, text: "{}", data: {} })), openInBrowser: vi.fn(() => Promise.resolve()) },
     notify: { show: vi.fn(() => Promise.resolve()) },
     saveSettings: vi.fn(() => Promise.resolve()),
   };

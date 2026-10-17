@@ -16,6 +16,7 @@
 // the crossfade's length. Pausing and seeking drop what is in the delay line.
 import { parseManifest } from "../../core/plugin-manager/api";
 import type { Plugin, PluginApi } from "../../shared/types";
+import { trackGain } from "../../core/audio/track-gain";
 import { correctDisplay } from "./display";
 import { MIN_TAIL_SECONDS, fadeCurves, rateFor, slopeFor, tailSeconds, targetDelay } from "./plan";
 import manifest from "./plugin.json";
@@ -38,6 +39,14 @@ const SLOPE_TOLERANCE = 0.002;
 interface Line {
   input: GainNode;
   delay: DelayNode;
+  /**
+   * The level of the track this line plays, from `normalize` if it runs.
+   * It sits behind the delay: when the line hands over, the end of its
+   * track still in the delay keeps its own level.
+   */
+  level: GainNode;
+  /** What `level` is headed for. */
+  levelTarget: number;
   output: GainNode;
   /** The delay is `anchorDelay` at `anchorTime` and grows by `slope` per second. */
   anchorTime: number;
@@ -142,6 +151,17 @@ function crossfade(g: Graph, time: number): void {
   report(0);
 }
 
+/** Levels the track that plays, on its own line, as `normalize` says. */
+function updateLevel(g: Graph, time: number): void {
+  if (!api) return;
+  const line = g.lines[active] as Line;
+  const target = trackGain.gainFor(api.music.getLoudnessLkfs());
+  if (Math.abs(target - line.levelTarget) < 1e-3) return;
+  line.levelTarget = target;
+  line.level.gain.cancelScheduledValues(time);
+  line.level.gain.setTargetAtTime(target, time, CLICK_FREE / 3);
+}
+
 function tick(): void {
   if (!api || !graph) return;
   const g = graph;
@@ -195,6 +215,7 @@ function tick(): void {
     report(rateFor(current.slope) * delayAt(current, time));
   }
 
+  updateLevel(g, time);
   lastPosition = playback.positionSeconds + reportedAhead;
   lastTick = now;
   wasPaused = playback.paused;
@@ -207,6 +228,8 @@ function build(context: AudioContext): { graph: Graph; input: GainNode } {
     const line: Line = {
       input: context.createGain(),
       delay: context.createDelay(MAX_DELAY_SECONDS + 1),
+      level: context.createGain(),
+      levelTarget: 1,
       output: context.createGain(),
       anchorTime: context.currentTime,
       anchorDelay: 0,
@@ -214,7 +237,7 @@ function build(context: AudioContext): { graph: Graph; input: GainNode } {
     };
     line.input.gain.value = open ? 1 : 0;
     line.output.gain.value = open ? 1 : 0;
-    input.connect(line.input).connect(line.delay).connect(line.output).connect(master);
+    input.connect(line.input).connect(line.delay).connect(line.level).connect(line.output).connect(master);
     return line;
   };
   return { graph: { context, lines: [makeLine(true), makeLine(false)], master }, input };
@@ -225,6 +248,8 @@ const crossfadePlugin: Plugin = {
 
   onLoad(pluginApi) {
     api = pluginApi;
+    // Two tracks at once need two levels: this plugin applies them.
+    trackGain.takeOver(true);
     active = 0;
     lastVideoId = null;
     wasPaused = true;
@@ -244,6 +269,7 @@ const crossfadePlugin: Plugin = {
 
   onUnload() {
     clearInterval(timer);
+    trackGain.takeOver(false);
     stopCorrectingDisplay?.();
     stopCorrectingDisplay = undefined;
     setRate(1);

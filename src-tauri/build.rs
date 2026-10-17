@@ -36,6 +36,17 @@ fn main() {
         "marketplace_list",
         "marketplace_install",
         "marketplace_open_homepage",
+        "save_cover",
+        "now_playing_update",
+        "now_playing_serve",
+        "open_now_playing_folder",
+        "stats_record",
+        "stats_summary",
+        "stats_clear",
+        "save_text",
+        "lyrics_overlay",
+        "lyrics_overlay_line",
+        "open_link",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run tauri-build");

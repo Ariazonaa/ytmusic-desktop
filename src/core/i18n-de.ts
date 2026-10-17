@@ -7,6 +7,47 @@ const de: Readonly<Record<string, string>> = {
   "Version {version} of the app is available": "Version {version} der App ist verfügbar",
   Show: "Anzeigen",
 
+  // playlist-tools
+  Playlist: "Playlist",
+  "Playlist tools": "Playlist-Werkzeuge",
+  "YouTube Music did not hand out the playlist.": "YouTube Music hat die Playlist nicht herausgegeben.",
+  "Open a playlist, then come back here.": "Öffne eine Playlist und komm dann hierher zurück.",
+  "Reads the whole playlist, also the part not shown yet.": "Liest die ganze Playlist, auch den Teil, der noch nicht angezeigt wird.",
+  "Loading…": "Lädt…",
+  "Read the playlist": "Playlist lesen",
+  "{count} tracks in “{name}”.": "{count} Titel in „{name}“.",
+  "Save as text": "Als Text speichern",
+  "Save as CSV": "Als CSV speichern",
+  "Read again": "Neu lesen",
+  "More than once": "Mehrfach enthalten",
+  "Every track is in the playlist once.": "Jeder Titel ist nur einmal in der Playlist.",
+  "at {positions}": "an {positions}",
+
+  // stats
+  Stats: "Statistik",
+  "{minutes} min": "{minutes} Min.",
+  "Nothing counted yet. Every track heard for 30 seconds or more counts.":
+    "Noch nichts gezählt. Jeder Titel zählt, der 30 Sekunden oder länger lief.",
+  "{plays} plays, {time} in all": "{plays} Wiedergaben, {time} insgesamt",
+  "Most heard tracks": "Meistgehörte Titel",
+  "Most heard artists": "Meistgehörte Künstler",
+  "{plays}×, {time}": "{plays}×, {time}",
+  "Listening time, last {days} days": "Hörzeit, letzte {days} Tage",
+  "Really delete everything?": "Wirklich alles löschen?",
+  "Delete statistics": "Statistik löschen",
+
+  // now-playing
+  "Now playing: {reason}": "Läuft gerade: {reason}",
+  "Now playing goes to text files in a folder of its own.": "„Läuft gerade“ landet in Textdateien in einem eigenen Ordner.",
+
+  // cover
+  Cover: "Cover",
+  "No cover yet.": "Noch kein Cover.",
+  "Show large": "Groß zeigen",
+  "Save picture": "Bild speichern",
+  "Saved.": "Gespeichert.",
+  "Could not save the cover: {reason}": "Das Cover ließ sich nicht speichern: {reason}",
+
   // equalizer
   Equalizer: "Equalizer",
   Preset: "Preset",
@@ -52,6 +93,8 @@ const de: Readonly<Record<string, string>> = {
   // lyrics
   Lyrics: "Songtext",
   "Loading lyrics…": "Songtext wird geladen…",
+  "Translation: today's amount is used up.": "Übersetzung: Das heutige Kontingent ist aufgebraucht.",
+  "Translation failed.": "Die Übersetzung ist fehlgeschlagen.",
   "No lyrics found.": "Kein Songtext gefunden.",
   "Could not load lyrics.": "Der Songtext ließ sich nicht laden.",
   "Play a song to see its lyrics.": "Spiele einen Titel, um seinen Songtext zu sehen.",

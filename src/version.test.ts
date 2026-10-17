@@ -20,6 +20,7 @@ describe("version", () => {
 
   it("has an entry in the changelog", async () => {
     const changelog = (await import("../CHANGELOG.md?raw")).default;
-    expect(changelog).toContain(`## ${packageJson.version}`);
+    // A pre-release like 1.2.0-beta.1 has the entry of the version it comes before.
+    expect(changelog).toContain(`## ${packageJson.version.replace(/-.*/, "")}`);
   });
 });

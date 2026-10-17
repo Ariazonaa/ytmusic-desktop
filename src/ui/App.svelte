@@ -33,10 +33,12 @@
     SettingValue,
     Shortcuts,
     UpdateInfo,
+    WindowShortcuts,
   } from "../shared/types";
   import { resolveLanguage, translator } from "./i18n";
   import { listPlugins, type ListedPlugin } from "./plugins";
   import DiscordPreview from "./DiscordPreview.svelte";
+  import Dropdown from "./Dropdown.svelte";
   import PluginSettings from "./PluginSettings.svelte";
   import ShortcutField from "./ShortcutField.svelte";
   import Toggle from "./Toggle.svelte";
@@ -289,6 +291,18 @@
       volumeDown: t("Volume down"),
       toggleMute: t("Mute / Unmute"),
     })[action];
+
+  /** Plugins with a shortcut of their own for the window, shown with the others. */
+  const PLUGIN_SHORTCUTS: [plugin: string, label: () => string][] = [
+    ["lyrics", () => t("Lyrics")],
+    ["equalizer", () => t("Equalizer")],
+    ["themes", () => t("Themes")],
+  ];
+
+  function setWindowShortcut(action: keyof WindowShortcuts, shortcut: string): void {
+    if (!settings) return;
+    void update({ windowShortcuts: { ...settings.windowShortcuts, [action]: shortcut } });
+  }
 
   function setShortcut(action: keyof Shortcuts, shortcut: string): void {
     if (!settings) return;
@@ -727,14 +741,14 @@
     <section role="tabpanel" hidden={tab !== "general"}>
       <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
         <Toggle checked={settings.startup} onchange={(startup) => update({ startup })}>
-          <span class="block font-medium">{t("Start with Windows")}</span>
+          <span class="block font-medium">{t("Start at sign-in")}</span>
           <span class="block text-neutral-400">{t("Launch the app when you sign in.")}</span>
         </Toggle>
         <Toggle checked={settings.startInTray} onchange={(startInTray) => update({ startInTray })}>
           <span class="block font-medium">{t("Start in the tray")}</span>
           <span class="block text-neutral-400">
             {t(
-              "When Windows launches the app at sign-in, no window opens. Click the tray icon to show it.",
+              "When the app starts at sign-in, no window opens. Click the tray icon to show it.",
             )}
           </span>
         </Toggle>
@@ -780,26 +794,27 @@
             </button>
           </div>
         {/if}
-        <label class="flex items-center justify-between gap-4 py-3">
+        <div class="flex items-center justify-between gap-4 py-3">
           <span class="min-w-0">
             <span class="block font-medium">{t("Language")}</span>
             <span class="block text-neutral-400">{t("Of this window, the tray menu and what the app adds to the page.")}</span>
           </span>
-          <select
-            class="w-44 shrink-0 rounded-md border border-neutral-700 bg-neutral-950 px-2 py-1.5
-              text-neutral-100 focus-visible:outline-2 focus-visible:outline-white"
+          <Dropdown
+            label={t("Language")}
+            options={[
+              { value: "system", label: t("Same as the system") },
+              { value: "en", label: "English" },
+              { value: "de", label: "Deutsch" },
+            ]}
             value={settings.language}
-            onchange={(event) => update({ language: event.currentTarget.value })}
-          >
-            <option value="system">{t("Same as Windows")}</option>
-            <option value="en">English</option>
-            <option value="de">Deutsch</option>
-          </select>
-        </label>
+            onchange={(language) => update({ language })}
+          />
+        </div>
       </div>
     </section>
 
     <section role="tabpanel" hidden={tab !== "shortcuts"}>
+      <h3 class="mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">{t("Everywhere")}</h3>
       <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
         {#each SHORTCUT_ACTIONS as action (action)}
           <ShortcutField
@@ -814,6 +829,43 @@
         {t(
           "These work while another program has the focus, and take the keys away from it. Click a field and press the combination.",
         )}
+      </p>
+
+      <h3 class="mt-6 mb-1 text-xs font-semibold tracking-wide text-neutral-400 uppercase">
+        {t("In the app's window")}
+      </h3>
+      <div class="divide-y divide-neutral-800 rounded-lg bg-neutral-900 px-4">
+        <ShortcutField
+          {t}
+          label={t("Like")}
+          description={t("Likes the playing track, or takes the like back.")}
+          value={settings.windowShortcuts.like}
+          windowOnly
+          onchange={(shortcut) => setWindowShortcut("like", shortcut)}
+        />
+        <ShortcutField
+          {t}
+          label={t("Dislike")}
+          description={t("Dislikes the playing track, or takes it back.")}
+          value={settings.windowShortcuts.dislike}
+          windowOnly
+          onchange={(shortcut) => setWindowShortcut("dislike", shortcut)}
+        />
+        {#each PLUGIN_SHORTCUTS as [plugin, label] (plugin)}
+          <ShortcutField
+            {t}
+            label={label()}
+            description={settings.plugins.includes(plugin)
+              ? t("Opens and closes its panel.")
+              : t("Opens and closes its panel, while the plugin {name} is on.", { name: plugin })}
+            value={String(settings.pluginSettings[plugin]?.shortcut ?? "")}
+            windowOnly
+            onchange={(shortcut) => void updatePlugin(plugin, { shortcut }, false)}
+          />
+        {/each}
+      </div>
+      <p class="mt-2 text-neutral-400">
+        {t("These work while the app's window has the focus, except while you type in a field.")}
       </p>
     </section>
 

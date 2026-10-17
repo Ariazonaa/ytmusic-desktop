@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PluginSettingValues, SettingField, SettingValue } from "../shared/types";
   import type { Translate } from "./i18n";
+  import Dropdown from "./Dropdown.svelte";
   import ShortcutField from "./ShortcutField.svelte";
   import Toggle from "./Toggle.svelte";
 
@@ -66,18 +67,16 @@
         ></textarea>
       </label>
     {:else}
-      <label class="flex items-center justify-between gap-4 py-3">
+      <!-- A dropdown is a button: a label around it would open it on a click on the text. -->
+      <svelte:element this={field.type === "select" ? "div" : "label"} class="flex items-center justify-between gap-4 py-3">
         <span class="min-w-0">{@render text()}</span>
         {#if field.type === "select"}
-          <select
-            class={inputClass}
-            value={values[key]}
-            onchange={(event) => onchange(key, event.currentTarget.value)}
-          >
-            {#each field.options as option (option.value)}
-              <option value={option.value}>{t(option.label)}</option>
-            {/each}
-          </select>
+          <Dropdown
+            label={t(field.label)}
+            options={field.options.map((option) => ({ value: option.value, label: t(option.label) }))}
+            value={String(values[key])}
+            onchange={(value) => onchange(key, value)}
+          />
         {:else if field.type === "range"}
           <span class="flex w-44 shrink-0 items-center gap-2">
             <input
@@ -118,7 +117,7 @@
             onchange={(event) => onchange(key, event.currentTarget.value)}
           />
         {/if}
-      </label>
+      </svelte:element>
     {/if}
   {/each}
   <div class="flex justify-end py-2">

@@ -65,3 +65,35 @@ describe("setLikeStatus", () => {
     expect(thumbs.getAttribute("like-status")).toBe("INDIFFERENT");
   });
 });
+
+/** The newer player bar's thumbs: toggle buttons with `aria-pressed`, one of them pressed at most. */
+function addNewerThumbs(pressed: "like" | "dislike" | null) {
+  const bar = document.body.appendChild(document.createElement("ytmusic-miniplayer"));
+  const box = bar.appendChild(document.createElement("segmented-like-dislike-button-view-model"));
+  const buttons = (["like", "dislike"] as const).map((own) => {
+    const button = box.appendChild(document.createElement(`${own}-button-view-model`)).appendChild(document.createElement("button"));
+    button.setAttribute("aria-pressed", String(pressed === own));
+    return button;
+  });
+  buttons.forEach((button, index) => {
+    button.addEventListener("click", () => {
+      const wasPressed = button.getAttribute("aria-pressed") === "true";
+      buttons.forEach((other) => other.setAttribute("aria-pressed", "false"));
+      buttons[index]?.setAttribute("aria-pressed", String(!wasPressed));
+    });
+  });
+}
+
+describe("the newer player bar", () => {
+  it("reads and sets the rating on its toggle buttons", () => {
+    for (const from of ["like", "dislike", null] as const) {
+      for (const to of ["like", "dislike", "none"] as const) {
+        document.body.replaceChildren();
+        addNewerThumbs(from);
+        expect(readLikeStatus()).toBe(from ?? "none");
+        expect(setLikeStatus(to), `${from} -> ${to}`).toBe(true);
+        expect(readLikeStatus(), `${from} -> ${to}`).toBe(to);
+      }
+    }
+  });
+});

@@ -117,13 +117,17 @@ jobs:
           name: release-linux
           path: release-parts/linux
       - run: node scripts/release.mjs "$GITHUB_REF_NAME"
+      # A tag like v1.2.0-beta.1 becomes a pre-release, which installed apps
+      # never update to, see scripts/release.mjs.
       - name: Publish
         run: |
+          case "$GITHUB_REF_NAME" in *-*) pre=--prerelease ;; *) pre= ;; esac
           gh release create "$GITHUB_REF_NAME" release/*.exe release/*.zip release/*.deb release/*.AppImage \
-            release/SHA256SUMS.txt release/latest.json --title "$GITHUB_REF_NAME" --notes-file release/notes.md
+            release/SHA256SUMS.txt release/latest.json --title "$GITHUB_REF_NAME" --notes-file release/notes.md $pre
         env:
           GH_TOKEN: ${{ github.token }}
-      - uses: actions/upload-artifact@v4
+      - if: ${{ !contains(github.ref_name, '-') }}
+        uses: actions/upload-artifact@v4
         with:
           name: pkgbuild
           path: release/PKGBUILD
@@ -131,6 +135,7 @@ jobs:
   arch:
     name: Package for Arch Linux
     needs: publish
+    if: ${{ !contains(github.ref_name, '-') }}
     runs-on: ubuntu-latest
     container: archlinux:latest
     permissions:

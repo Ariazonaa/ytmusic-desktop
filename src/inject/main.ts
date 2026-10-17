@@ -6,22 +6,24 @@ import { addNavButton } from "../core/injector/nav-button";
 import { showNotice } from "../core/injector/notice";
 import { createPanel } from "../core/injector/panel";
 import { addSettingsButton } from "../core/injector/settings-button";
+import { applyRatingShortcuts } from "../core/injector/rating-shortcuts";
 import { showUpdateNotice } from "../core/injector/update-notice";
 import { createExternalPlugin } from "../core/plugin-manager/external";
 import { PluginManager } from "../core/plugin-manager/manager";
 import { AudioChain } from "../core/audio/chain";
 import { OutputDeviceWatcher } from "../core/audio/output-device";
-import { HealthReporter, checkPage } from "../core/health";
+import { HealthReporter, PageCheck } from "../core/health";
 import { setLanguage } from "../core/i18n";
 import { navigate } from "../core/injector/navigate";
 import { addShortcut } from "../core/injector/shortcuts";
 import { describeLogArguments, fileLogger } from "../core/log";
 import { Notifier } from "../core/notify";
 import { getJson, sendRequest } from "../core/net/json";
+import { openLink } from "../core/settings/client";
 import { addToQueue, moveInQueue, readQueue, removeFromQueue } from "../core/player/queue";
 import { controlPlayer, seekTo, setPlaybackRate } from "../core/player/controls";
 import { readLikeStatus, setLikeStatus } from "../core/player/like";
-import { readLoudnessLkfs, readPlaybackState, readVideoId, watchPlayback } from "../core/player/playback";
+import { readLoudnessLkfs, readTrackType, readPlaybackState, readVideoId, watchPlayback } from "../core/player/playback";
 import { startResume } from "../core/player/resume";
 import { SongWatcher, readCurrentSong } from "../core/player/song";
 import { getVolume, setVolume } from "../core/player/volume";
@@ -52,7 +54,6 @@ const outputDevice = new OutputDeviceWatcher(getOutputDevice);
 /** What does not work, for the settings window. */
 const health = new HealthReporter(reportHealth);
 /** How long after the first song the page is checked: its parts appear one after the other. */
-const PAGE_CHECK_DELAY_MS = 5000;
 
 /** Plugins from the user's plugins folder, each wrapped to run in a sandboxed iframe. */
 async function loadExternalPlugins(): Promise<Plugin[]> {
@@ -79,6 +80,7 @@ async function start(): Promise<void> {
   // Before any plugin builds its buttons and panels.
   setLanguage(settings.language);
   startResume(settings.resumePlayback);
+  applyRatingShortcuts(settings.windowShortcuts);
   let current = settings;
   const audioChain = new AudioChain();
   /** How far the heard sound lags behind the player, in seconds of the track. */
@@ -95,6 +97,7 @@ async function start(): Promise<void> {
     getPlaybackState: () => heard(readPlaybackState()),
     getVideoId: () => readVideoId(),
     getLoudnessLkfs: () => readLoudnessLkfs(),
+    getTrackType: () => readTrackType(),
     getLikeStatus: () => readLikeStatus(),
     getQueue: () => readQueue(),
   };
@@ -128,7 +131,7 @@ async function start(): Promise<void> {
       addShortcut: (shortcut, onPress) => addShortcut(shortcut, onPress),
       navigate: (target) => navigate(target),
     },
-    net: { getJson, request: sendRequest },
+    net: { getJson, request: sendRequest, openInBrowser: (url) => openLink(url) },
     notify: { show: (title, body, options) => notifier.show(title, body, options) },
     reportPluginError: (plugin, message) => health.addPluginError(plugin, message),
     async saveSettings(plugin, values) {
@@ -137,14 +140,11 @@ async function start(): Promise<void> {
       current = await updatePluginSettings(plugin, values);
     },
   }, log);
-  let pageChecked = false;
+  const pageCheck = new PageCheck((problems) => health.setPageProblems(problems));
   const watcher = new SongWatcher(readCurrentSong, (song) => {
     manager.notifySongChange(song);
-    if (!pageChecked) {
-      // Only with a song is all of the player bar there to be looked at.
-      pageChecked = true;
-      setTimeout(() => health.setPageProblems(checkPage()), PAGE_CHECK_DELAY_MS);
-    }
+    // Only with a song is all of the player bar there to be looked at.
+    pageCheck.songChanged();
     // For the tray's tooltip and menu.
     setNowPlaying(song.title, song.artist).catch(() => {});
   });
@@ -162,6 +162,7 @@ async function start(): Promise<void> {
       manager.setEnabled([]);
     }
     current = changed;
+    applyRatingShortcuts(changed.windowShortcuts);
     manager.setPluginSettings(changed.pluginSettings);
     manager.setEnabled(changed.plugins);
   };

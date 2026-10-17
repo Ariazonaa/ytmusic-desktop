@@ -100,6 +100,11 @@ it together with `node scripts/release.mjs <tag>` and publishes:
 | `latest.json` | what running apps ask for, see below |
 | `PKGBUILD`, `SRCINFO` | Arch Linux: the package `ytmusic-desktop-bin`, which installs the .deb |
 
+A tag with a pre-release version, like `v1.2.0-beta.1` after
+`npm version 1.2.0-beta.1`, is published as a pre-release for testers: with
+the notes of 1.2.0 and without the Arch Linux package. Installed apps are not
+updated to it, as GitHub's `releases/latest` never points at a pre-release.
+
 The release's text is the version's part of the changelog. After publishing,
 a job on Arch Linux builds the package from the published .deb, which also
 checks its checksum, and attaches `PKGBUILD` and `SRCINFO`. To put a version

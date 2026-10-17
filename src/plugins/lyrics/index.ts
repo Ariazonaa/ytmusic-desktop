@@ -7,6 +7,8 @@ import { activeLineIndex, type Lyrics } from "./lrc";
 import { OFFSET_STEP_SECONDS, describeOffset, parseOffsets, withOffset } from "./offsets";
 import manifest from "./plugin.json";
 import { findLyrics } from "./sources";
+import { QuotaError, translateLines } from "./translate";
+import { lyricsOverlay, lyricsOverlayLine } from "../../core/settings/client";
 import { t } from "../../core/i18n";
 
 const BODY_CLASS = "ytmd-lyrics";
@@ -32,6 +34,8 @@ const CSS = `
 .${BODY_CLASS} p.ytmd-lyrics-synced:hover { color: rgba(255, 255, 255, 0.8); }
 .${BODY_CLASS} p.ytmd-lyrics-active { color: #fff; font-weight: 500; }
 .${BODY_CLASS} p.ytmd-lyrics-plain, .${BODY_CLASS} p.ytmd-lyrics-status { color: rgba(255, 255, 255, 0.8); }
+.${BODY_CLASS} .ytmd-lyrics-translation { display: block; font-size: 0.75em; font-weight: 400; opacity: 0.75; }
+.${BODY_CLASS} p.ytmd-lyrics-note { font-size: 12px; color: rgba(255, 255, 255, 0.5); }
 .${TOOLS_CLASS} {
   display: flex;
   align-items: center;
@@ -78,6 +82,9 @@ let lineElements: HTMLElement[] = [];
 let activeIndex = -1;
 /** Identifies the latest lyrics request, so a slow response for an old song is dropped. */
 let request = 0;
+/** Translations by track and language, so that a track asks the service once. */
+const translations = new Map<string, string[] | null>();
+const MAX_TRANSLATIONS = 100;
 
 function showStatus(text: string): void {
   if (!body) return;
@@ -105,12 +112,56 @@ function showLyrics(found: Lyrics): void {
     });
     body.replaceChildren(...lineElements);
   } else {
-    const text = document.createElement("p");
-    text.className = "ytmd-lyrics-plain";
-    text.textContent = found.plain;
-    body.replaceChildren(text);
+    lineElements = (found.plain ?? "").split("\n").map((line) => {
+      const text = document.createElement("p");
+      text.className = "ytmd-lyrics-plain";
+      text.textContent = line;
+      return text;
+    });
+    body.replaceChildren(...lineElements);
   }
   body.scrollTop = 0;
+}
+
+/** The text of each shown line, in the order shown. */
+function shownLines(found: Lyrics): string[] {
+  return found.synced ? found.synced.map((line) => line.text) : (found.plain ?? "").split("\n");
+}
+
+/** Puts the translation of each line under it, as the setting asks. */
+async function translate(pluginApi: PluginApi, found: Lyrics, current: number): Promise<void> {
+  const target = pluginApi.settings.get("translateTo");
+  if (typeof target !== "string" || target === "" || !lyricsVideoId) return;
+  const key = `${lyricsVideoId}|${target}`;
+  let lines = translations.get(key);
+  if (lines === undefined) {
+    try {
+      lines = await translateLines((url) => pluginApi.net.getJson(url), shownLines(found), target);
+    } catch (error) {
+      if (current !== request) return;
+      note(error instanceof QuotaError ? t("Translation: today's amount is used up.") : t("Translation failed."));
+      return;
+    }
+    if (translations.size >= MAX_TRANSLATIONS) translations.delete(translations.keys().next().value as string);
+    translations.set(key, lines);
+  }
+  if (current !== request || !lines) return;
+  lines.forEach((line, index) => {
+    const element = lineElements[index];
+    if (!element || line === "") return;
+    const translation = element.appendChild(document.createElement("span"));
+    translation.className = "ytmd-lyrics-translation";
+    translation.textContent = line;
+  });
+}
+
+/** A small line above the lyrics, for what went wrong beside them. */
+function note(text: string): void {
+  if (!body) return;
+  const line = document.createElement("p");
+  line.className = "ytmd-lyrics-note";
+  line.textContent = text;
+  body.prepend(line);
 }
 
 async function loadLyrics(pluginApi: PluginApi, song: Song): Promise<void> {
@@ -130,9 +181,11 @@ async function loadLyrics(pluginApi: PluginApi, song: Song): Promise<void> {
     if (current !== request) return;
     lyrics = found?.lyrics ?? null;
     showOffset();
+    updateOverlay();
     if (found) {
       showLyrics(found.lyrics);
       panel?.setTitle(t("Lyrics"), found.source);
+      void translate(pluginApi, found.lyrics, current);
     } else {
       showStatus(t("No lyrics found."));
     }
@@ -143,17 +196,48 @@ async function loadLyrics(pluginApi: PluginApi, song: Song): Promise<void> {
   }
 }
 
-/** Highlights the line being sung and keeps it in the middle of the panel. */
+const overlayOn = (): boolean => api?.settings.get("overlay") === true;
+/** What the lyrics window shows now, so that it hears of changes only. */
+let overlayShown = "";
+/** Whether the window was last asked to be open. */
+let overlayWanted = false;
+
+/** Sends the line being sung and the next one to the lyrics window, if it is on. */
+function updateOverlay(): void {
+  if (!overlayOn()) return;
+  const song = api?.music.getCurrentSong();
+  const synced = lyrics?.synced;
+  const [line, next] = synced
+    ? [synced[activeIndex]?.text ?? "", synced[activeIndex + 1]?.text ?? ""]
+    : [song?.title ?? "", song?.artist ?? ""];
+  const key = JSON.stringify([line, next]);
+  if (key === overlayShown) return;
+  overlayShown = key;
+  lyricsOverlayLine(line, next).catch(() => {});
+}
+
+/** Opens or closes the lyrics window as the setting says. */
+function applyOverlay(): void {
+  overlayShown = "";
+  overlayWanted = overlayOn();
+  lyricsOverlay(overlayOn()).catch(() => {});
+  // The window needs a moment to listen.
+  if (overlayOn()) setTimeout(updateOverlay, 1500);
+}
+
+/** Highlights the line being sung, keeps it in the middle of the panel and tells the lyrics window. */
 function tick(): void {
-  if (!api || !panel?.open || !body || !lyrics?.synced) return;
+  if (!api || !lyrics?.synced) return;
+  if (!panel?.open && !overlayOn()) return;
   const position = api.music.getPlaybackState()?.positionSeconds;
   if (position === undefined) return;
   const index = activeLineIndex(lyrics.synced, position - offset);
   if (index === activeIndex) return;
   lineElements[activeIndex]?.classList.remove("ytmd-lyrics-active");
   activeIndex = index;
+  updateOverlay();
   const line = lineElements[index];
-  if (!line) return;
+  if (!line || !body || !panel?.open) return;
   line.classList.add("ytmd-lyrics-active");
   body.scrollTo({
     top: line.offsetTop - body.offsetTop - body.clientHeight / 2 + line.clientHeight / 2,
@@ -262,6 +346,7 @@ const lyricsPlugin: Plugin = {
     if (song) void loadLyrics(api, song);
     else showStatus(t("Play a song to see its lyrics."));
     timer = setInterval(tick, POLL_MS);
+    applyOverlay();
   },
 
   onSongChange(song) {
@@ -271,10 +356,16 @@ const lyricsPlugin: Plugin = {
   onSettingsChange() {
     applyFontSize();
     applyShortcut();
+    if (overlayOn() !== (overlayShown !== "" || overlayWanted)) {
+      overlayWanted = overlayOn();
+      applyOverlay();
+    }
   },
 
   onUnload() {
     clearInterval(timer);
+    if (overlayWanted) lyricsOverlay(false).catch(() => {});
+    overlayWanted = false;
     request++;
     // The API removes the button, the panel and the CSS.
     panel = body = offsetOutput = removeShortcut = undefined;

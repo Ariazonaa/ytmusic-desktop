@@ -88,6 +88,7 @@ export function createExternalPlugin(
       "music.getPlaybackState": () => api.music.getPlaybackState(),
       "music.getVideoId": () => api.music.getVideoId(),
       "music.getLoudnessLkfs": () => api.music.getLoudnessLkfs(),
+      "music.getTrackType": () => api.music.getTrackType(),
       "music.getLikeStatus": () => api.music.getLikeStatus(),
       "music.getQueue": () => api.music.getQueue(),
       "player.next": () => api.player.next(),
@@ -111,6 +112,7 @@ export function createExternalPlugin(
       "net.getJson": ([url]) => api.net.getJson(text(url, MAX_URL_LENGTH, "url")),
       // The API checks method, headers and body, as it does for built-in plugins.
       "net.request": ([url, request]) => api.net.request(text(url, MAX_URL_LENGTH, "url"), request as NetRequest),
+      "net.openInBrowser": ([url]) => api.net.openInBrowser(text(url, MAX_URL_LENGTH, "url")),
       "notify.show": ([title, body, options]) => {
         const { imageUrl, clickId } = (typeof options === "object" && options !== null ? options : {}) as Record<
           string,

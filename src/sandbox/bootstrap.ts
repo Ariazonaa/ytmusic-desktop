@@ -74,6 +74,7 @@ const api: SandboxApi = {
     getPlaybackState: () => call("music.getPlaybackState"),
     getVideoId: () => call("music.getVideoId"),
     getLoudnessLkfs: () => call("music.getLoudnessLkfs"),
+    getTrackType: () => call("music.getTrackType"),
     getLikeStatus: () => call("music.getLikeStatus"),
     getQueue: () => call("music.getQueue"),
   },
@@ -91,6 +92,7 @@ const api: SandboxApi = {
   net: {
     getJson: (url) => call("net.getJson", url),
     request: (url, request = {}) => call("net.request", url, request),
+    openInBrowser: (url) => call("net.openInBrowser", url),
   },
   notify: {
     show(title, body = "", options = {}) {

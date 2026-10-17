@@ -76,7 +76,7 @@ ${SCOPE} {
   --ytmusic-dialog-background-color: ${palette.overlay} !important;
 }
 body, #guide-wrapper.ytmusic-app, #mini-guide-background.ytmusic-app { background: ${palette.base} !important; }
-ytmusic-player-bar, #player-bar-background.ytmusic-app-layout { background: ${palette.bar} !important; }
+ytmusic-player-bar, ytmusic-miniplayer, #player-bar-background.ytmusic-app-layout { background: ${palette.bar} !important; }
 `;
 }
 
@@ -108,7 +108,7 @@ function blurCss(pixels: number, palette: Palette): string {
   backdrop-filter: ${filter};
 }
 #nav-bar-divider.ytmusic-app-layout { background: transparent !important; }
-ytmusic-player-bar { background: transparent !important; }
+ytmusic-player-bar, ytmusic-miniplayer { background: transparent !important; }
 #player-bar-background.ytmusic-app-layout {
   background: ${glass(palette.bar)} !important;
   backdrop-filter: ${filter};

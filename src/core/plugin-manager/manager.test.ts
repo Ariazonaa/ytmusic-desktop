@@ -13,11 +13,11 @@ function makeServices() {
       getCurrentSong: () => song,
       getPlaybackState: () => playback,
       getVideoId: () => "abc",
-      getLoudnessLkfs: () => null, getLikeStatus: () => null, getQueue: () => [],
+      getLoudnessLkfs: () => null, getLikeStatus: () => null, getTrackType: () => null, getQueue: () => [],
     },
     player: { seekTo: vi.fn(), setPlaybackRate: vi.fn(), getVolume: () => 50, setVolume: vi.fn(() => 50), next: vi.fn(), setLikeStatus: vi.fn(() => true), addToQueue: vi.fn(() => Promise.resolve()), removeFromQueue: vi.fn(), moveInQueue: vi.fn() },
     audio: { addEffect: vi.fn(() => vi.fn()), setOutputDelay: vi.fn(), getOutputDevice: vi.fn(() => Promise.resolve(null)), onOutputDeviceChange: vi.fn(() => vi.fn()) },
-    net: { getJson: vi.fn(() => Promise.resolve({ status: 200, data: { ok: true } })), request: vi.fn(() => Promise.resolve({ status: 200, text: "{}", data: {} })) },
+    net: { getJson: vi.fn(() => Promise.resolve({ status: 200, data: { ok: true } })), request: vi.fn(() => Promise.resolve({ status: 200, text: "{}", data: {} })), openInBrowser: vi.fn(() => Promise.resolve()) },
     notify: { show: vi.fn(() => Promise.resolve()) },
     saveSettings: vi.fn(() => Promise.resolve()),
     ui: {
@@ -284,6 +284,12 @@ describe("plugin API permissions", () => {
     await expect(api.net.getJson("https://api.example.com.evil.net/")).rejects.toThrow();
     await expect(api.net.getJson("not a url")).rejects.toThrow("invalid URL");
     expect(services.net.getJson).toHaveBeenCalledExactlyOnceWith("https://api.example.com/x?y=1");
+
+    // A sign-in page opens in the browser under the same rules.
+    await api.net.openInBrowser("https://api.example.com/auth?token=1");
+    await expect(api.net.openInBrowser("https://evil.example.com/")).rejects.toThrow("may not contact");
+    await expect(api.net.openInBrowser("javascript:alert(1)")).rejects.toThrow();
+    expect(services.net.openInBrowser).toHaveBeenCalledExactlyOnceWith("https://api.example.com/auth?token=1");
   });
 
   it("sets the output delay back to zero when the plugin unloads", () => {

@@ -7,6 +7,7 @@
 import { parseManifest } from "../../core/plugin-manager/api";
 import type { Plugin, PluginApi, PluginSettingValues } from "../../shared/types";
 import manifest from "./plugin.json";
+import { trackGain } from "../../core/audio/track-gain";
 
 /** Position in the audio chain: first after the crossfade, so later effects get an even level. */
 const ORDER = 5;
@@ -35,10 +36,19 @@ export const dbToGain = (db: number): number => 10 ** (db / 20);
 
 let api: PluginApi | undefined;
 let node: GainNode | undefined;
+let stopListening: (() => void) | undefined;
+
+/** Tells crossfade how to level tracks, with the settings as they are now. */
+function publish(): void {
+  const pluginApi = api;
+  if (pluginApi) trackGain.provide((loudness) => dbToGain(gainDbFor(loudness, pluginApi.settings.getAll())));
+}
 
 function apply(): void {
   if (!api || !node) return;
-  const gain = dbToGain(gainDbFor(api.music.getLoudnessLkfs(), api.settings.getAll()));
+  const settings = api.settings.getAll();
+  // While crossfade levels each track itself, this stays out.
+  const gain = trackGain.takenOver ? 1 : dbToGain(gainDbFor(api.music.getLoudnessLkfs(), settings));
   // A step would click; this glides to the new level.
   node.gain.setTargetAtTime(gain, node.context.currentTime, SMOOTHING_SECONDS / 3);
 }
@@ -48,6 +58,8 @@ const normalize: Plugin = {
 
   onLoad(pluginApi) {
     api = pluginApi;
+    stopListening = trackGain.onChange(apply);
+    publish();
     api.audio.addEffect(ORDER, (context) => {
       node = context.createGain();
       apply();
@@ -59,9 +71,15 @@ const normalize: Plugin = {
   // the song change is noticed, so both events look again.
   onSongChange: apply,
   onPlaybackChange: apply,
-  onSettingsChange: apply,
+  onSettingsChange() {
+    publish();
+    apply();
+  },
 
   onUnload() {
+    stopListening?.();
+    stopListening = undefined;
+    trackGain.provide(null);
     api = node = undefined;
   },
 };

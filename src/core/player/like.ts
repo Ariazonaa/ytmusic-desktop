@@ -2,6 +2,8 @@ import type { LikeStatus } from "../../shared/types";
 
 /** The thumbs in the player bar. YouTube Music keeps the rating of the playing track on them. */
 const LIKE_BUTTONS = "ytmusic-player-bar ytmusic-like-button-renderer";
+/** The thumbs of the newer player bar: two toggle buttons, each saying whether it is pressed. */
+const NEWER_THUMBS = "ytmusic-miniplayer segmented-like-dislike-button-view-model";
 
 const STATUSES: Readonly<Record<string, LikeStatus>> = {
   LIKE: "like",
@@ -14,8 +16,24 @@ const STATUSES: Readonly<Record<string, LikeStatus>> = {
  * said yet. The rating arrives a moment after the track does.
  */
 export function readLikeStatus(doc: Document = document): LikeStatus | null {
-  const status = doc.querySelector(LIKE_BUTTONS)?.getAttribute("like-status");
-  return status ? (STATUSES[status] ?? null) : null;
+  const thumbs = doc.querySelector(LIKE_BUTTONS);
+  if (thumbs) {
+    const status = thumbs.getAttribute("like-status");
+    return status ? (STATUSES[status] ?? null) : null;
+  }
+  const [like, dislike] = newerThumbs(doc);
+  if (!like || !dislike) return null;
+  if (like.getAttribute("aria-pressed") === "true") return "like";
+  return dislike.getAttribute("aria-pressed") === "true" ? "dislike" : "none";
+}
+
+/** The like and the dislike button of the newer player bar. */
+function newerThumbs(doc: Document): (HTMLElement | undefined)[] {
+  const box = doc.querySelector(NEWER_THUMBS);
+  return [
+    box?.querySelector<HTMLElement>("like-button-view-model button") ?? undefined,
+    box?.querySelector<HTMLElement>("dislike-button-view-model button") ?? undefined,
+  ];
 }
 
 /**
@@ -29,7 +47,9 @@ export function setLikeStatus(status: LikeStatus, doc: Document = document): boo
   const current = readLikeStatus(doc);
   if (current === null) return false;
   if (current === status) return true;
-  const buttons = doc.querySelectorAll<HTMLElement>(`${LIKE_BUTTONS} button`);
+  const buttons = doc.querySelector(LIKE_BUTTONS)
+    ? [...doc.querySelectorAll<HTMLElement>(`${LIKE_BUTTONS} button`)]
+    : newerThumbs(doc);
   const [like, dislike] = [buttons[0], buttons[1]];
   if (buttons.length !== 2 || !like || !dislike) return false;
   // Taking a rating back means pressing the thumb that is set.

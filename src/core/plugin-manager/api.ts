@@ -37,7 +37,11 @@ export interface Services {
   /** Saves changed settings of the named plugin. `createApi` checks them against the schema first. */
   saveSettings(plugin: string, values: PluginSettingValues): Promise<void>;
   /** Unrestricted; `createApi` limits each plugin to the hosts in its manifest and checks its requests. */
-  net: { getJson: NetApi["getJson"]; request(url: string, request: Required<NetRequest>): Promise<NetResponse> };
+  net: {
+    getJson: NetApi["getJson"];
+    request(url: string, request: Required<NetRequest>): Promise<NetResponse>;
+    openInBrowser(url: string): Promise<void>;
+  };
   notify: NotifyApi;
   /** Told when a plugin failed, for the settings window. */
   reportPluginError?(plugin: string, message: string): void;
@@ -344,6 +348,7 @@ export function createApi(
     // `async`, so that a refused address rejects instead of throwing.
     getJson: async (url) => services.net.getJson(allowedUrl(url)),
     request: async (url, request) => services.net.request(allowedUrl(url), checkRequest(request)),
+    openInBrowser: async (url) => services.net.openInBrowser(allowedUrl(url)),
   };
 
   const settings: SettingsApi = {

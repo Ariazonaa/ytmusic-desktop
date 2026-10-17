@@ -130,6 +130,7 @@ Requests carry no cookies and no referrer.
 | `ytmd.music.getPlaybackState()` | `music.read` | `{ paused, positionSeconds, durationSeconds }` or `null` |
 | `ytmd.music.getVideoId()` | `music.read` | YouTube video id or `null` |
 | `ytmd.music.getLoudnessLkfs()` | `music.read` | loudness of the track in LKFS, or `null` |
+| `ytmd.music.getTrackType()` | `music.read` | `"song"`, `"video"` (a music video), `"podcast"` (an episode), `"other"`, or `null` before a track plays |
 | `ytmd.music.getLikeStatus()` | `music.read` | `"like"`, `"dislike"`, `"none"`, or `null` while the page has not said yet |
 | `ytmd.music.getQueue()` | `music.read` | the play queue: `{ title, artist, duration, videoId, playing }` each; played, playing and upcoming tracks in order |
 | `ytmd.player.seekTo(seconds)` | `music.control` | position in the current track |
@@ -143,6 +144,7 @@ Requests carry no cookies and no referrer.
 | `ytmd.player.moveInQueue(from, to)` | `music.control` | moves an upcoming track among the upcoming ones; both are positions in `getQueue()` |
 | `ytmd.net.getJson(url)` | `network` | `{ status, data }`; see below |
 | `ytmd.net.request(url, { method, headers, body })` | `network` | `{ status, text, data }`; see below |
+| `ytmd.net.openInBrowser(url)` | `network` | opens the address in the user's browser, e.g. a service's sign-in page; HTTPS, a host from `hosts`, at most one a second |
 | `ytmd.notify.show(title, body?, { imageUrl, onClick })` | `notify` | a notification of the operating system; at most one every three seconds; see below |
 | `ytmd.settings.get(key)`, `getAll()` | none | the plugin's own settings |
 | `ytmd.settings.update(values)` | none | saves; rejects values that do not fit the schema |

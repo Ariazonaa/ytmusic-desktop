@@ -2,6 +2,7 @@
 import type {
   JsonResponse,
   LikeStatus,
+  TrackType,
   NavigationTarget,
   NetRequest,
   NetResponse,
@@ -55,6 +56,7 @@ export interface SandboxApi {
     getVideoId(): Promise<string | null>;
     getLoudnessLkfs(): Promise<number | null>;
     getLikeStatus(): Promise<LikeStatus | null>;
+    getTrackType(): Promise<TrackType | null>;
     getQueue(): Promise<QueueItem[]>;
   };
   /** Requires `music.control`. */
@@ -76,6 +78,7 @@ export interface SandboxApi {
   net: {
     getJson(url: string): Promise<JsonResponse>;
     request(url: string, request?: NetRequest): Promise<NetResponse>;
+    openInBrowser(url: string): Promise<void>;
   };
   /** Requires `notify`. */
   notify: {

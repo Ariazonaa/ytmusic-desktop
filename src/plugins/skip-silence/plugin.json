@@ -1,0 +1,32 @@
+{
+  "name": "skip-silence",
+  "version": "0.1.0",
+  "description": "Runs fast through silence at the start of a track, and goes on to the next one when the end is silence.",
+  "category": "playback",
+  "permissions": ["music.read", "music.control", "audio"],
+  "conflicts": ["crossfade", "playback-speed"],
+  "settings": {
+    "start": {
+      "type": "boolean",
+      "label": "At the start",
+      "description": "Silence in the first 15 seconds plays at triple speed, which nobody hears.",
+      "default": true
+    },
+    "end": {
+      "type": "boolean",
+      "label": "At the end",
+      "description": "Silence of a second and a half in the last 20 seconds goes on to the next track.",
+      "default": true
+    },
+    "threshold": {
+      "type": "range",
+      "label": "Silence below",
+      "description": "Lower counts less as silence: a quiet intro stays.",
+      "default": -60,
+      "min": -80,
+      "max": -40,
+      "step": 5,
+      "unit": "dB"
+    }
+  }
+}

@@ -4,6 +4,54 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.9.0
+
+- YouTube Music shows some page loads with a new player bar. Next, previous,
+  volume, mute, the time, the progress bar and the thumbs work in it as in the
+  old one, and the settings window no longer says YouTube Music has changed.
+- Linux: plugins from others (installed from a zip or "Find plugins") run;
+  before, their button never appeared.
+- `stats`: a track heard for less than 30 seconds no longer shows as "0×",
+  and the listening-time chart has a place for each of the 30 days.
+- `lyrics`: a line the translation service gives back unchanged gets no
+  translation under it.
+- Plugin API: `net.openInBrowser(url)` opens a sign-in page in the browser, on
+  the plugin's own hosts only.
+- `lyrics` in a window over other programs: the line being sung and the next
+  one, in a small window that stays on top and can be dragged anywhere.
+- `lyrics` translates: each line with its translation under it, from
+  MyMemory, when "Translate into" is set.
+- `normalize` and `crossfade` together: during the overlap each track plays at
+  its own level, the end of a loud one no longer jumps to the level of the next.
+- New plugin `skip-silence`: silence at the start of a track runs by fast,
+  silence at its end goes on to the next track.
+- New plugin `playlist-tools`: saves the open playlist as a text file or a
+  CSV, and lists the tracks that are in it more than once.
+- New plugin `stats`: your most heard tracks and artists and your listening
+  time per day, counted and kept on this computer only.
+- New plugin `now-playing`: the playing track for OBS and other streaming
+  software, as text files and a cover in a folder, and if you like as a page
+  on 127.0.0.1 for a browser source.
+- Linux: the volume slider works again after an audio plugin was switched
+  on (equalizer, compressor and the others), also once it is off again. On
+  Linux the browser engine leaves the volume to the app as soon as the sound
+  runs through the plugins.
+- New plugin `cover`: the cover of the playing track large, in a panel or
+  over the whole window, and saved as a picture.
+- Shortcuts in the app's window, set in the Shortcuts tab: "Like" and
+  "Dislike" for the playing track, and opening the panels of lyrics,
+  equalizer and themes. A second press takes a rating back.
+- `playback-speed`: podcasts have a speed of their own, and a speed chosen in
+  YouTube Music's menu is kept for that kind of track. Up to 3 times now.
+- Plugin API: `music.getTrackType()` says whether a song, a music video or a
+  podcast episode plays.
+- Linux: the settings window says "Start at sign-in" and "Same as the system"
+  instead of naming Windows, and its lists, like the equalizer's presets, open
+  dark as on Windows instead of as light GTK menus. Title bars are dark.
+- "YouTube Music has changed" no longer shows up when the app looked while a
+  page was still loading: what is missing counts only if it is still missing
+  15 seconds later, and the message goes away by itself once it is there.
+
 ## 0.8.0
 
 - New plugin `discord`: your Discord profile shows what you are listening

@@ -1,0 +1,12 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "lyrics-overlay",
+  "description": "Lets the lyrics window hear the lines the page sends, be dragged, and switch itself off in the lyrics plugin's settings.",
+  "windows": ["lyrics-overlay"],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-start-dragging",
+    "allow-update-plugin-settings"
+  ]
+}

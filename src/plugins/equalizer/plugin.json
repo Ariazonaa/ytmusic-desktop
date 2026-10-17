@@ -138,6 +138,12 @@
       "step": 1,
       "unit": "dB",
       "hidden": true
+    },
+    "shortcut": {
+      "type": "shortcut",
+      "label": "Shortcut",
+      "description": "Opens and closes the equalizer while the app's window has the focus.",
+      "default": ""
     }
   }
 }

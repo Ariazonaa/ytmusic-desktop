@@ -30,13 +30,65 @@ function createHighRateContext(): AudioContext {
   }
 }
 
+/**
+ * Whether the browser engine applies a media element's volume to the sound a
+ * Web Audio source takes from it. Chromium (WebView2 on Windows) does. WebKit
+ * (WebKitGTK on Linux) does not: there the volume only turns down the
+ * element's own output, which is silent once its sound runs through the
+ * chain, so the page's volume slider would do nothing.
+ */
+export function engineAppliesElementVolume(win: Window = window): boolean {
+  return typeof (win as Window & { chrome?: unknown }).chrome === "object";
+}
+
+const taken = new WeakSet<HTMLMediaElement>();
+
+/**
+ * Where the chain applies the volume (WebKit), the element itself is kept at
+ * full volume and unmuted, and the page reads and writes the values it set
+ * as if nothing had changed. Its own output is silent once tapped, but the
+ * sound server remembers that output's volume for the app and puts it on the
+ * chain's output at the next start: the volume would then count twice.
+ */
+export function takeOverVolume(element: HTMLMediaElement): void {
+  if (taken.has(element)) return;
+  taken.add(element);
+  const proto = HTMLMediaElement.prototype;
+  const real = (name: "volume" | "muted"): PropertyDescriptor => Object.getOwnPropertyDescriptor(proto, name)!;
+  let volume = real("volume").get!.call(element) as number;
+  let muted = real("muted").get!.call(element) as boolean;
+  const changed = (): void => void element.dispatchEvent(new Event("volumechange"));
+  Object.defineProperty(element, "volume", {
+    configurable: true,
+    get: () => volume,
+    set: (value: number) => {
+      const next = Number(value);
+      if (!(next >= 0 && next <= 1)) throw new DOMException("The volume must be between 0 and 1.", "IndexSizeError");
+      if (next === volume) return;
+      volume = next;
+      changed();
+    },
+  });
+  Object.defineProperty(element, "muted", {
+    configurable: true,
+    get: () => muted,
+    set: (value: boolean) => {
+      if (Boolean(value) === muted) return;
+      muted = Boolean(value);
+      changed();
+    },
+  });
+  real("volume").set!.call(element, 1);
+  real("muted").set!.call(element, false);
+}
+
 /** Events that show a media element is, or is about to be, the one playing. */
 const ACTIVITY = ["loadstart", "play", "playing"] as const;
 
 /**
  * Routes the player's audio through the effects plugins add:
  *
- *     <video> → effect → effect → … → speakers
+ *     <video> → effect → effect → … → [volume] → speakers
  *
  * A media element can feed only one Web Audio source, so all plugins share
  * this chain instead of each tapping the element. The audio is left untouched
@@ -56,11 +108,14 @@ export class AudioChain {
   private entries: Entry[] = [];
   private waiting = false;
   private failed = false;
+  /** Where the element's volume is applied, on engines that leave that to the chain. */
+  private volume: GainNode | undefined;
 
   constructor(
     private readonly doc: Document = document,
     private readonly createContext: () => AudioContext = createHighRateContext,
     private readonly log: Logger = console,
+    private readonly elementVolumeApplied: boolean = engineAppliesElementVolume(),
   ) {}
 
   /**
@@ -101,6 +156,7 @@ export class AudioChain {
         this.fail(error);
         return;
       }
+      if (!this.elementVolumeApplied) this.volume = this.context.createGain();
       for (const type of ACTIVITY) this.doc.addEventListener(type, this.onActivity, true);
       this.adopt(video);
       return;
@@ -131,21 +187,32 @@ export class AudioChain {
       this.sources.set(element, source);
     }
     this.disconnectAll();
+    this.element?.removeEventListener("volumechange", this.followVolume);
     this.source = source;
     this.element = element;
+    if (this.volume) takeOverVolume(element);
+    element.addEventListener("volumechange", this.followVolume);
+    this.followVolume();
     this.rewire();
   }
+
+  /** Applies the element's volume and mute to the sound, where the engine does not. */
+  private readonly followVolume = (): void => {
+    if (!this.volume || !this.element) return;
+    this.volume.gain.value = this.element.muted ? 0 : this.element.volume;
+  };
 
   private fail(error: unknown): void {
     // From here on the element would be silent if we held on to a half-built graph.
     this.failed = true;
-    this.context = this.source = this.element = undefined;
+    this.context = this.source = this.element = this.volume = undefined;
     this.log.error("[ytm-desktop] cannot process the player's audio", error);
   }
 
   private disconnectAll(): void {
     this.source?.disconnect();
     for (const entry of this.entries) entry.effect?.output.disconnect();
+    this.volume?.disconnect();
   }
 
   private rewire(): void {
@@ -167,6 +234,10 @@ export class AudioChain {
       if (!entry.effect) continue;
       tail.connect(entry.effect.input);
       tail = entry.effect.output;
+    }
+    if (this.volume) {
+      tail.connect(this.volume);
+      tail = this.volume;
     }
     tail.connect(this.context.destination);
     void this.context.resume();

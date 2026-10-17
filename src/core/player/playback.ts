@@ -1,4 +1,4 @@
-import type { PlaybackState } from "../../shared/types";
+import type { PlaybackState, TrackType } from "../../shared/types";
 
 /** The player element's own API, as far as we use it. */
 export interface MoviePlayer extends Element {
@@ -7,7 +7,7 @@ export interface MoviePlayer extends Element {
   getCurrentTime?: () => unknown;
   getPlayerResponse?: () =>
     | {
-        videoDetails?: { lengthSeconds?: unknown };
+        videoDetails?: { lengthSeconds?: unknown; musicVideoType?: unknown };
         playerConfig?: { audioConfig?: { loudnessDb?: unknown; trackAbsoluteLoudnessLkfs?: unknown } };
       }
     | undefined;
@@ -60,6 +60,25 @@ export function readLoudnessLkfs(doc: Document = document): number | null {
   if (typeof measured !== "number" || !Number.isFinite(measured)) return null;
   const turnedDown = typeof overTarget === "number" && overTarget > 0 ? overTarget : 0;
   return measured - turnedDown;
+}
+
+/** YouTube Music's names for kinds of track, see `readTrackType`. */
+const TRACK_TYPES: Readonly<Record<string, TrackType>> = {
+  MUSIC_VIDEO_TYPE_ATV: "song",
+  MUSIC_VIDEO_TYPE_OMV: "video",
+  MUSIC_VIDEO_TYPE_UGC: "video",
+  MUSIC_VIDEO_TYPE_OFFICIAL_SOURCE_MUSIC: "video",
+  MUSIC_VIDEO_TYPE_PODCAST_EPISODE: "podcast",
+};
+
+/**
+ * What the current track is, as the player says: a song (an audio track of
+ * an album), a music video, or a podcast episode. `null` before there is one.
+ */
+export function readTrackType(doc: Document = document): TrackType | null {
+  const type = findPlayer(doc)?.getPlayerResponse?.()?.videoDetails?.musicVideoType;
+  if (typeof type !== "string" || type === "") return null;
+  return TRACK_TYPES[type] ?? "other";
 }
 
 /** Reads the YouTube video id of the current track from the player, else from the URL. */

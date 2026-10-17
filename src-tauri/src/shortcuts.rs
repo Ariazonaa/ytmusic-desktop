@@ -1,7 +1,7 @@
 //! Global keyboard shortcuts: they work while another program has the focus
 //! and while the app sits in the tray.
 
-use crate::settings::Shortcuts;
+use crate::settings::{Shortcuts, WindowShortcuts};
 use crate::window::{self, PlayerAction};
 use std::str::FromStr;
 use tauri::AppHandle;
@@ -53,6 +53,27 @@ pub fn validate(shortcuts: &Shortcuts) -> Result<(), String> {
     parse(shortcuts).map(|_| ())
 }
 
+/// Checks the shortcuts of the app's window. The page registers them; here
+/// they only have to be shortcuts, and not two for one combination.
+pub fn validate_window(shortcuts: &WindowShortcuts) -> Result<(), String> {
+    let mut seen: Vec<Shortcut> = Vec::new();
+    for (name, keys) in [("like", &shortcuts.like), ("dislike", &shortcuts.dislike)] {
+        if keys.is_empty() {
+            continue;
+        }
+        if keys.len() > MAX_SHORTCUT_LEN {
+            return Err(format!("the shortcut for {name} is too long"));
+        }
+        let shortcut = Shortcut::from_str(keys)
+            .map_err(|err| format!("invalid shortcut for {name} ({keys}): {err}"))?;
+        if seen.contains(&shortcut) {
+            return Err(format!("{keys} is used for two actions"));
+        }
+        seen.push(shortcut);
+    }
+    Ok(())
+}
+
 /// Replaces the registered shortcuts with the given ones. Fails if one of
 /// them cannot be taken, usually because another program holds it. Nothing is
 /// registered then.
@@ -80,6 +101,18 @@ pub fn apply(app: &AppHandle, shortcuts: &Shortcuts) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn window_shortcuts_are_shortcuts_and_differ() {
+        let window = |like: &str, dislike: &str| WindowShortcuts {
+            like: like.into(),
+            dislike: dislike.into(),
+        };
+        assert!(validate_window(&window("", "")).is_ok());
+        assert!(validate_window(&window("Ctrl+Shift+KeyL", "Ctrl+Shift+KeyD")).is_ok());
+        assert!(validate_window(&window("Ctrl+NoSuchKey", "")).is_err());
+        assert!(validate_window(&window("Ctrl+KeyL", "Ctrl+KeyL")).is_err());
+    }
 
     fn shortcuts(up: &str, down: &str, mute: &str) -> Shortcuts {
         Shortcuts {

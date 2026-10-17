@@ -13,7 +13,7 @@ const PAGE_PARTS: Readonly<Record<string, string>> = {
   muteButton: SELECTORS.muteButton,
   timeInfo: SELECTORS.timeInfo,
   progressBar: SELECTORS.progressBar,
-  likeButtons: "ytmusic-player-bar ytmusic-like-button-renderer",
+  likeButtons: SELECTORS.likeButtons,
 };
 
 /** What the app calls on the player. */
@@ -34,6 +34,44 @@ export function checkPage(doc: Document = document): string[] {
     ...missing,
     ...PLAYER_FUNCTIONS.filter((name) => typeof player[name] !== "function").map((name) => `player.${name}`),
   ];
+}
+
+/** After a song starts, the player bar needs a moment to be all there. */
+const FIRST_LOOK_MS = 5000;
+/** Something missing is looked for once more before it counts. */
+const SECOND_LOOK_MS = 15000;
+
+/**
+ * Decides when to look at the page: a while after the first song, and again
+ * at later songs for as long as something is missing, so that a message goes
+ * away by itself once it is there. What is missing at the first look is
+ * reported only if it is still missing at a second one: while a page loads,
+ * the player bar can be absent for some seconds.
+ */
+export class PageCheck {
+  private problems: string[] | null = null;
+  private timer: ReturnType<typeof setTimeout> | undefined;
+
+  constructor(
+    private readonly report: (problems: string[]) => void,
+    private readonly check: () => string[] = () => checkPage(),
+  ) {}
+
+  songChanged(): void {
+    if (this.problems !== null && this.problems.length === 0) return;
+    clearTimeout(this.timer);
+    this.timer = setTimeout(() => this.look(true), FIRST_LOOK_MS);
+  }
+
+  private look(again: boolean): void {
+    const problems = this.check();
+    if (problems.length > 0 && again) {
+      this.timer = setTimeout(() => this.look(false), SECOND_LOOK_MS);
+      return;
+    }
+    this.problems = problems;
+    this.report(problems);
+  }
 }
 
 const MAX_ERRORS_PER_PLUGIN = 5;

@@ -66,6 +66,12 @@
       "label": "Custom CSS",
       "description": "Applied after the theme.",
       "default": ""
+    },
+    "shortcut": {
+      "type": "shortcut",
+      "label": "Shortcut",
+      "description": "Opens and closes the themes while the app's window has the focus.",
+      "default": ""
     }
   }
 }

@@ -153,6 +153,7 @@ macOS is not supported yet.
 | Plugin | What it does |
 | --- | --- |
 | `themes` | Color schemes (black, slate, midnight blue, forest, plum), an accent color, frosted-glass bars, the cover of the playing song as a blurred background, a narrower or window-filling content column, and a field for your own CSS. Colors can follow the cover. Four ready-made themes are included. |
+| `cover` | The cover of the playing track large, in a panel or over the whole window, and saved as a picture. |
 | `visualizer` | The spectrum of what is playing, as bars behind the player bar, in the accent color. |
 
 ### Playback
@@ -164,7 +165,8 @@ macOS is not supported yet.
 | `skip-disliked` | Goes on to the next track when one comes up that you gave a thumbs down. |
 | `audio-only` | Music videos without the video. With Premium it switches to the audio version, as the Song button above the player does. Without Premium that button is switched off, so the plugin loads the picture in its smallest size and shows the cover instead. Saves bandwidth and processor time. |
 | `keep-playing` | After about an hour without mouse or keyboard, YouTube Music stops at the next track and asks whether to go on. This plugin keeps that question away, and presses Yes should it come up anyway. |
-| `playback-speed` | Plays everything at 0.5 to 2 times the speed, with or without keeping the pitch. |
+| `playback-speed` | Plays at 0.5 to 3 times the speed, with or without keeping the pitch; podcast episodes at a speed of their own. A speed chosen in YouTube Music's menu is kept for that kind of track. |
+| `skip-silence` | Runs fast through silence at the start of a track (nobody hears silence at triple speed), and goes on to the next track when the last seconds are silent. Not together with `crossfade` or `playback-speed`. |
 | `prefer-opus` | Makes the player choose Opus audio instead of AAC. |
 | `wheel-volume` | Turning the mouse wheel over the player bar changes the volume. |
 
@@ -172,8 +174,11 @@ macOS is not supported yet.
 
 | Plugin | What it does |
 | --- | --- |
-| `lyrics` | A side panel with time-synced lyrics from [LRCLIB](https://lrclib.net); clicking a line jumps to it. Plain lyrics from [lyrics.ovh](https://lyrics.ovh) if LRCLIB has none. A large view fills the window, and plus and minus shift lyrics that run ahead of or behind the sound, remembered per track. |
+| `lyrics` | A side panel with time-synced lyrics from [LRCLIB](https://lrclib.net); clicking a line jumps to it. Plain lyrics from [lyrics.ovh](https://lyrics.ovh) if LRCLIB has none. A large view fills the window, a small window can show the line being sung over other programs, lines can come with a translation, and plus and minus shift lyrics that run ahead of or behind the sound, remembered per track. |
 | `track-info` | A panel with codec, bitrate, sample rate, loudness and connection speed of the playing track. |
+| `now-playing` | For streaming with OBS and the like: the playing track as text files and a cover in a folder (`now-playing` in the app's settings folder), and if you like as a page on `http://127.0.0.1` for a browser source. The text is yours to word, e.g. `{artist} – {title}`. |
+| `stats` | Your most heard tracks and artists and your listening time per day, in a panel. Counted and kept on this computer only; a track counts once heard for 30 seconds. |
+| `playlist-tools` | Saves the open playlist as a text file or as a CSV for a spreadsheet, and lists the tracks that are in it more than once, also as another version of the same song. |
 | `discord` | Shows in your Discord profile what you are listening to: title, artist, cover, how far the track is, and a button for others to listen too. What shows, and whether it stays while paused, is up to you; a preview in the settings window shows how it looks. Needs the Discord app running on the same computer. |
 | `demo` | A working template for people who write plugins. |
 
@@ -216,6 +221,9 @@ and [how to add it to the list](docs/plugins.md#the-plugin-list).
 - **Global shortcuts:** key combinations for play / pause, next, previous,
   volume and mute that work while another program has the focus. None are set
   at first; click a field in the settings window and press the combination.
+- **Shortcuts in the window:** "Like" and "Dislike" for the playing track,
+  and opening the panels of lyrics, equalizer and themes, all set in the
+  same tab. They work while the app's window has the focus.
 - **Media keys** work as in a browser.
 - **Start with Windows**, if you like without opening a window.
 - **Resume:** the track from last time is loaded again, paused where it
@@ -313,6 +321,7 @@ they are switched on:
 | `sponsorblock` | `sponsor.ajay.app` | the first four characters of a hash of the video id, not the id itself | once for every track |
 | `lyrics` | `lrclib.net` | title and artist of the playing song | once for every track |
 | `lyrics` | `api.lyrics.ovh` | title and first artist | only if LRCLIB has no lyrics |
+| `lyrics` | `api.mymemory.translated.net` | the lyrics and the language to translate them into | only if "Translate into" is set, once per track |
 
 `discord` hands title, artist, album, the cover's address and the track's
 link to the Discord app on your computer, which shows them in your profile to

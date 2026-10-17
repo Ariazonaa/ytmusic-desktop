@@ -2,7 +2,7 @@ import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
-// Builds the settings window, the only UI the app serves itself.
+// Builds the settings window and the lyrics window, the UI the app serves itself.
 export default defineConfig({
   root: "src/ui",
   plugins: [
@@ -22,5 +22,12 @@ export default defineConfig({
     outDir: "../../dist-ui",
     emptyOutDir: true,
     target: "es2022",
+    rollupOptions: {
+      input: {
+        // Relative to the folder the build runs in, the repository's.
+        main: "src/ui/index.html",
+        overlay: "src/ui/overlay.html",
+      },
+    },
   },
 });

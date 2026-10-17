@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { HealthReporter, checkPage } from "./health";
+import { HealthReporter, PageCheck, checkPage } from "./health";
 
 /** A page with everything the app looks for. */
 function buildPage(): { player: Record<string, unknown> } {
@@ -89,5 +89,40 @@ describe("HealthReporter", () => {
     reporter.setPageProblems(["player"]);
     await vi.advanceTimersByTimeAsync(600);
     expect(reporter.current.pageProblems).toEqual(["player"]);
+  });
+});
+
+describe("PageCheck", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("reports what is still missing at a second look, not what was missing while the page loaded", () => {
+    vi.useFakeTimers();
+    const results = [["playerBar", "nextButton"], []];
+    const report = vi.fn();
+    const check = new PageCheck(report, () => results.shift() ?? []);
+    check.songChanged();
+    vi.advanceTimersByTime(5000);
+    expect(report).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(15000);
+    expect(report).toHaveBeenCalledWith([]);
+    // All there: later songs are not looked at again.
+    check.songChanged();
+    vi.advanceTimersByTime(30000);
+    expect(report).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps looking while something is missing, so that the message goes away", () => {
+    vi.useFakeTimers();
+    const results = [["likeButtons"], ["likeButtons"], []];
+    const report = vi.fn();
+    const check = new PageCheck(report, () => results.shift() ?? []);
+    check.songChanged();
+    vi.advanceTimersByTime(20000);
+    expect(report).toHaveBeenLastCalledWith(["likeButtons"]);
+    check.songChanged();
+    vi.advanceTimersByTime(5000);
+    expect(report).toHaveBeenLastCalledWith([]);
   });
 });

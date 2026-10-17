@@ -4,7 +4,7 @@
   "description": "The end of a track plays over the start of the next.",
   "category": "audio",
   "permissions": ["music.read", "music.control", "audio", "ui.inject"],
-  "conflicts": ["track-fade", "playback-speed"],
+  "conflicts": ["track-fade", "playback-speed", "skip-silence"],
   "settings": {
     "seconds": {
       "type": "range",

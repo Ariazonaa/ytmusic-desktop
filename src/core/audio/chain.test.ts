@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { AudioEffect } from "../../shared/types";
-import { AudioChain } from "./chain";
+import { AudioChain, engineAppliesElementVolume, takeOverVolume } from "./chain";
 
 /** A stand-in for an AudioNode that records what it is connected to. */
 class FakeNode {
@@ -16,7 +16,7 @@ class FakeNode {
 
 const addVideo = (): HTMLVideoElement => document.body.appendChild(document.createElement("video"));
 
-function setup(withVideo = true) {
+function setup(withVideo = true, elementVolumeApplied = true) {
   if (withVideo) addVideo();
   const sources: FakeNode[] = [];
   const destination = new FakeNode("destination");
@@ -28,10 +28,11 @@ function setup(withVideo = true) {
       return source;
     }),
     resume: vi.fn(() => Promise.resolve()),
+    createGain: vi.fn(() => Object.assign(new FakeNode("volume"), { gain: { value: 1 } })),
   };
   const createContext = vi.fn(() => context as unknown as AudioContext);
   const log = { error: vi.fn() };
-  const chain = new AudioChain(document, createContext, log);
+  const chain = new AudioChain(document, createContext, log, elementVolumeApplied);
 
   const effect = (name: string) => {
     const node = new FakeNode(name);
@@ -57,6 +58,60 @@ afterEach(() => {
 });
 
 describe("AudioChain", () => {
+  it("applies the player's volume and mute itself where the engine does not", () => {
+    const { chain, effect, path, context } = setup(true, false);
+    const video = document.querySelector("video")!;
+    const remove = chain.addEffect(10, effect("equalizer").build);
+    expect(path()).toEqual(["source1", "equalizer", "volume", "destination"]);
+    const gain = context.createGain.mock.results[0]!.value as { gain: { value: number } };
+
+    video.volume = 0.3;
+    video.dispatchEvent(new Event("volumechange"));
+    expect(gain.gain.value).toBeCloseTo(0.3);
+    video.muted = true;
+    video.dispatchEvent(new Event("volumechange"));
+    expect(gain.gain.value).toBe(0);
+
+    // With every effect gone, the sound still runs through the chain: the volume still counts.
+    remove();
+    expect(path()).toEqual(["source1", "volume", "destination"]);
+    video.muted = false;
+    video.dispatchEvent(new Event("volumechange"));
+    expect(gain.gain.value).toBeCloseTo(0.3);
+  });
+
+  it("keeps the element itself at full volume, and the page none the wiser", () => {
+    const video = document.createElement("video");
+    video.volume = 0.4;
+    video.muted = true;
+    const real = (name: "volume" | "muted"): unknown =>
+      Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, name)!.get!.call(video);
+    takeOverVolume(video);
+    expect([real("volume"), real("muted")]).toEqual([1, false]);
+    expect([video.volume, video.muted]).toEqual([0.4, true]);
+
+    const changes = vi.fn();
+    video.addEventListener("volumechange", changes);
+    video.volume = 0.7;
+    video.volume = 0.7;
+    video.muted = false;
+    expect([video.volume, video.muted, real("volume")]).toEqual([0.7, false, 1]);
+    expect(changes).toHaveBeenCalledTimes(2);
+    expect(() => (video.volume = 2)).toThrow();
+  });
+
+  it("leaves the volume to engines that apply it", () => {
+    const { chain, effect, path, context } = setup(true, true);
+    chain.addEffect(10, effect("equalizer").build);
+    expect(path()).toEqual(["source1", "equalizer", "destination"]);
+    expect(context.createGain).not.toHaveBeenCalled();
+  });
+
+  it("knows Chromium from WebKit", () => {
+    expect(engineAppliesElementVolume({ chrome: {} } as unknown as Window)).toBe(true);
+    expect(engineAppliesElementVolume({} as Window)).toBe(false);
+  });
+
   it("leaves the audio alone until an effect is added", () => {
     const { createContext } = setup();
     expect(createContext).not.toHaveBeenCalled();

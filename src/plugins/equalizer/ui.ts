@@ -17,12 +17,13 @@ import { parseAutoEq } from "./autoeq";
 import { GRAPH, curvePath, graphFrequencies, xFor, yFor } from "./curve";
 import { responseDb } from "./filters";
 import { t } from "../../core/i18n";
+import { Dropdown, type DropdownOption } from "../../shared/dropdown";
 
 export const UI_CLASS = "ytmd-eq";
 
 export const UI_CSS = `
 .${UI_CLASS} { padding: 16px; overflow-y: auto; }
-.${UI_CLASS} select, .${UI_CLASS} button, .${UI_CLASS} input[type="text"] {
+.${UI_CLASS} button, .${UI_CLASS} input[type="text"] {
   min-width: 0;
   padding: 6px 10px;
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -31,10 +32,33 @@ export const UI_CSS = `
   color: #fff;
   font: inherit;
 }
+/* The preset list is drawn by the page (shared/dropdown.ts): a native select
+   opens as a light GTK menu on Linux. */
+.${UI_CLASS} { color-scheme: dark; }
+.${UI_CLASS} .ytmd-dropdown { position: relative; min-width: 0; }
+.${UI_CLASS} .ytmd-dropdown-button {
+  display: flex; width: 100%; align-items: center; justify-content: space-between; gap: 8px; text-align: left;
+}
+.${UI_CLASS} .ytmd-dropdown-button::after {
+  content: ""; flex-shrink: 0;
+  border-top: 6px solid #aaa; border-right: 5px solid transparent; border-left: 5px solid transparent;
+}
+.${UI_CLASS} .ytmd-dropdown-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.${UI_CLASS} .ytmd-dropdown-list {
+  position: absolute; z-index: 10; top: calc(100% + 2px); left: 0; right: 0;
+  max-height: 320px; overflow-y: auto; padding: 4px 0;
+  border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 6px;
+  background: #1c1c1c; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+}
+.${UI_CLASS} .ytmd-dropdown-group { padding: 6px 10px 2px; color: rgba(255, 255, 255, 0.6); font-size: 12px; }
+.${UI_CLASS} .ytmd-dropdown-option { padding: 6px 10px; color: #fff; cursor: default; }
+.${UI_CLASS} .ytmd-dropdown-option.is-grouped { padding-left: 20px; }
+.${UI_CLASS} .ytmd-dropdown-option.is-active { background: rgba(255, 255, 255, 0.15); }
+.${UI_CLASS} .ytmd-dropdown-option[aria-selected="true"] { font-weight: 600; }
 .${UI_CLASS} button { flex-shrink: 0; cursor: pointer; }
 .${UI_CLASS} button:disabled { opacity: 0.4; cursor: default; }
 .${UI_CLASS}-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.${UI_CLASS}-row select, .${UI_CLASS}-row input[type="text"] { flex: 1; }
+.${UI_CLASS}-row .ytmd-dropdown, .${UI_CLASS}-row input[type="text"] { flex: 1; }
 .${UI_CLASS}-save { margin-top: 8px; }
 .${UI_CLASS}-message { min-height: 16px; margin: 6px 0 0; color: #ffb4ab; font-size: 12px; }
 .${UI_CLASS} svg {
@@ -140,8 +164,14 @@ export function createEqualizerUi(container: HTMLElement, handlers: Handlers): E
 
   // Preset row.
   const top = root.appendChild(element("div", `${UI_CLASS}-row`));
-  const preset = top.appendChild(element("select"));
-  preset.setAttribute("aria-label", t("Preset"));
+  const preset = new Dropdown(doc, {
+    label: t("Preset"),
+    onChange: (value) => {
+      remove.disabled = !value.startsWith(USER_PREFIX);
+      handlers.onCommit({ preset: value });
+    },
+  });
+  top.appendChild(preset.element);
   const remove = button(top, t("Delete"));
   const reset = button(top, t("Reset"));
 
@@ -158,21 +188,15 @@ export function createEqualizerUi(container: HTMLElement, handlers: Handlers): E
   message.setAttribute("role", "alert");
 
   function fillPresets(selected: string): void {
-    const option = (parent: HTMLElement, value: string, label: string): void => {
-      const created = parent.appendChild(element("option"));
-      created.value = value;
-      created.textContent = label;
-    };
-    preset.replaceChildren();
-    for (const [value, label] of Object.entries(BUILTIN_LABELS)) option(preset, value, t(label));
-    if (saved.length > 0) {
-      const group = preset.appendChild(element("optgroup"));
-      group.label = t("Saved");
-      for (const userPreset of saved) option(group, USER_PREFIX + userPreset.name, userPreset.name);
+    const options: DropdownOption[] = Object.entries(BUILTIN_LABELS).map(([value, label]) => ({ value, label: t(label) }));
+    for (const userPreset of saved) {
+      options.push({ value: USER_PREFIX + userPreset.name, label: userPreset.name, group: t("Saved") });
     }
-    option(preset, CUSTOM, t("Custom"));
+    // After the saved ones, out of their group.
+    options.push({ value: CUSTOM, label: t("Custom") });
+    preset.setOptions(options);
     // A saved preset that no longer exists plays the custom sliders.
-    preset.value = [...preset.options].some((o) => o.value === selected) ? selected : CUSTOM;
+    preset.value = options.some((o) => o.value === selected) ? selected : CUSTOM;
     remove.disabled = !preset.value.startsWith(USER_PREFIX);
   }
 
@@ -233,7 +257,6 @@ export function createEqualizerUi(container: HTMLElement, handlers: Handlers): E
   });
   preampSlider.addEventListener("change", () => handlers.onCommit({ preamp }));
 
-  preset.addEventListener("change", () => handlers.onCommit({ preset: preset.value }));
   reset.addEventListener("click", () => handlers.onCommit({ preset: "flat", preamp: 0 }));
 
   const saveCurrent = (): void => {

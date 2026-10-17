@@ -13,11 +13,11 @@ const de: Readonly<Record<string, string>> = {
 
   // General
   General: "Allgemein",
-  "Start with Windows": "Mit Windows starten",
+  "Start at sign-in": "Beim Anmelden starten",
   "Launch the app when you sign in.": "Startet die App, wenn du dich anmeldest.",
   "Start in the tray": "Im Tray starten",
-  "When Windows launches the app at sign-in, no window opens. Click the tray icon to show it.":
-    "Startet Windows die App bei der Anmeldung, öffnet sich kein Fenster. Ein Klick auf das Tray-Symbol zeigt es.",
+  "When the app starts at sign-in, no window opens. Click the tray icon to show it.":
+    "Startet die App bei der Anmeldung, öffnet sich kein Fenster. Ein Klick auf das Tray-Symbol zeigt es.",
   "Minimize to tray": "In den Tray minimieren",
   "Closing the window keeps the music playing. Quit from the tray menu.":
     "Beim Schließen des Fensters läuft die Musik weiter. Beenden geht über das Tray-Menü.",
@@ -32,7 +32,7 @@ const de: Readonly<Record<string, string>> = {
   Language: "Sprache",
   "Of this window, the tray menu and what the app adds to the page.":
     "Für dieses Fenster, das Tray-Menü und alles, was die App in die Seite einfügt.",
-  "Same as Windows": "Wie Windows",
+  "Same as the system": "Wie das System",
 
   // Global shortcuts
   Shortcuts: "Tastenkürzel",
@@ -183,8 +183,6 @@ const de: Readonly<Record<string, string>> = {
     "Songtexte im Takt in einem Seitenpanel, von LRCLIB und lyrics.ovh.",
   "Brings every track to the same loudness.":
     "Bringt alle Titel auf die gleiche Lautheit.",
-  "Plays everything faster or slower.":
-    "Spielt alles schneller oder langsamer ab.",
   "Removes the ads YouTube Music plays between tracks without Premium.":
     "Entfernt die Werbung, die YouTube Music ohne Premium zwischen Titeln spielt.",
   "Makes the player choose Opus audio instead of AAC.":
@@ -260,6 +258,75 @@ const de: Readonly<Record<string, string>> = {
   "Font size in the large view": "Schriftgröße in der großen Ansicht",
   "In pixels, 20 to 64.": "In Pixeln, 20 bis 64.",
   Shortcut: "Tastenkürzel",
+  "Opens and closes the equalizer while the app's window has the focus.":
+    "Öffnet und schließt den Equalizer, solange das Fenster der App den Fokus hat.",
+  "Opens and closes the themes while the app's window has the focus.":
+    "Öffnet und schließt die Themes, solange das Fenster der App den Fokus hat.",
+  Everywhere: "Überall",
+  "Window over other programs": "Fenster über anderen Programmen",
+  "The line being sung in a small window that stays on top, e.g. over a game. Drag it where you like.":
+    "Die gesungene Zeile in einem kleinen Fenster, das oben bleibt, etwa über einem Spiel. Schieb es, wohin du willst.",
+  "Translate into": "Übersetzen in",
+  "Shows each line's translation under it, from MyMemory, which gets the lyrics for it. About 5000 characters a day are free, a few songs' worth.":
+    "Zeigt unter jeder Zeile ihre Übersetzung, von MyMemory, das dafür den Songtext bekommt. Etwa 5000 Zeichen am Tag sind frei, ein paar Lieder.",
+  "No translation": "Keine Übersetzung",
+  German: "Deutsch",
+  English: "Englisch",
+  Spanish: "Spanisch",
+  French: "Französisch",
+  Italian: "Italienisch",
+  Portuguese: "Portugiesisch",
+  Dutch: "Niederländisch",
+  Polish: "Polnisch",
+  Turkish: "Türkisch",
+  Japanese: "Japanisch",
+  Korean: "Koreanisch",
+  "Runs fast through silence at the start of a track, and goes on to the next one when the end is silence.":
+    "Spielt Stille am Anfang eines Titels schnell durch und geht zum nächsten, wenn das Ende still ist.",
+  "At the start": "Am Anfang",
+  "Silence in the first 15 seconds plays at triple speed, which nobody hears.":
+    "Stille in den ersten 15 Sekunden läuft dreifach schnell, was niemand hört.",
+  "At the end": "Am Ende",
+  "Silence of a second and a half in the last 20 seconds goes on to the next track.":
+    "Anderthalb Sekunden Stille in den letzten 20 Sekunden führen zum nächsten Titel.",
+  "Silence below": "Stille unter",
+  "Lower counts less as silence: a quiet intro stays.": "Je niedriger, desto weniger gilt als Stille: ein leises Intro bleibt.",
+  "Saves the open playlist as a text file or as a CSV for a spreadsheet, and lists the tracks that are in it more than once.":
+    "Speichert die offene Playlist als Textdatei oder als CSV für eine Tabelle und zeigt, welche Titel mehrfach darin sind.",
+  "Your most heard tracks and artists and your listening time per day, counted on this computer only.":
+    "Deine meistgehörten Titel und Künstler und deine Hörzeit je Tag, gezählt nur auf diesem Computer.",
+  "Hands the playing track to streaming software such as OBS: as text files and a cover in a folder, and if you like as a page for a browser source.":
+    "Gibt den laufenden Titel an Streaming-Software wie OBS: als Textdateien und Cover in einem Ordner, und auf Wunsch als Seite für eine Browserquelle.",
+  Text: "Text",
+  "What now-playing.txt says. {title}, {artist} and {album} stand for the track.":
+    "Was in now-playing.txt steht. {title}, {artist} und {album} stehen für den Titel.",
+  "Page for a browser source": "Seite für eine Browserquelle",
+  "Cover and track on http://127.0.0.1 at the port below, for OBS's browser source. Only this computer can open it.":
+    "Cover und Titel unter http://127.0.0.1 am Port darunter, für die Browserquelle von OBS. Nur dieser Computer kann sie öffnen.",
+  Port: "Port",
+  "Shows the cover of the playing track large, and saves it as a picture.":
+    "Zeigt das Cover des laufenden Titels groß und speichert es als Bild.",
+  "Shows the cover over the whole window, and hides it again, while the app's window has the focus.":
+    "Zeigt das Cover über dem ganzen Fenster und blendet es wieder aus, solange das Fenster der App den Fokus hat.",
+  "Plays music and podcasts faster or slower, each at its own speed.":
+    "Spielt Musik und Podcasts schneller oder langsamer, jedes mit eigener Geschwindigkeit.",
+  "For songs and music videos. A speed chosen in YouTube Music's menu is kept here.":
+    "Für Songs und Musikvideos. Eine im Menü von YouTube Music gewählte Geschwindigkeit wird hier übernommen.",
+  "Speed for podcasts": "Geschwindigkeit für Podcasts",
+  "For podcast episodes. A speed chosen in YouTube Music's menu while one plays is kept here.":
+    "Für Podcast-Folgen. Eine im Menü von YouTube Music gewählte Geschwindigkeit wird hier übernommen, während eine läuft.",
+  Lyrics: "Songtext",
+  Equalizer: "Equalizer",
+  Themes: "Themes",
+  "In the app's window": "Im Fenster der App",
+  Like: "Mag ich",
+  Dislike: "Mag ich nicht",
+  "Likes the playing track, or takes the like back.": "Markiert den laufenden Titel mit „Mag ich“, oder nimmt das zurück.",
+  "Dislikes the playing track, or takes it back.": "Markiert den laufenden Titel mit „Mag ich nicht“, oder nimmt das zurück.",
+  "Opens and closes its panel.": "Öffnet und schließt sein Panel.",
+  "Opens and closes its panel, while the plugin {name} is on.": "Öffnet und schließt sein Panel, solange das Plugin {name} an ist.",
+  "These work while the app's window has the focus, except while you type in a field.":
+    "Diese gelten, solange das Fenster der App den Fokus hat, außer beim Tippen in einem Feld.",
   "Opens and closes the lyrics while the app's window has the focus.":
     "Öffnet und schließt die Songtexte, solange das Fenster der App den Fokus hat.",
   "Open on start": "Beim Start öffnen",

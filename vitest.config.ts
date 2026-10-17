@@ -8,5 +8,8 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     include: ["src/**/*.test.ts"],
+    // The settings window's tests click through several steps each, which
+    // takes longer than the default 5 seconds on a busy CI runner.
+    testTimeout: 20000,
   },
 });

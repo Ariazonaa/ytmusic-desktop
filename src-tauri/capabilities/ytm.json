@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "ytm-remote",
-  "description": "Lets the injected script on music.youtube.com read settings and change those of its plugins, open the settings window, list external plugins, manage files to share (themes, equalizer presets), tell the tray what is playing, add lines to the log, show notifications, report what does not work, ask for the name of the sound output device and set the Discord status. Nothing else.",
+  "description": "Lets the injected script on music.youtube.com read settings and change those of its plugins, open the settings window, list external plugins, manage files to share (themes, equalizer presets), tell the tray what is playing, add lines to the log, show notifications, report what does not work, ask for the name of the sound output device set the Discord status, save the playing track's cover and hand what plays to streaming software (files and a page on 127.0.0.1) keep listening statistics on this computer save a playlist as a file the user picks, show lyrics in a window over other programs and open a plugin's sign-in page in the browser. Nothing else.",
   "windows": ["main"],
   "remote": {
     "urls": ["https://music.youtube.com/*"]
@@ -20,6 +20,17 @@
     "allow-report-health",
     "allow-output-device",
     "allow-discord-set-activity",
-    "allow-discord-clear-activity"
+    "allow-discord-clear-activity",
+    "allow-save-cover",
+    "allow-now-playing-update",
+    "allow-now-playing-serve",
+    "allow-open-now-playing-folder",
+    "allow-stats-record",
+    "allow-stats-summary",
+    "allow-stats-clear",
+    "allow-save-text",
+    "allow-lyrics-overlay",
+    "allow-lyrics-overlay-line",
+    "allow-open-link"
   ]
 }

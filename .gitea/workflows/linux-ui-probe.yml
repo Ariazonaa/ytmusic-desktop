@@ -1,0 +1,38 @@
+name: Linux UI probe
+
+# Screenshots of the settings window in WebKitGTK, the engine the app uses on
+# Linux, to see how its controls come out there. Started by hand or by a push
+# to a branch named probe/…; the pictures are printed into the log in base64.
+on:
+  workflow_dispatch:
+  push:
+    branches: ["probe/**"]
+
+jobs:
+  settings:
+    name: Settings window in WebKitGTK
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Install WebKitGTK and tools
+        run: |
+          SUDO=""; if [ "$(id -u)" != 0 ]; then SUDO=sudo; fi
+          export DEBIAN_FRONTEND=noninteractive
+          $SUDO apt-get update -q
+          $SUDO apt-get install -y -q --no-install-recommends xvfb xauth xdotool imagemagick dbus-x11 \
+            python3-gi gir1.2-gtk-3.0 gir1.2-webkit2-4.1 fonts-noto-core
+      - run: npm ci
+      - run: npm run build:ui
+      - run: xvfb-run -a -s "-screen 0 800x900x24" dbus-run-session python3 scripts/linux-ui-probe.py probe-out
+      # The artifact API of this server does not list uploads, so the
+      # pictures also go into the log, to be read back from there.
+      - name: Pictures into the log
+        run: |
+          for f in probe-out/*.png; do
+            echo "=== BEGIN $(basename "$f")"
+            base64 -w 76 "$f"
+            echo "=== END $(basename "$f")"
+          done

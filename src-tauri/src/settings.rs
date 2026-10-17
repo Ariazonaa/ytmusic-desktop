@@ -46,6 +46,19 @@ pub struct Settings {
     pub plugin_settings: BTreeMap<String, BTreeMap<String, Value>>,
     /// Global keyboard shortcuts.
     pub shortcuts: Shortcuts,
+    /// Keyboard shortcuts of the app's window, for what no plugin owns.
+    pub window_shortcuts: WindowShortcuts,
+}
+
+/// Key combinations that work while the app's window has the focus, written
+/// like the global ones. An empty one is switched off, which is the default.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct WindowShortcuts {
+    /// Likes the playing track, or takes the like back.
+    pub like: String,
+    /// Dislikes the playing track, or takes the dislike back.
+    pub dislike: String,
 }
 
 /// Key combinations that work while another program has the focus, written
@@ -76,6 +89,7 @@ impl Default for Settings {
             check_for_updates: true,
             plugin_settings: BTreeMap::new(),
             shortcuts: Shortcuts::default(),
+            window_shortcuts: WindowShortcuts::default(),
         }
     }
 }
@@ -94,6 +108,7 @@ impl Settings {
             return Err(format!("unknown language: {:?}", self.language));
         }
         crate::shortcuts::validate(&self.shortcuts)?;
+        crate::shortcuts::validate_window(&self.window_shortcuts)?;
         self.validate_plugin_settings()
     }
 
@@ -450,6 +465,10 @@ mod tests {
                 toggle_mute: String::new(),
                 next: "Ctrl+Alt+ArrowRight".into(),
                 ..Shortcuts::default()
+            },
+            window_shortcuts: WindowShortcuts {
+                like: "Ctrl+Shift+KeyL".into(),
+                dislike: String::new(),
             },
         };
         save(&path, &settings).unwrap();

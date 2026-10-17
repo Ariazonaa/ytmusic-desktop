@@ -53,9 +53,13 @@ ${REPOSITORY}
 `.replace(/\n/g, "\r\n");
 
 const { version } = JSON.parse(readFileSync("package.json", "utf8"));
-// Installed apps take whatever the latest release is. A version like
-// 1.2.0-beta.1 would reach all of them, so there are no releases of those.
-if (!/^\d+\.\d+\.\d+$/.test(version)) throw new Error(`${version} is a pre-release version: not released`);
+// A version like 1.2.0-beta.1 is published as a pre-release: for testers,
+// who download it themselves. Installed apps ask for releases/latest, which
+// GitHub never points at a pre-release, so it reaches none of them.
+if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) throw new Error(`unexpected version: ${version}`);
+const preRelease = version.includes("-");
+// A pre-release has the notes of the version it comes before.
+const changelogVersion = version.replace(/-.*/, "");
 
 const names = {
   installer: `ytmusic-desktop_${version}_x64-setup.exe`,
@@ -115,14 +119,14 @@ function collect() {
 /** This version's part of the changelog: from its heading to the next one. */
 function releaseNotes() {
   const changelog = readFileSync("CHANGELOG.md", "utf8").replace(/\r\n/g, "\n");
-  const start = changelog.indexOf(`\n## ${version}\n`);
-  if (start < 0) throw new Error(`CHANGELOG.md has no entry for ${version}`);
-  const rest = changelog.slice(start + `\n## ${version}\n`.length);
+  const start = changelog.indexOf(`\n## ${changelogVersion}\n`);
+  if (start < 0) throw new Error(`CHANGELOG.md has no entry for ${changelogVersion}`);
+  const rest = changelog.slice(start + `\n## ${changelogVersion}\n`.length);
   const end = rest.indexOf("\n## ");
   // The changelog wraps its lines; the app shows the notes as they are, so each point becomes one line.
   const notes = (end < 0 ? rest : rest.slice(0, end)).trim().replace(/\n {2,}(?=\S)/g, " ");
-  if (!notes) throw new Error(`the entry for ${version} in CHANGELOG.md is empty`);
-  return notes;
+  if (!notes) throw new Error(`the entry for ${changelogVersion} in CHANGELOG.md is empty`);
+  return preRelease ? `A test version before ${changelogVersion}. Installed apps are not updated to it.\n\n${notes}` : notes;
 }
 
 function assemble(tag) {
@@ -167,7 +171,12 @@ function assemble(tag) {
     ) + "\n",
   );
 
-  // For the AUR: the package installs the .deb of this release.
+  // For the AUR: the package installs the .deb of this release. Not for a
+  // pre-release, whose version is no pkgver.
+  if (preRelease) {
+    console.log(`release/ holds ${files.map(([, name]) => name).join(", ")}, SHA256SUMS.txt, latest.json and notes.md for the pre-release ${tag}`);
+    return;
+  }
   const pkgbuild = readFileSync("packaging/aur/PKGBUILD", "utf8")
     .replace(/\r\n/g, "\n")
     .replace(/^pkgver=.*$/m, `pkgver=${version}`)

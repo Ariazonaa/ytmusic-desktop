@@ -7,6 +7,7 @@ import { BUILTIN_THEMES } from "./builtin";
 import { averageColor, colorsFromRgb, type CoverColors } from "./cover-colors";
 import { coverCss, customCss, themeCss, usesCover } from "./css";
 import manifestJson from "./plugin.json";
+import { SettingShortcut } from "../setting-shortcut";
 import { UI_CSS, createThemesUi, type ThemesUi } from "./ui";
 import { t } from "../../core/i18n";
 
@@ -79,6 +80,17 @@ async function saveCurrent(pluginApi: PluginApi, name: string): Promise<void> {
   }
 }
 
+function togglePanel(): void {
+  if (panel?.open) {
+    panel.hide();
+  } else {
+    panel?.show();
+    void refresh();
+  }
+}
+
+const shortcut = new SettingShortcut(togglePanel);
+
 const themes: Plugin = {
   manifest,
 
@@ -86,14 +98,8 @@ const themes: Plugin = {
     api = pluginApi;
     artworkUrl = api.music.getCurrentSong()?.artworkUrl ?? null;
     api.ui.injectCss(UI_CSS);
-    api.ui.addNavButton(t("Themes"), () => {
-      if (panel?.open) {
-        panel.hide();
-      } else {
-        panel?.show();
-        void refresh();
-      }
-    });
+    api.ui.addNavButton(t("Themes"), togglePanel);
+    shortcut.apply(api);
     apply();
     void readCover();
   },
@@ -122,10 +128,12 @@ const themes: Plugin = {
   onSettingsChange() {
     apply();
     void readCover();
+    shortcut.apply(api);
   },
 
   onUnload() {
-    // The API removes the injected CSS, the button and the panel.
+    // The API removes the injected CSS, the button, the shortcut and the panel.
+    shortcut.clear();
     removers = [];
     api = panel = ui = undefined;
     artworkUrl = null;

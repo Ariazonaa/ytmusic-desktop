@@ -276,6 +276,211 @@ pub async fn install_plugin(
     Ok(Some(name))
 }
 
+/// Asks where to and saves the cover at `url`, from YouTube's image servers,
+/// as a picture named after `name`. Resolves with whether it was saved. A
+/// call shortly after the last one is refused, so that the page cannot open
+/// dialog after dialog.
+#[tauri::command]
+pub async fn save_cover(
+    app: AppHandle,
+    window: WebviewWindow,
+    limit: State<'_, OpenLimit>,
+    url: String,
+    name: String,
+) -> Result<bool, String> {
+    if !crate::cover::is_cover_url(&url) {
+        return Err("not a cover from YouTube's image servers".into());
+    }
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
+    let bytes = crate::download::fetch(&url, crate::cover::MAX_COVER_BYTES).await?;
+    let extension = crate::cover::image_extension(&bytes).ok_or("the cover is not a picture")?;
+    let mut dialog = app
+        .dialog()
+        .file()
+        .add_filter("Picture", &[extension])
+        .set_parent(&window)
+        .set_file_name(crate::cover::file_name(&name, extension));
+    if let Ok(dir) = app.path().picture_dir() {
+        dialog = dialog.set_directory(dir);
+    }
+    let Some(path) = dialog
+        .blocking_save_file()
+        .and_then(|file| file.into_path().ok())
+    else {
+        return Ok(false);
+    };
+    std::fs::write(path, bytes).map_err(|err| err.to_string())?;
+    Ok(true)
+}
+
+/// "Now playing" for streaming software: writes the playing track to the
+/// files in the now-playing folder and fetches its cover for them.
+#[tauri::command]
+pub async fn now_playing_update(
+    app: AppHandle,
+    state: State<'_, crate::now_playing::NowPlaying>,
+    text: String,
+    track: crate::now_playing::Track,
+    cover_url: Option<String>,
+) -> Result<(), String> {
+    let dir = crate::now_playing::dir(&app).ok_or("no config directory")?;
+    let cover_url = cover_url.filter(|url| crate::cover::is_cover_url(url));
+    if state.update(&dir, &text, track, cover_url.clone())? {
+        if let Some(url) = cover_url {
+            let bytes = crate::download::fetch(&url, crate::cover::MAX_COVER_BYTES).await?;
+            if crate::cover::image_extension(&bytes).is_some() {
+                state.set_cover(&dir, &url, bytes)?;
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Serves the now-playing page on 127.0.0.1 at `port`, or stops with `None`.
+#[tauri::command]
+pub fn now_playing_serve(
+    state: State<'_, crate::now_playing::NowPlaying>,
+    port: Option<u16>,
+) -> Result<(), String> {
+    state.serve(port)
+}
+
+/// Shows the now-playing folder in the file manager.
+#[tauri::command]
+pub fn open_now_playing_folder(app: AppHandle, limit: State<'_, OpenLimit>) -> Result<(), String> {
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
+    let dir = crate::now_playing::dir(&app).ok_or("no config directory")?;
+    std::fs::create_dir_all(&dir).map_err(|err| err.to_string())?;
+    app.opener()
+        .open_path(dir.to_string_lossy(), None::<&str>)
+        .map_err(|err| err.to_string())
+}
+
+/// Adds what was heard of a track to the listening statistics.
+#[tauri::command]
+pub fn stats_record(
+    app: AppHandle,
+    store: State<'_, crate::stats::StatsStore>,
+    heard: crate::stats::Heard,
+) -> Result<(), String> {
+    let path = crate::stats::path(&app).ok_or("no config directory")?;
+    store.with(&path, |stats| stats.add(&heard))
+}
+
+/// The most heard tracks and artists, and the listening time of the last `days` days.
+#[tauri::command]
+pub fn stats_summary(
+    app: AppHandle,
+    store: State<'_, crate::stats::StatsStore>,
+    days: usize,
+) -> Result<crate::stats::Summary, String> {
+    let path = crate::stats::path(&app).ok_or("no config directory")?;
+    store.with(&path, |stats| Ok(stats.summary(days.min(366))))
+}
+
+/// Forgets all listening statistics.
+#[tauri::command]
+pub fn stats_clear(
+    app: AppHandle,
+    store: State<'_, crate::stats::StatsStore>,
+) -> Result<(), String> {
+    let path = crate::stats::path(&app).ok_or("no config directory")?;
+    store.with(&path, |stats| {
+        *stats = crate::stats::Stats::default();
+        Ok(())
+    })
+}
+
+/// Asks where to and saves `text` as a text or CSV file named after `name`.
+/// Resolves with whether it was saved. A call shortly after the last one is
+/// refused, so that the page cannot open dialog after dialog.
+#[tauri::command]
+pub async fn save_text(
+    app: AppHandle,
+    window: WebviewWindow,
+    limit: State<'_, OpenLimit>,
+    name: String,
+    kind: String,
+    text: String,
+) -> Result<bool, String> {
+    const MAX_TEXT_BYTES: usize = 5 * 1024 * 1024;
+    let (filter, extension) = match kind.as_str() {
+        "txt" => ("Text", "txt"),
+        "csv" => ("CSV", "csv"),
+        _ => return Err("the kind must be txt or csv".into()),
+    };
+    if text.len() > MAX_TEXT_BYTES {
+        return Err("the text is too long".into());
+    }
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
+    let mut dialog = app
+        .dialog()
+        .file()
+        .add_filter(filter, &[extension])
+        .set_parent(&window)
+        .set_file_name(crate::cover::file_name(&name, extension));
+    if let Ok(dir) = app.path().document_dir() {
+        dialog = dialog.set_directory(dir);
+    }
+    let Some(path) = dialog
+        .blocking_save_file()
+        .and_then(|file| file.into_path().ok())
+    else {
+        return Ok(false);
+    };
+    std::fs::write(path, text).map_err(|err| err.to_string())?;
+    Ok(true)
+}
+
+/// Shows or closes the lyrics window over other programs.
+#[tauri::command]
+pub fn lyrics_overlay(app: AppHandle, show: bool) {
+    window::show_lyrics_overlay(&app, show);
+}
+
+/// Hands the line being sung and the next one to the lyrics window.
+#[tauri::command]
+pub fn lyrics_overlay_line(app: AppHandle, line: String, next: String) -> Result<(), String> {
+    use tauri::Emitter;
+    const MAX_CHARS: usize = 300;
+    let cut = |text: String| text.chars().take(MAX_CHARS).collect::<String>();
+    if app
+        .get_webview_window(window::OVERLAY_WINDOW_LABEL)
+        .is_none()
+    {
+        return Ok(());
+    }
+    app.emit_to(
+        window::OVERLAY_WINDOW_LABEL,
+        "lyrics-line",
+        serde_json::json!({ "line": cut(line), "next": cut(next) }),
+    )
+    .map_err(|err| err.to_string())
+}
+
+/// Opens an HTTPS address in the user's browser, for a plugin's sign-in
+/// page. Which hosts a plugin may open is checked in the page, as for its
+/// requests. A call shortly after the last one is refused.
+#[tauri::command]
+pub fn open_link(app: AppHandle, limit: State<'_, OpenLimit>, url: String) -> Result<(), String> {
+    let parsed: tauri::Url = url.parse().map_err(|_| "not an address".to_string())?;
+    if parsed.scheme() != "https" || parsed.host_str().is_none() {
+        return Err("only https addresses open".into());
+    }
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
+    app.opener()
+        .open_url(parsed.as_str(), None::<&str>)
+        .map_err(|err| err.to_string())
+}
+
 /// Fetches the public list of plugins from others. Settings window only.
 #[tauri::command]
 pub async fn marketplace_list(

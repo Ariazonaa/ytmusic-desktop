@@ -12,7 +12,6 @@ use std::collections::BTreeSet;
 use std::io::Cursor;
 use std::path::Path;
 use std::sync::Mutex;
-use std::time::Duration;
 
 pub const LIST_URL: &str =
     "https://raw.githubusercontent.com/Ariazonaa/ytmusic-desktop/main/plugins/index.json";
@@ -25,7 +24,6 @@ const MAX_DESCRIPTION_CHARS: usize = 300;
 const MAX_SHORT_CHARS: usize = 60;
 const MAX_PERMISSIONS: usize = 10;
 const MAX_HOSTS: usize = 20;
-const TIMEOUT: Duration = Duration::from_secs(60);
 
 /// A plugin in the list, as the settings window shows it.
 #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -193,43 +191,12 @@ pub fn install(plugins_dir: &Path, entry: &Entry, bytes: &[u8]) -> Result<String
     crate::install::install(plugins_dir, Cursor::new(bytes))
 }
 
-/// Downloads `url`, at most `max` bytes.
-pub async fn fetch(url: &str, max: usize) -> Result<Vec<u8>, String> {
-    if rustls::crypto::CryptoProvider::get_default().is_none() {
-        let _ = rustls::crypto::ring::default_provider().install_default();
-    }
-    let client = reqwest::Client::builder()
-        .https_only(true)
-        .timeout(TIMEOUT)
-        // Release files on GitHub are served from another host.
-        .redirect(reqwest::redirect::Policy::limited(5))
-        .user_agent(concat!("ytmusic-desktop/", env!("CARGO_PKG_VERSION")))
-        .build()
-        .map_err(|err| err.to_string())?;
-    let mut response = client
-        .get(url)
-        .send()
-        .await
-        .map_err(|err| format!("cannot reach {url}: {err}"))?;
-    if !response.status().is_success() {
-        return Err(format!("{url} answered {}", response.status()));
-    }
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response.chunk().await.map_err(|err| err.to_string())? {
-        if bytes.len() + chunk.len() > max {
-            return Err(format!("{url} is larger than {} kB", max / 1024));
-        }
-        bytes.extend_from_slice(&chunk);
-    }
-    Ok(bytes)
-}
-
 pub async fn fetch_list() -> Result<Vec<Entry>, String> {
-    parse_list(&fetch(LIST_URL, MAX_LIST_BYTES).await?)
+    parse_list(&crate::download::fetch(LIST_URL, MAX_LIST_BYTES).await?)
 }
 
 pub async fn fetch_plugin(entry: &Entry) -> Result<Vec<u8>, String> {
-    fetch(&entry.url, MAX_ZIP_BYTES).await
+    crate::download::fetch(&entry.url, MAX_ZIP_BYTES).await
 }
 
 #[cfg(test)]

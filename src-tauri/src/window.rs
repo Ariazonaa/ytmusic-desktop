@@ -8,6 +8,7 @@ use tauri_plugin_opener::OpenerExt;
 
 pub const MAIN_WINDOW_LABEL: &str = "main";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
+pub const OVERLAY_WINDOW_LABEL: &str = "lyrics-overlay";
 const YTM_URL: &str = "https://music.youtube.com";
 /// What Chrome on Linux sends. WebKitGTK's own user agent gets "browser not
 /// supported" from YouTube Music; WebView2 on Windows sends a Chrome one anyway.
@@ -73,6 +74,9 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     let popup_app = app.clone();
     let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(url))
         .title("YouTube Music")
+        // Both windows are dark. On Linux this also picks the dark variant of
+        // the GTK theme, in which WebKitGTK draws the lists of selects.
+        .theme(Some(tauri::Theme::Dark))
         .visible(!hidden)
         .additional_browser_args(browser_args(app))
         .inner_size(1280.0, 800.0)
@@ -156,6 +160,7 @@ pub fn open_settings_window(app: &AppHandle) {
         let url = WebviewUrl::App("index.html".into());
         let result = WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, url)
             .title("Settings")
+            .theme(Some(tauri::Theme::Dark))
             .additional_browser_args(browser_args(&app))
             .inner_size(620.0, 700.0)
             .min_inner_size(360.0, 320.0)
@@ -164,6 +169,42 @@ pub fn open_settings_window(app: &AppHandle) {
             log_error!("cannot open the settings window: {err}");
         }
     });
+}
+
+/// Shows or closes the lyrics window that stays over other programs.
+pub fn show_lyrics_overlay(app: &AppHandle, show: bool) {
+    let existing = app.get_webview_window(OVERLAY_WINDOW_LABEL);
+    match (show, existing) {
+        (false, Some(window)) => {
+            if let Err(err) = window.close() {
+                log_error!("cannot close the lyrics window: {err}");
+            }
+        }
+        (true, None) => {
+            // As with the settings window: built on a thread of its own.
+            let app = app.clone();
+            std::thread::spawn(move || {
+                let url = WebviewUrl::App("overlay.html".into());
+                let result = WebviewWindowBuilder::new(&app, OVERLAY_WINDOW_LABEL, url)
+                    .title("Lyrics")
+                    .theme(Some(tauri::Theme::Dark))
+                    .additional_browser_args(browser_args(&app))
+                    .inner_size(720.0, 120.0)
+                    .min_inner_size(240.0, 60.0)
+                    .decorations(false)
+                    .transparent(true)
+                    .shadow(false)
+                    .always_on_top(true)
+                    .skip_taskbar(true)
+                    .focused(false)
+                    .build();
+                if let Err(err) = result {
+                    log_error!("cannot open the lyrics window: {err}");
+                }
+            });
+        }
+        _ => {}
+    }
 }
 
 /// Tells the injected script about changed settings so that plugins are
@@ -274,6 +315,9 @@ fn classify(url: &Url) -> Navigation {
             None => Navigation::Block,
         },
         "about" | "blob" | "data" => Navigation::Allow,
+        // The plugin frames. WebKitGTK asks about the navigations of frames as
+        // well, WebView2 only about the window's own.
+        crate::plugins::SCHEME => Navigation::Allow,
         _ => Navigation::Block,
     }
 }
@@ -370,5 +414,13 @@ mod tests {
             Navigation::Block
         );
         assert_eq!(classify_str("ms-settings:privacy"), Navigation::Block);
+    }
+
+    #[test]
+    fn plugin_frames_may_load() {
+        assert_eq!(
+            classify_str("ytmd-plugin://localhost/scrobbler/"),
+            Navigation::Allow
+        );
     }
 }

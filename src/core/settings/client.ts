@@ -114,6 +114,86 @@ export function installPlugin(): Promise<string | null> {
   return invoke<string | null>("install_plugin");
 }
 
+/**
+ * Asks where to and saves the cover at `url` (YouTube's image servers only)
+ * as a picture named after `name`. Resolves with whether it was saved.
+ */
+export function saveCover(url: string, name: string): Promise<boolean> {
+  return invoke<boolean>("save_cover", { url, name });
+}
+
+/** Writes the playing track to the now-playing files, and fetches its cover for them. */
+export function nowPlayingUpdate(
+  text: string,
+  track: { title: string; artist: string; album: string; paused: boolean },
+  coverUrl: string | null,
+): Promise<void> {
+  return invoke("now_playing_update", { text, track, coverUrl });
+}
+
+/** Serves the now-playing page on 127.0.0.1 at `port`, or stops it with `null`. */
+export function nowPlayingServe(port: number | null): Promise<void> {
+  return invoke("now_playing_serve", { port });
+}
+
+/** Shows the now-playing folder in the file manager. */
+export function openNowPlayingFolder(): Promise<void> {
+  return invoke("open_now_playing_folder");
+}
+
+/** What the listening statistics say. Mirrors `Summary` in `src-tauri/src/stats.rs`. */
+export interface StatsSummary {
+  topTracks: { title: string; artist: string; plays: number; seconds: number }[];
+  topArtists: [name: string, counts: { plays: number; seconds: number }][];
+  days: [day: string, seconds: number][];
+  totalSeconds: number;
+  totalPlays: number;
+}
+
+/** Adds what was heard of a track to the listening statistics. */
+export function statsRecord(heard: {
+  videoId: string;
+  title: string;
+  artist: string;
+  seconds: number;
+  day: string;
+}): Promise<void> {
+  return invoke("stats_record", { heard });
+}
+
+/** The listening statistics, with the last `days` days. */
+export function statsSummary(days: number): Promise<StatsSummary> {
+  return invoke<StatsSummary>("stats_summary", { days });
+}
+
+/** Forgets all listening statistics. */
+export function statsClear(): Promise<void> {
+  return invoke("stats_clear");
+}
+
+/**
+ * Asks where to and saves `text` as a file named after `name`, of the kind
+ * `txt` or `csv`. Resolves with whether it was saved.
+ */
+export function saveText(name: string, kind: "txt" | "csv", text: string): Promise<boolean> {
+  return invoke<boolean>("save_text", { name, kind, text });
+}
+
+/** Shows or closes the lyrics window over other programs. */
+export function lyricsOverlay(show: boolean): Promise<void> {
+  return invoke("lyrics_overlay", { show });
+}
+
+/** Hands the line being sung and the next one to the lyrics window. */
+export function lyricsOverlayLine(line: string, next: string): Promise<void> {
+  return invoke("lyrics_overlay_line", { line, next });
+}
+
+/** Opens an HTTPS address in the user's browser. At most one a second. */
+export function openLink(url: string): Promise<void> {
+  return invoke("open_link", { url });
+}
+
 /** Fetches the public list of plugins from others. Settings window only. */
 export function marketplaceList(): Promise<MarketEntry[]> {
   return invoke<MarketEntry[]>("marketplace_list");
