@@ -3,7 +3,6 @@ import type { LikeStatus, NavigationTarget, NetRequest, Panel, Plugin, PluginApi
 import { getLanguage } from "../i18n";
 import { createPanel } from "../injector/panel";
 
-const MAX_CSS_LENGTH = 256 * 1024;
 const MAX_NOTICE_LENGTH = 200;
 const MAX_LABEL_LENGTH = 40;
 const MAX_TITLE_LENGTH = 60;
@@ -12,7 +11,7 @@ const MAX_SHORTCUT_LENGTH = 60;
 const MAX_NOTIFICATION_TITLE_LENGTH = 80;
 const MAX_NOTIFICATION_BODY_LENGTH = 240;
 const LIKE_STATUSES = ["like", "dislike", "none"];
-/** Per plugin, so a misbehaving one cannot flood the page with styles or buttons. */
+/** Per plugin, so a misbehaving one cannot flood the page with buttons or shortcuts. */
 const MAX_HANDLES = 32;
 
 type Logger = Pick<Console, "error">;
@@ -72,7 +71,7 @@ export function createExternalPlugin(
     const keep = (remove: () => void): number => {
       if (removers.size >= MAX_HANDLES) {
         remove();
-        throw new Error("too many styles, buttons and shortcuts");
+        throw new Error("too many buttons and shortcuts");
       }
       removers.set(nextHandle, remove);
       return nextHandle++;
@@ -148,7 +147,11 @@ export function createExternalPlugin(
         // The API checks every value against the plugin's schema.
         return api.settings.update(values as Record<string, never>);
       },
-      "ui.injectCss": ([css]) => keep(api.ui.injectCss(text(css, MAX_CSS_LENGTH, "css"))),
+      "ui.injectCss": () => {
+        void api.ui;
+        // Host styles can send image requests outside the frame's network policy.
+        throw new Error("External plugins can only style their own panel");
+      },
       "ui.removeCss": release,
       "ui.showNotice": ([message]) => api.ui.showNotice(text(message, MAX_NOTICE_LENGTH, "text")),
       "ui.addNavButton": ([label]) => {

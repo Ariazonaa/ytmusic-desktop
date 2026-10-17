@@ -56,6 +56,16 @@ const track = (videoId: string | null, title: string, artist: string): PlaylistT
 });
 
 describe("export", () => {
+  it.each(["=1+1", "+1+1", "-1+1", "@SUM(1)", "\t=1+1", "\r=1+1", "\n=1+1", "  =1+1", "\u0000=1+1"])(
+    "exports formula-like metadata %j as text",
+    (value) => {
+      const quoted = /[",\n\r]/.test(value) ? `"'${value}"` : `'${value}`;
+      const row = { videoId: null, title: value, artist: value, album: value, duration: value };
+      expect(asCsv([row])).toBe(`Title,Artist,Album,Duration,Link\r\n${quoted},${quoted},${quoted},${quoted},\r\n`);
+      expect(asText("Mix", [row])).toBe(`Mix\n\n${value} – ${value}\n`);
+    },
+  );
+
   it("writes text and CSV", () => {
     const tracks = [track("aaaaaaaaaaa", "Sugar", "Maroon 5"), track(null, 'Say "Hi", again', "A, B")];
     expect(asText("Mix", tracks)).toBe('Mix\n\nMaroon 5 – Sugar\nA, B – Say "Hi", again\n');

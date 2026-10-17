@@ -9,6 +9,14 @@ const info = (name: string, manifest: unknown) => ({
 const manifest = (name: string) => ({ name, version: "1.0.0", permissions: [] });
 
 describe("validateExternalPlugins", () => {
+  it("rejects plugins the backend cannot isolate on this platform", () => {
+    const rejected = vi.fn();
+    expect(validateExternalPlugins([
+      { ...info("hello", manifest("hello")), frameUrl: null },
+    ], [], rejected)).toEqual([]);
+    expect(rejected).toHaveBeenCalledWith("hello", "External plugins are unavailable on this platform because native sandbox enforcement is missing");
+  });
+
   it("accepts valid plugins", () => {
     const valid = validateExternalPlugins([info("hello", manifest("hello"))], ["demo"]);
     expect(valid).toEqual([

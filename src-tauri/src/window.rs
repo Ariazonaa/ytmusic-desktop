@@ -63,16 +63,12 @@ pub fn open_music_link(app: &AppHandle, url: Url) {
 /// `hidden` starts the app in the tray: the page loads, but no window shows.
 /// `link` is a page of YouTube Music to start on instead of the home page.
 pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> tauri::Result<()> {
-    // In development the window starts empty: `dev_inject` registers the
-    // script first and then opens the page.
-    let url = if cfg!(all(debug_assertions, windows)) {
-        "about:blank".parse().expect("the start URL is valid")
-    } else {
-        link.unwrap_or_else(|| YTM_URL.parse().expect("the start URL is valid"))
-    };
+    let url = link.unwrap_or_else(|| YTM_URL.parse().expect("the start URL is valid"));
+    // Native isolation must be installed before the page can load plugin frames.
+    let blank = "about:blank".parse().expect("the blank URL is valid");
     let nav_app = app.clone();
     let popup_app = app.clone();
-    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(url))
+    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(blank))
         .title("YouTube Music")
         // Both windows are dark. On Linux this also picks the dark variant of
         // the GTK theme, in which WebKitGTK draws the lists of selects.
@@ -103,15 +99,13 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     let window = builder.initialization_script(INJECT_SCRIPT).build()?;
     #[cfg(all(debug_assertions, windows))]
     let window = builder.build()?;
-    #[cfg(all(debug_assertions, windows))]
-    crate::dev_inject::start(&window, YTM_URL);
     // Without a connection, the app shows a page of its own instead of the browser's error page.
     let language_app = app.clone();
     crate::offline::watch(&window, YTM_URL, move || {
         language_app.state::<SettingsStore>().get().language
     });
     // A plugin's frame must not leave its document.
-    crate::frames::watch(&window);
+    crate::frames::watch(&window, url)?;
     if hidden {
         background::set_hidden(&window, true);
     }

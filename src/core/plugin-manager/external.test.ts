@@ -153,6 +153,20 @@ describe("createExternalPlugin", () => {
     expect(await call("net.getJson", "https://music.youtube.com/")).toMatchObject({ ok: false });
   });
 
+  it.each<Permission[]>([["ui.inject"], ["ui.inject", "network"]])(
+    "refuses parent-page CSS even when the external plugin has %j",
+    async (...permissions) => {
+      const { ready, call, services } = setup(permissions, ["api.example.com"]);
+      ready();
+      expect(await call("ui.injectCss", 'body { background: url("https://other.example/leak"); }')).toMatchObject({
+        ok: false,
+        error: "External plugins can only style their own panel",
+      });
+      expect(services.ui.injectCss).not.toHaveBeenCalled();
+      expect(await call("ui.showPanel", "Still available")).toMatchObject({ ok: true });
+    },
+  );
+
   it("rejects unknown methods and malformed arguments", async () => {
     const { ready, call, services } = setup(["music.control", "ui.inject", "network"], ["a.example.com"]);
     ready();
@@ -191,10 +205,9 @@ describe("createExternalPlugin", () => {
     ]);
   });
 
-  it("lets the plugin add and remove CSS and buttons", async () => {
-    const { ready, call, sent, removeCss, removeButton, clickButton } = setup(["ui.inject"]);
+  it("lets the plugin add and remove buttons", async () => {
+    const { ready, call, sent, removeButton, clickButton } = setup(["ui.inject"]);
     ready();
-    const css = (await call("ui.injectCss", "body{}")) as { value: number };
     const button = (await call("ui.addNavButton", "Hi")) as { value: number };
 
     clickButton();
@@ -202,30 +215,26 @@ describe("createExternalPlugin", () => {
       ytmd: PROTOCOL, type: "event", name: "buttonClick", payload: { id: button.value },
     });
 
-    await call("ui.removeCss", css.value);
     await call("ui.removeNavButton", button.value);
-    expect(removeCss).toHaveBeenCalledOnce();
     expect(removeButton).toHaveBeenCalledOnce();
   });
 
-  it("caps the number of styles and buttons", async () => {
-    const { ready, call, removeCss } = setup(["ui.inject"]);
+  it("caps the number of buttons and shortcuts", async () => {
+    const { ready, call, removeButton } = setup(["ui.inject"]);
     ready();
-    for (let i = 0; i < 32; i++) expect(await call("ui.injectCss", "a{}")).toMatchObject({ ok: true });
-    expect(await call("ui.injectCss", "a{}")).toMatchObject({ ok: false });
-    expect(removeCss).toHaveBeenCalledOnce();
+    for (let i = 0; i < 32; i++) expect(await call("ui.addNavButton", "Hi")).toMatchObject({ ok: true });
+    expect(await call("ui.addNavButton", "Hi")).toMatchObject({ ok: false });
+    expect(removeButton).toHaveBeenCalledOnce();
   });
 
   it("removes the iframe and everything it injected on unload", async () => {
-    const { manager, ready, call, removeCss, removeButton } = setup(["ui.inject"]);
+    const { manager, ready, call, removeButton } = setup(["ui.inject"]);
     ready();
-    await call("ui.injectCss", "body{}");
     await call("ui.addNavButton", "Hi");
 
     manager.unloadAll();
 
     expect(document.querySelector("iframe")).toBeNull();
-    expect(removeCss).toHaveBeenCalledOnce();
     expect(removeButton).toHaveBeenCalledOnce();
   });
 

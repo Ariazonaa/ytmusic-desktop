@@ -4,6 +4,8 @@ import type { NotifyOptions } from "../shared/types";
 import { isSafeImageUrl } from "./net/cover-url";
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
+const MAX_IMAGE_DOWNLOADS = 4;
+let imageDownloads = 0;
 /** Clicks are only awaited for the newest notifications. */
 const MAX_PENDING_CLICKS = 20;
 
@@ -26,14 +28,52 @@ function toBase64(bytes: Uint8Array): string {
  */
 export async function loadImage(url: unknown): Promise<string | null> {
   if (typeof url !== "string" || !isSafeImageUrl(url)) return null;
+  if (imageDownloads >= MAX_IMAGE_DOWNLOADS) return null;
+  imageDownloads++;
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), 10_000);
   try {
-    const response = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer" });
+    const response = await fetch(url, {
+      credentials: "omit", referrerPolicy: "no-referrer", redirect: "error", signal: abort.signal,
+    });
     if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    return bytes.length > 0 && bytes.length <= MAX_IMAGE_BYTES ? toBase64(bytes) : null;
+    const bytes = await readImage(response);
+    return bytes?.length ? toBase64(bytes) : null;
   } catch {
     return null;
+  } finally {
+    abort.abort();
+    clearTimeout(timeout);
+    imageDownloads--;
   }
+}
+
+async function readImage(response: Response): Promise<Uint8Array | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      if (length + value.length > MAX_IMAGE_BYTES) {
+        await reader.cancel();
+        return null;
+      }
+      chunks.push(value);
+      length += value.length;
+    }
+  } finally {
+    reader.releaseLock();
+  }
+  const bytes = new Uint8Array(length);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.length;
+  }
+  return bytes;
 }
 
 export class Notifier {

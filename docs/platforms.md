@@ -1,6 +1,6 @@
 # Linux and macOS
 
-The app is made and tested mostly on Windows. As of 2026-10-16:
+The app is made and tested mostly on Windows. As of 2026-10-17:
 
 ## The short version
 
@@ -25,8 +25,8 @@ What differs from Windows:
 - Not on Linux: giving memory back in the tray (`background.rs`), the app's
   own page when there is no connection (`offline.rs`), the output device's
   name for the equalizer's presets (`audio_device.rs`) and cancelling a plugin
-  frame's navigation in the backend (`frames.rs`; the page still stops a frame
-  that loads twice). The hardware acceleration switch does nothing there.
+  frame's navigation in the backend (`frames.rs`). External plugin execution is
+  disabled because detecting a second load cannot prevent data leaving the frame. The hardware acceleration switch does nothing there.
 - Updates: the AppImage replaces itself like the Windows version. The .deb and
   the Arch package are updated by their package manager; the settings window
   only points to the download page.
@@ -60,8 +60,9 @@ The tracks checked on Windows were not encrypted either (see Playback in
   quality and no DRM-only content.
 - **Sound, tray, shortcuts.** The CI runners have no audio device and no
   desktop; the audio chain asks for 192 kHz, which was only tried in WebView2.
-- **External plugins** are served from `ytmd-plugin://localhost` instead of
-  `http://ytmd-plugin.localhost`. The code handles both; not tried on Linux.
+- **External plugins are disabled.** The custom protocol returns 403 until
+  native frame isolation is active. Linux and macOS do not implement that guard;
+  installed plugins are listed as unavailable. Built-in plugins still work.
 - **Tests.** The end-to-end test and the measurements in
   [development.md](development.md) drive the app over the Chrome DevTools
   protocol, which WebKitGTK does not speak; on Linux there are only the

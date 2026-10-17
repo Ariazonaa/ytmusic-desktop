@@ -197,7 +197,7 @@ export interface Ytmd {
 
   /** Needs the `ui.inject` permission. */
   ui: {
-    /** Adds CSS to the YouTube Music page. Resolves with a function that removes it. */
+    /** @deprecated Always rejects. Style the plugin's own document instead. */
     injectCss(css: string): Promise<() => Promise<void>>;
     /** Shows a short message above the player bar. At most 200 characters. */
     showNotice(text: string): Promise<void>;

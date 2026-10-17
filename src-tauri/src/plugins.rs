@@ -82,7 +82,7 @@ pub struct ExternalPlugin {
     /// The parsed `plugin.json`, validated by the frontend.
     pub manifest: Value,
     /// The document to load in the plugin's iframe.
-    pub frame_url: String,
+    pub frame_url: Option<String>,
 }
 
 /// The folder users put external plugins into.
@@ -91,7 +91,7 @@ pub fn dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 }
 
 /// Finds the plugins in `dir`. Folders that are not usable plugins are skipped.
-pub fn list(dir: &Path) -> Vec<ExternalPlugin> {
+pub fn list(dir: &Path, isolation: &crate::frames::FrameIsolation) -> Vec<ExternalPlugin> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -100,7 +100,7 @@ pub fn list(dir: &Path) -> Vec<ExternalPlugin> {
             let name = entry.ok()?.file_name().into_string().ok()?;
             match read_manifest(dir, &name) {
                 Ok(manifest) => Some(ExternalPlugin {
-                    frame_url: format!("{ORIGIN}/{name}/"),
+                    frame_url: isolation.available().then(|| format!("{ORIGIN}/{name}/")),
                     name,
                     manifest,
                 }),
@@ -141,7 +141,18 @@ fn read_limited(path: &Path, max_bytes: u64) -> Option<Vec<u8>> {
 /// - `/_bootstrap.js`: the `ytmd` API for the iframe
 /// - `/<plugin>/`: the iframe document
 /// - `/<plugin>/<file>`: a script, stylesheet or image from the plugin's folder
-pub fn respond(dir: &Path, path: &str) -> Response<Cow<'static, [u8]>> {
+pub fn respond(
+    dir: &Path,
+    path: &str,
+    isolation: &crate::frames::FrameIsolation,
+) -> Response<Cow<'static, [u8]>> {
+    if !isolation.available() {
+        return base_response(StatusCode::FORBIDDEN, "text/plain; charset=utf-8")
+            .body(Cow::Borrowed(
+                &b"native plugin isolation is unavailable"[..],
+            ))
+            .expect("static headers are valid");
+    }
     if path == "/_bootstrap.js" {
         return script(bootstrap());
     }
@@ -346,6 +357,53 @@ mod tests {
         String::from_utf8(response.body().to_vec()).unwrap()
     }
 
+    fn respond_ready(dir: &Path, path: &str) -> Response<Cow<'static, [u8]>> {
+        let isolation = crate::frames::FrameIsolation::default();
+        isolation.enable();
+        super::respond(dir, path, &isolation)
+    }
+
+    fn list_ready(dir: &Path) -> Vec<ExternalPlugin> {
+        let isolation = crate::frames::FrameIsolation::default();
+        isolation.enable();
+        super::list(dir, &isolation)
+    }
+
+    #[test]
+    fn refuses_plugin_resources_before_native_isolation_is_ready() {
+        let dir = plugin_dir();
+        let isolation = crate::frames::FrameIsolation::default();
+        for path in ["/hello/", "/hello/index.js", "/_bootstrap.js"] {
+            let enabled = respond_ready(dir.path(), path);
+            assert_eq!(enabled.status(), StatusCode::OK, "{path}");
+            assert!(
+                !enabled.body().is_empty(),
+                "valid executable fixture: {path}"
+            );
+            assert_eq!(
+                super::respond(dir.path(), path, &isolation).status(),
+                StatusCode::FORBIDDEN,
+                "{path}"
+            );
+        }
+        assert!(super::list(dir.path(), &isolation)[0].frame_url.is_none());
+        isolation.enable();
+        assert_eq!(
+            super::respond(dir.path(), "/hello/", &isolation).status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            super::list(dir.path(), &isolation)[0].frame_url,
+            Some(format!("{ORIGIN}/hello/"))
+        );
+        isolation.disable();
+        assert_eq!(
+            super::respond(dir.path(), "/hello/index.js", &isolation).status(),
+            StatusCode::FORBIDDEN
+        );
+        assert!(super::list(dir.path(), &isolation)[0].frame_url.is_none());
+    }
+
     #[test]
     fn lists_valid_plugins_only() {
         let dir = plugin_dir();
@@ -365,24 +423,24 @@ mod tests {
             }
         }
 
-        let plugins = list(dir.path());
+        let plugins = list_ready(dir.path());
 
         assert_eq!(plugins.len(), 1);
         assert_eq!(plugins[0].name, "hello");
         assert_eq!(plugins[0].manifest["name"], "hello");
-        assert_eq!(plugins[0].frame_url, format!("{ORIGIN}/hello/"));
+        assert_eq!(plugins[0].frame_url, Some(format!("{ORIGIN}/hello/")));
     }
 
     #[test]
     fn missing_plugin_folder_lists_nothing() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(list(&dir.path().join("missing")), Vec::new());
+        assert_eq!(list_ready(&dir.path().join("missing")), Vec::new());
     }
 
     #[test]
     fn frame_document_is_sandboxed_and_offline() {
         let dir = plugin_dir();
-        let response = respond(dir.path(), "/hello/");
+        let response = respond_ready(dir.path(), "/hello/");
         assert_eq!(response.status(), StatusCode::OK);
         let policy = response.headers()[header::CONTENT_SECURITY_POLICY]
             .to_str()
@@ -403,7 +461,7 @@ mod tests {
     fn policy_for(manifest: &str) -> String {
         let dir = plugin_dir();
         fs::write(dir.path().join("hello").join("plugin.json"), manifest).unwrap();
-        let response = respond(dir.path(), "/hello/");
+        let response = respond_ready(dir.path(), "/hello/");
         assert_eq!(response.status(), StatusCode::OK);
         response.headers()[header::CONTENT_SECURITY_POLICY]
             .to_str()
@@ -446,7 +504,7 @@ mod tests {
             ("/hello/logo.svg", "image/svg+xml"),
             ("/hello/index.js", "text/javascript; charset=utf-8"),
         ] {
-            let response = respond(dir.path(), path);
+            let response = respond_ready(dir.path(), path);
             assert_eq!(response.status(), StatusCode::OK, "{path}");
             assert_eq!(response.headers()[header::CONTENT_TYPE], expected, "{path}");
             assert_eq!(
@@ -466,7 +524,7 @@ mod tests {
             "/hello/style.CSS",
         ] {
             assert_eq!(
-                respond(dir.path(), path).status(),
+                respond_ready(dir.path(), path).status(),
                 StatusCode::NOT_FOUND,
                 "{path}"
             );
@@ -493,7 +551,7 @@ mod tests {
         let dir = plugin_dir();
         fs::write(dir.path().join("hello").join("plugin.json"), "{ nope").unwrap();
         assert_eq!(
-            respond(dir.path(), "/hello/").status(),
+            respond_ready(dir.path(), "/hello/").status(),
             StatusCode::NOT_FOUND
         );
     }
@@ -501,10 +559,16 @@ mod tests {
     #[test]
     fn serves_scripts_from_the_plugin_folder() {
         let dir = plugin_dir();
-        assert_eq!(body(&respond(dir.path(), "/hello/index.js")), "// index");
-        assert_eq!(body(&respond(dir.path(), "/hello/lib/util.js")), "// util");
         assert_eq!(
-            respond(dir.path(), "/_bootstrap.js").status(),
+            body(&respond_ready(dir.path(), "/hello/index.js")),
+            "// index"
+        );
+        assert_eq!(
+            body(&respond_ready(dir.path(), "/hello/lib/util.js")),
+            "// util"
+        );
+        assert_eq!(
+            respond_ready(dir.path(), "/_bootstrap.js").status(),
             StatusCode::OK
         );
     }
@@ -528,7 +592,7 @@ mod tests {
             "/../outside.js",
             "/Bad Name/index.js",
         ] {
-            let status = respond(dir.path(), path).status();
+            let status = respond_ready(dir.path(), path).status();
             assert_eq!(status, StatusCode::NOT_FOUND, "{path}");
         }
     }

@@ -5,14 +5,65 @@ const COVER = "https://i.ytimg.com/vi/dQw4w9WgXcQ/sddefault.jpg";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 describe("loadImage", () => {
+  it("cancels an oversized stream before downloading the whole image", async () => {
+    let pulled = 0;
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (++pulled <= 6) controller.enqueue(new Uint8Array(1024 * 1024));
+        else controller.close();
+      },
+      cancel() { cancelled = true; },
+    });
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response(body)));
+    expect(await loadImage(COVER)).toBeNull();
+    expect(cancelled).toBe(true);
+    expect(pulled).toBeLessThanOrEqual(3);
+  });
+
+  it("limits simultaneous cover downloads and releases the slots", async () => {
+    const releases: ((response: Response) => void)[] = [];
+    const fetchMock = vi.fn(() => new Promise<Response>((resolve) => releases.push(resolve)));
+    vi.stubGlobal("fetch", fetchMock);
+    const downloads = Array.from({ length: 5 }, () => loadImage(COVER));
+    try {
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+    } finally {
+      for (const release of releases) release(new Response(new Uint8Array([1])));
+      await Promise.all(downloads);
+    }
+    expect(await downloads[4]).toBeNull();
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response(new Uint8Array([2]))));
+    expect(await loadImage(COVER)).toBe("Ag==");
+  });
+
   it("loads a cover without cookies and gives it in base64", async () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(new Uint8Array([0xff, 0xd8, 0xff, 0x00]))));
     vi.stubGlobal("fetch", fetchMock);
     expect(await loadImage(COVER)).toBe("/9j/AA==");
-    expect(fetchMock).toHaveBeenCalledWith(COVER, { credentials: "omit", referrerPolicy: "no-referrer" });
+    expect(fetchMock).toHaveBeenCalledWith(COVER, {
+      credentials: "omit", referrerPolicy: "no-referrer", redirect: "error", signal: expect.any(AbortSignal),
+    });
+  });
+
+  it("aborts a stalled download after ten seconds and releases its slot", async () => {
+    vi.useFakeTimers();
+    let completed = false;
+    vi.stubGlobal("fetch", (_url: string, options: RequestInit) => new Promise<Response>((_resolve, reject) => {
+      options.signal?.addEventListener("abort", () => reject(new Error("aborted")));
+    }));
+    const download = loadImage(COVER).then((value) => { completed = true; return value; });
+    await vi.advanceTimersByTimeAsync(9999);
+    expect(completed).toBe(false);
+    await vi.advanceTimersByTimeAsync(1);
+    expect(completed).toBe(true);
+    expect(await download).toBeNull();
+    vi.stubGlobal("fetch", () => Promise.resolve(new Response(new Uint8Array([2]))));
+    expect(await loadImage(COVER)).toBe("Ag==");
   });
 
   it("does not even ask for addresses that are not covers", async () => {

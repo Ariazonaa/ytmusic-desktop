@@ -22,6 +22,19 @@ page.
 
 ## External plugins
 
+External plugins are currently available only when the Windows native frame
+navigation guard has initialized successfully. Linux and macOS list installed
+external plugins as unavailable and refuse to serve their code. Built-in plugins
+are unaffected. A frame's second `load` event cannot prevent the request that
+already left it; these platforms need native enforcement before external plugins
+can be enabled safely.
+
+External plugins must style their own iframe with `<style>` or a local stylesheet.
+`ytmd.ui.injectCss()` now rejects, including for plugins granted `ui.inject` and
+`network`: parent-page CSS runs outside the frame's network policy. Existing
+plugins using it must move their styles into their own document. Panels, notices,
+buttons and shortcuts remain available with `ui.inject`.
+
 ### A first plugin
 
 1. Open the settings window (gear button in the YouTube Music bar) and click
@@ -148,7 +161,7 @@ Requests carry no cookies and no referrer.
 | `ytmd.notify.show(title, body?, { imageUrl, onClick })` | `notify` | a notification of the operating system; at most one every three seconds; see below |
 | `ytmd.settings.get(key)`, `getAll()` | none | the plugin's own settings |
 | `ytmd.settings.update(values)` | none | saves; rejects values that do not fit the schema |
-| `ytmd.ui.injectCss(css)` | `ui.inject` | resolves with a remove function; at most 256 kB |
+| `ytmd.ui.injectCss(css)` | | deprecated; always rejects; style the plugin iframe instead |
 | `ytmd.ui.showNotice(text)` | `ui.inject` | at most 200 characters |
 | `ytmd.ui.addNavButton(label, onClick)` | `ui.inject` | label at most 40 characters; resolves with a remove function |
 | `ytmd.ui.showPanel(title?)`, `hidePanel()` | `ui.inject` | title at most 60 characters |
@@ -432,7 +445,7 @@ If the API lacks something your plugin needs,
 | --- | --- |
 | `music.read` | the current song, playback state, video id, loudness, rating and queue, and the song and playback events |
 | `music.control` | seeking, playback speed, volume, next track, rating the playing track, adding, removing and moving tracks in the queue |
-| `ui.inject` | CSS in the page, notices, buttons, panels, shortcuts in the app's window, going to a page |
+| `ui.inject` | notices, buttons, panels, shortcuts in the app's window, going to a page; parent-page CSS is built-in only |
 | `network` | requests to the listed `hosts` |
 | `notify` | notifications of the operating system |
 | `audio` | inserting audio effects; built-in plugins only |

@@ -38,6 +38,7 @@ pub fn run() {
     #[cfg(windows)]
     webview_runtime::use_unregistered_runtime();
     tauri::Builder::default()
+        .manage(frames::FrameIsolation::default())
         // Must be registered first. A second launch focuses the running app,
         // which may be hidden in the tray.
         .plugin(tauri_plugin_single_instance::init(
@@ -65,7 +66,11 @@ pub fn run() {
         .register_uri_scheme_protocol(plugins::SCHEME, |context, request| {
             // An empty path matches nothing, so this answers 404 without a config directory.
             let dir = plugins::dir(context.app_handle()).unwrap_or_default();
-            plugins::respond(&dir, request.uri().path())
+            plugins::respond(
+                &dir,
+                request.uri().path(),
+                &context.app_handle().state::<frames::FrameIsolation>(),
+            )
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,

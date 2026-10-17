@@ -20,6 +20,9 @@ export function validateExternalPlugins(
   const valid: ExternalManifest[] = [];
   for (const { name: folder, manifest: json, frameUrl } of found) {
     try {
+      if (!frameUrl) {
+        throw new Error("External plugins are unavailable on this platform because native sandbox enforcement is missing");
+      }
       const manifest = parseManifest(json);
       if (manifest.name !== folder) {
         throw new Error(`manifest name "${manifest.name}" does not match the folder`);

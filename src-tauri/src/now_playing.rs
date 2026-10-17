@@ -7,15 +7,17 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 use tauri::{AppHandle, Manager, Runtime};
 
 const FOLDER: &str = "now-playing";
 const MAX_TEXT_CHARS: usize = 500;
 const MAX_FIELD_CHARS: usize = 300;
 pub const MIN_PORT: u16 = 1024;
+const MAX_CONNECTIONS: usize = 8;
+const IO_TIMEOUT: Duration = Duration::from_secs(5);
 
 /// What is playing, as the page reports it.
 #[derive(Debug, Clone, Default, PartialEq, Serialize, Deserialize)]
@@ -58,6 +60,26 @@ struct Shared {
 pub struct NowPlaying {
     shared: Arc<Mutex<Shared>>,
     server: Mutex<Option<Server>>,
+    connections: Arc<AtomicUsize>,
+}
+
+struct ConnectionSlot(Arc<AtomicUsize>);
+
+impl ConnectionSlot {
+    fn reserve(connections: &Arc<AtomicUsize>) -> Option<Self> {
+        connections
+            .fetch_update(Ordering::AcqRel, Ordering::Acquire, |active| {
+                (active < MAX_CONNECTIONS).then(|| active + 1)
+            })
+            .ok()
+            .map(|_| Self(Arc::clone(connections)))
+    }
+}
+
+impl Drop for ConnectionSlot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
 }
 
 struct Server {
@@ -146,13 +168,23 @@ impl NowPlaying {
             .map_err(|err| err.to_string())?;
         let stop = Arc::new(AtomicBool::new(false));
         let shared = Arc::clone(&self.shared);
+        // Old connections keep counting while a stopped server's clients wind down.
+        let connections = Arc::clone(&self.connections);
         let stopped = Arc::clone(&stop);
         std::thread::spawn(move || {
             while !stopped.load(Ordering::Relaxed) {
                 match listener.accept() {
                     Ok((stream, _)) => {
+                        let Some(slot) = ConnectionSlot::reserve(&connections) else {
+                            continue;
+                        };
                         let shared = Arc::clone(&shared);
-                        std::thread::spawn(move || answer(stream, port, &shared));
+                        if let Err(err) = std::thread::Builder::new().spawn(move || {
+                            let _slot = slot;
+                            answer(stream, port, &shared);
+                        }) {
+                            log_error!("cannot serve now-playing client: {err}");
+                        }
                     }
                     Err(_) => std::thread::sleep(Duration::from_millis(100)),
                 }
@@ -203,8 +235,10 @@ struct Status<'a> {
 /// Answers one request. Only for this machine: the `Host` must be the
 /// address served, so that a web page cannot reach it under a name of its own.
 fn answer(mut stream: TcpStream, port: u16, shared: &Mutex<Shared>) {
-    let _ = stream.set_nonblocking(false);
-    let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    if stream.set_nonblocking(false).is_err() || stream.set_read_timeout(Some(IO_TIMEOUT)).is_err()
+    {
+        return;
+    }
     let mut buffer = [0u8; 4096];
     let Ok(read) = stream.read(&mut buffer) else {
         return;
@@ -215,8 +249,33 @@ fn answer(mut stream: TcpStream, port: u16, shared: &Mutex<Shared>) {
         "HTTP/1.1 {status}\r\nContent-Type: {kind}\r\nContent-Length: {}\r\nCache-Control: no-store\r\nX-Content-Type-Options: nosniff\r\nConnection: close\r\n\r\n",
         body.len()
     );
-    let _ = stream.write_all(head.as_bytes());
-    let _ = stream.write_all(&body);
+    // A slow reader cannot extend its deadline by accepting one byte at a time.
+    let _ = write_response(&mut stream, head.as_bytes(), &body, IO_TIMEOUT);
+}
+
+fn write_response(
+    stream: &mut TcpStream,
+    head: &[u8],
+    body: &[u8],
+    timeout: Duration,
+) -> std::io::Result<()> {
+    let started = Instant::now();
+    for mut bytes in [head, body] {
+        while !bytes.is_empty() {
+            let remaining = timeout
+                .checked_sub(started.elapsed())
+                .filter(|remaining| !remaining.is_zero())
+                .ok_or_else(|| std::io::Error::from(std::io::ErrorKind::TimedOut))?;
+            stream.set_write_timeout(Some(remaining))?;
+            match stream.write(bytes) {
+                Ok(0) => return Err(std::io::ErrorKind::WriteZero.into()),
+                Ok(written) => bytes = &bytes[written..],
+                Err(err) if err.kind() == std::io::ErrorKind::Interrupted => continue,
+                Err(err) => return Err(err),
+            }
+        }
+    }
+    Ok(())
 }
 
 fn respond(
@@ -403,5 +462,147 @@ mod tests {
         assert!(reply.contains("Now playing"));
         now.serve(None).unwrap();
         assert!(now.serve(Some(80)).is_err());
+    }
+
+    #[test]
+    fn refuses_excess_local_connections_and_recovers_after_release() {
+        let now = NowPlaying::default();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        now.serve(Some(port)).unwrap();
+        let clients: Vec<_> = (0..8)
+            .map(|_| TcpStream::connect(("127.0.0.1", port)).unwrap())
+            .collect();
+        let mut excess = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        excess
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let mut byte = [0];
+        let rejected = excess.read(&mut byte);
+        drop(clients);
+        assert!(
+            matches!(rejected, Ok(0)),
+            "ninth connection must be closed: {rejected:?}"
+        );
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while now.connections.load(Ordering::Acquire) != 0 {
+            assert!(
+                Instant::now() < deadline,
+                "connection slots were not released"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let mut recovered = TcpStream::connect(("127.0.0.1", port)).unwrap();
+        recovered
+            .set_read_timeout(Some(Duration::from_secs(2)))
+            .unwrap();
+        write!(
+            recovered,
+            "GET / HTTP/1.1\r\nHost: 127.0.0.1:{port}\r\n\r\n"
+        )
+        .unwrap();
+        let mut reply = String::new();
+        recovered.read_to_string(&mut reply).unwrap();
+        assert!(reply.starts_with("HTTP/1.1 200 OK"));
+        now.serve(None).unwrap();
+    }
+
+    #[test]
+    fn connection_budget_survives_a_server_restart() {
+        let now = NowPlaying::default();
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let port = listener.local_addr().unwrap().port();
+        drop(listener);
+        now.serve(Some(port)).unwrap();
+        let clients: Vec<_> = (0..8)
+            .map(|_| TcpStream::connect(("127.0.0.1", port)).unwrap())
+            .collect();
+        let deadline = Instant::now() + Duration::from_secs(2);
+        while now.connections.load(Ordering::Acquire) != 8 {
+            assert!(
+                Instant::now() < deadline,
+                "clients did not reserve their slots"
+            );
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let next_port = listener.local_addr().unwrap().port();
+        drop(listener);
+        now.serve(Some(next_port)).unwrap();
+        let mut excess = TcpStream::connect(("127.0.0.1", next_port)).unwrap();
+        excess
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let rejected = excess.read(&mut [0]);
+        drop(clients);
+        now.serve(None).unwrap();
+        assert!(
+            matches!(rejected, Ok(0)),
+            "old clients still own all slots: {rejected:?}"
+        );
+    }
+
+    #[test]
+    fn response_deadline_interrupts_a_blocked_socket() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+        server.set_nonblocking(true).unwrap();
+        let padding = [0u8; 64 * 1024];
+        let mut sent = 0;
+        loop {
+            match server.write(&padding) {
+                Ok(written) => {
+                    sent += written;
+                    assert!(
+                        sent < 32 * 1024 * 1024,
+                        "fixture did not reach backpressure"
+                    );
+                }
+                Err(err) if err.kind() == std::io::ErrorKind::WouldBlock => break,
+                result => panic!("cannot fill fixture socket: {result:?}"),
+            }
+        }
+        server.set_nonblocking(false).unwrap();
+        let (finished, wait) = std::sync::mpsc::channel::<()>();
+        let watchdog = std::thread::spawn(move || {
+            let _ = wait.recv_timeout(Duration::from_secs(2));
+            let _ = client.shutdown(std::net::Shutdown::Both);
+        });
+        let body = vec![0u8; 8 * 1024 * 1024];
+        let started = Instant::now();
+        let result = write_response(&mut server, b"", &body, Duration::from_millis(20));
+        let elapsed = started.elapsed();
+        let _ = finished.send(());
+        watchdog.join().unwrap();
+        let error = result.expect_err("a non-reading client must hit the write deadline");
+        assert!(
+            matches!(
+                error.kind(),
+                std::io::ErrorKind::WouldBlock | std::io::ErrorKind::TimedOut
+            ),
+            "{error}"
+        );
+        assert!(
+            elapsed < Duration::from_secs(1),
+            "watchdog had to unblock the write: {elapsed:?}"
+        );
+    }
+
+    #[test]
+    fn response_deadline_rejects_expired_writes_and_allows_complete_responses() {
+        let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+        let mut client = TcpStream::connect(listener.local_addr().unwrap()).unwrap();
+        let (mut server, _) = listener.accept().unwrap();
+        let error = write_response(&mut server, b"header", b"body", Duration::ZERO).unwrap_err();
+        assert_eq!(error.kind(), std::io::ErrorKind::TimedOut);
+        write_response(&mut server, b"header", b"body", Duration::from_secs(1)).unwrap();
+        client
+            .set_read_timeout(Some(Duration::from_secs(1)))
+            .unwrap();
+        let mut bytes = [0; 10];
+        client.read_exact(&mut bytes).unwrap();
+        assert_eq!(&bytes, b"headerbody");
     }
 }

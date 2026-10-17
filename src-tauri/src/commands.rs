@@ -120,7 +120,7 @@ fn commit(
 #[tauri::command]
 pub fn list_external_plugins(app: AppHandle) -> Vec<ExternalPlugin> {
     plugins::dir(&app)
-        .map(|dir| plugins::list(&dir))
+        .map(|dir| plugins::list(&dir, &app.state::<crate::frames::FrameIsolation>()))
         .unwrap_or_default()
 }
 
