@@ -35,6 +35,13 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }
 sha2 = "0.10"
 tempfile = "3"
 
+[target.'cfg(target_os = "linux")'.dependencies]
+# Security keys for the Google sign-in, which WebKitGTK cannot ask itself. The
+# same library Firefox uses, with its cryptography in Rust: no system library.
+authenticator = { version = "0.5", default-features = false, features = ["crypto_rust"] }
+# Must match the version wry uses, see Cargo.lock.
+webkit2gtk = "2.0"
+
 [target.'cfg(windows)'.dependencies]
 # Must match the versions Tauri itself uses, see Cargo.lock.
 tauri-winrt-notification = "0.8"

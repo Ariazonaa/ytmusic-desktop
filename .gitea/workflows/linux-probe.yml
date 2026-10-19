@@ -38,7 +38,7 @@ jobs:
           export DEBIAN_FRONTEND=noninteractive
           $SUDO apt-get update -q
           $SUDO apt-get install -y -q --no-install-recommends build-essential curl pkg-config libssl-dev libwebkit2gtk-4.1-dev \
-            libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+            libayatana-appindicator3-dev librsvg2-dev libxdo-dev libudev-dev
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --component clippy
           echo "$HOME/.cargo/bin" >> "$GITHUB_PATH"
       - run: npm ci

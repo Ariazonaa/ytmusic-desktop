@@ -115,10 +115,35 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     });
     // A plugin's frame must not leave its document.
     crate::frames::watch(&window);
+    #[cfg(target_os = "linux")]
+    leave_without_asking(&window);
     if hidden {
         background::set_hidden(&window, true);
     }
     Ok(())
+}
+
+/// Answers "leave" when a page asks before it is left, as YouTube Music does
+/// on signing out. WebKitGTK would show its own dialog with the page's return
+/// value as the message, "false"; in the app, leaving a page is always what
+/// the user asked for.
+#[cfg(target_os = "linux")]
+fn leave_without_asking(window: &tauri::WebviewWindow) {
+    use webkit2gtk::{ScriptDialogType, WebViewExt};
+
+    let result = window.with_webview(|webview| {
+        webview.inner().connect_script_dialog(|_, dialog| {
+            if dialog.dialog_type() != ScriptDialogType::BeforeUnloadConfirm {
+                // Alerts and the rest keep WebKitGTK's dialogs.
+                return false;
+            }
+            dialog.confirm_set_confirmed(true);
+            true
+        });
+    });
+    if let Err(err) = result {
+        log_error!("cannot reach the webview: {err}");
+    }
 }
 
 /// Brings the main window back from the tray or from behind other windows.

@@ -26,6 +26,7 @@ mod themes;
 mod tray;
 mod update;
 mod watch;
+mod webauthn;
 mod webview_runtime;
 mod window;
 
@@ -112,7 +113,9 @@ pub fn run() {
             commands::save_text,
             commands::lyrics_overlay,
             commands::lyrics_overlay_line,
-            commands::open_link
+            commands::open_link,
+            commands::webauthn_get,
+            commands::webauthn_cancel
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -139,6 +142,8 @@ pub fn run() {
             app.manage(stats::StatsStore::default());
             app.manage(update::UpdateStore::default());
             app.manage(discord::Discord::default());
+            #[cfg(target_os = "linux")]
+            app.manage(webauthn::WebAuthn::default());
             tray::create(app.handle(), &app.state::<SettingsStore>().get().language)?;
             let link = window::music_link(std::env::args().skip(1));
             window::create_main_window(app.handle(), hidden, link)?;

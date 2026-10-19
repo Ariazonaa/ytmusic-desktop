@@ -161,6 +161,13 @@ const de: Readonly<Record<string, string>> = {
   "interaction reminder": "Aufforderung zum Mitmachen",
   intro: "Intro",
   outro: "Outro",
+
+  // security key on the Google sign-in
+  "Enter the PIN of your security key": "PIN deines Sicherheitsschlüssels eingeben",
+  "Wrong PIN.": "Falsche PIN.",
+  "Wrong PIN. {count} attempts left.": "Falsche PIN. Noch {count} Versuche.",
+  Cancel: "Abbrechen",
+  OK: "OK",
 };
 
 export default de;
