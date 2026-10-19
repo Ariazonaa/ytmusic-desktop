@@ -444,7 +444,7 @@ export interface ExternalPluginInfo {
   /** The parsed `plugin.json`, not validated yet. */
   manifest: unknown;
   /** The document to load in the plugin's sandboxed iframe. */
-  frameUrl: string;
+  frameUrl: string | null;
 }
 
 /** The plugin's own settings, as declared in its `plugin.json`. Needs no permission. */

@@ -16,6 +16,12 @@ describe("validateExternalPlugins", () => {
     ]);
   });
 
+  it("runs none where the backend cannot guard their frames", () => {
+    const onReject = vi.fn();
+    expect(validateExternalPlugins([{ ...info("hello", manifest("hello")), frameUrl: null }], [], onReject)).toEqual([]);
+    expect(onReject).toHaveBeenCalledWith("hello", expect.stringContaining("switched off"));
+  });
+
   it("rejects invalid manifests, mismatched names and name clashes", () => {
     const onReject = vi.fn();
     const valid = validateExternalPlugins(

@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { AssertionParts, GetRequest } from "../injector/webauthn";
 import type {
   ExternalPluginInfo,
   MarketEntry,
@@ -192,6 +193,16 @@ export function lyricsOverlayLine(line: string, next: string): Promise<void> {
 /** Opens an HTTPS address in the user's browser. At most one a second. */
 export function openLink(url: string): Promise<void> {
   return invoke("open_link", { url });
+}
+
+/** Asks a security key to sign in. Google sign-in page only, Linux only. */
+export function webAuthnGet(request: GetRequest): Promise<AssertionParts> {
+  return invoke<AssertionParts>("webauthn_get", { request });
+}
+
+/** Cancels the request of `webAuthnGet`. */
+export function webAuthnCancel(): Promise<void> {
+  return invoke("webauthn_cancel");
 }
 
 /** Fetches the public list of plugins from others. Settings window only. */

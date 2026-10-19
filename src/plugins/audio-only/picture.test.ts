@@ -1,8 +1,25 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { switchIsOff } from "./index";
-import { SmallPicture, type QualityPlayer } from "./picture";
+import { SmallPicture, coverCss, type QualityPlayer } from "./picture";
 
 const KEY = "yt-player-quality";
+
+describe("coverCss", () => {
+  it("draws the track's cover in place of the picture, not the page's placeholder", () => {
+    const css = coverCss("https://lh3.googleusercontent.com/abc=w544-h544");
+    expect(css).toContain('url("https://lh3.googleusercontent.com/abc=w544-h544")');
+    expect(css).toContain("ytmusic-player[video-mode] #song-video { visibility: hidden !important; }");
+    expect(css).toContain("ytmusic-player[video-mode] #song-image { display: none !important; }");
+  });
+
+  it("leaves the area black without a cover, or with one it cannot trust", () => {
+    for (const url of [null, "https://example.com/a.jpg", 'https://i.ytimg.com/a.jpg") ; x("', "http://i.ytimg.com/a.jpg"]) {
+      const css = coverCss(url);
+      expect(css, String(url)).not.toContain("url(");
+      expect(css).toContain("background: #000 !important");
+    }
+  });
+});
 
 /** A player that, like YouTube's, writes down what it is asked for. */
 function fakePlayer(quality = "medium", levels = ["hd720", "medium", "tiny", "auto"]) {

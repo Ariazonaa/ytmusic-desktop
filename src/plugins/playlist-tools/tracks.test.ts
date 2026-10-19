@@ -56,6 +56,16 @@ const track = (videoId: string | null, title: string, artist: string): PlaylistT
 });
 
 describe("export", () => {
+  it("writes what looks like a formula as text in the CSV", () => {
+    for (const value of ["=1+1", "+1", "-1+1", "@SUM(1)", "\t=1", " =1", "\u0000=1"]) {
+      const csv = asCsv([{ videoId: null, title: value, artist: "A", album: "", duration: "" }]);
+      expect(csv.split("\r\n")[1]?.startsWith(`'${value}`), JSON.stringify(value)).toBe(true);
+    }
+    // A hyphen inside a title is not touched, and the text export stays as it is.
+    expect(asCsv([{ videoId: null, title: "Anti-Hero", artist: "-", album: "", duration: "" }]).split("\r\n")[1]).toBe("Anti-Hero,'-,,,");
+    expect(asText("Mix", [{ videoId: null, title: "=1", artist: "A", album: "", duration: "" }])).toBe("Mix\n\nA – =1\n");
+  });
+
   it("writes text and CSV", () => {
     const tracks = [track("aaaaaaaaaaa", "Sugar", "Maroon 5"), track(null, 'Say "Hi", again', "A, B")];
     expect(asText("Mix", tracks)).toBe('Mix\n\nMaroon 5 – Sugar\nA, B – Say "Hi", again\n');

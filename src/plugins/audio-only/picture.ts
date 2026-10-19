@@ -4,11 +4,22 @@
 //
 // The sound is a stream of its own and stays as it is.
 
-/** Shown in place of the picture, for as long as the player is in video mode. */
-export const COVER_CSS = `
+import { isSafeImageUrl } from "../../core/net/cover-url";
+
+/**
+ * Hides the picture while the player is in video mode and shows the cover in
+ * its place. The page's own `#song-image` holds only a grey placeholder in
+ * video mode, so the cover comes from the track's data and is drawn behind
+ * the hidden picture. Without a usable cover the area stays black.
+ */
+export function coverCss(artworkUrl: string | null): string {
+  const cover = artworkUrl !== null && isSafeImageUrl(artworkUrl) ? ` url("${artworkUrl}") center / contain no-repeat` : "";
+  return `
 ytmusic-player[video-mode] #song-video { visibility: hidden !important; }
-ytmusic-player[video-mode] #song-image { display: block !important; }
+ytmusic-player[video-mode] #song-image { display: none !important; }
+ytmusic-player[video-mode] { background: #000${cover} !important; }
 `;
+}
 
 /** The smallest picture the player offers, 144 lines. */
 const SMALLEST = "tiny";

@@ -7,7 +7,7 @@
 // cover is shown instead, see `picture.ts`.
 import { parseManifest } from "../../core/plugin-manager/api";
 import type { Plugin, PluginApi } from "../../shared/types";
-import { COVER_CSS, SmallPicture, type QualityPlayer } from "./picture";
+import { SmallPicture, coverCss, type QualityPlayer } from "./picture";
 import manifest from "./plugin.json";
 
 const TOGGLE = "ytmusic-av-toggle";
@@ -50,6 +50,8 @@ let api: PluginApi | undefined;
 const choice = new VideoChoice();
 const picture = new SmallPicture();
 let removeCoverCss: (() => void) | undefined;
+/** The CSS in the page, so that it is only replaced when the cover changes. */
+let shownCss: string | undefined;
 
 const player = (): QualityPlayer | null => document.querySelector<HTMLElement & QualityPlayer>("#movie_player");
 
@@ -61,7 +63,12 @@ export function switchIsOff(toggle: Element | null): boolean {
 /** Without a song to switch to: the smallest picture, and the cover in its place. */
 function hidePicture(): void {
   if (!api) return;
-  removeCoverCss ??= api.ui.injectCss(COVER_CSS);
+  const css = coverCss(api.music.getCurrentSong()?.artworkUrl ?? null);
+  if (css !== shownCss) {
+    removeCoverCss?.();
+    removeCoverCss = api.ui.injectCss(css);
+    shownCss = css;
+  }
   // The cover replaces the picture only in video mode, and only there is a picture to make small.
   if (document.querySelector("ytmusic-player")?.hasAttribute("video-mode")) picture.lower(player());
 }
@@ -69,6 +76,7 @@ function hidePicture(): void {
 function showPicture(): void {
   removeCoverCss?.();
   removeCoverCss = undefined;
+  shownCss = undefined;
   picture.restore(player());
 }
 

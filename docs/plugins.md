@@ -148,7 +148,7 @@ Requests carry no cookies and no referrer.
 | `ytmd.notify.show(title, body?, { imageUrl, onClick })` | `notify` | a notification of the operating system; at most one every three seconds; see below |
 | `ytmd.settings.get(key)`, `getAll()` | none | the plugin's own settings |
 | `ytmd.settings.update(values)` | none | saves; rejects values that do not fit the schema |
-| `ytmd.ui.injectCss(css)` | `ui.inject` | resolves with a remove function; at most 256 kB |
+| `ytmd.ui.injectCss(css)` | `ui.inject` | resolves with a remove function; at most 256 kB; nothing that loads: no `url()`, `@import`, `image-set()`, `image()`, `src()` and no backslash escapes. Images and fonts belong in the plugin's own document |
 | `ytmd.ui.showNotice(text)` | `ui.inject` | at most 200 characters |
 | `ytmd.ui.addNavButton(label, onClick)` | `ui.inject` | label at most 40 characters; resolves with a remove function |
 | `ytmd.ui.showPanel(title?)`, `hidePanel()` | `ui.inject` | title at most 60 characters |

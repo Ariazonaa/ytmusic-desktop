@@ -4,6 +4,9 @@ import type { NotifyOptions } from "../shared/types";
 import { isSafeImageUrl } from "./net/cover-url";
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
+const MAX_IMAGE_LOADS = 4;
+const IMAGE_TIMEOUT_MS = 10_000;
+let loading = 0;
 /** Clicks are only awaited for the newest notifications. */
 const MAX_PENDING_CLICKS = 20;
 
@@ -26,14 +29,54 @@ function toBase64(bytes: Uint8Array): string {
  */
 export async function loadImage(url: unknown): Promise<string | null> {
   if (typeof url !== "string" || !isSafeImageUrl(url)) return null;
+  // A few at a time, each for a limited time: a slow server holds nothing for long.
+  if (loading >= MAX_IMAGE_LOADS) return null;
+  loading++;
+  const abort = new AbortController();
+  const timeout = setTimeout(() => abort.abort(), IMAGE_TIMEOUT_MS);
   try {
-    const response = await fetch(url, { credentials: "omit", referrerPolicy: "no-referrer" });
+    const response = await fetch(url, {
+      credentials: "omit",
+      referrerPolicy: "no-referrer",
+      // The address was checked, where a redirect leads was not.
+      redirect: "error",
+      signal: abort.signal,
+    });
     if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
-    return bytes.length > 0 && bytes.length <= MAX_IMAGE_BYTES ? toBase64(bytes) : null;
+    const bytes = await readAtMost(response, MAX_IMAGE_BYTES);
+    return bytes?.length ? toBase64(bytes) : null;
   } catch {
     return null;
+  } finally {
+    clearTimeout(timeout);
+    abort.abort();
+    loading--;
   }
+}
+
+/** The body, or `null` once it grows past `max` bytes: what a server claims to send is not read whole. */
+async function readAtMost(response: Response, max: number): Promise<Uint8Array | null> {
+  if (!response.body) return null;
+  const reader = response.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let length = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    length += value.length;
+    if (length > max) {
+      await reader.cancel();
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(length);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.length;
+  }
+  return bytes;
 }
 
 export class Notifier {

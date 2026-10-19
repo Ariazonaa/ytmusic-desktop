@@ -111,6 +111,19 @@ checks its checksum, and attaches `PKGBUILD` and `SRCINFO`. To put a version
 on the AUR, copy both into the AUR repository of `ytmusic-desktop-bin`
 (`SRCINFO` as `.SRCINFO`) and push; that needs an AUR account with an SSH key.
 
+For Windows package managers, `node scripts/package-manifests.mjs <tag>` reads
+the published release's `SHA256SUMS.txt` and writes to `release/manifests/`:
+
+- `scoop/ytmusic-desktop.json`, the portable zip, for a Scoop bucket such as
+  [Extras](https://github.com/ScoopInstaller/Extras) (pull request to its
+  `bucket/` folder). It updates itself from then on.
+- `winget/`, the installer, for
+  [winget-pkgs](https://github.com/microsoft/winget-pkgs): the three files go to
+  `manifests/a/Ariazonaa/YTMusicDesktop/<version>/` in a pull request. Check
+  them first with `winget validate --manifest release/manifests/winget`.
+
+Both want a regular release, not a pre-release.
+
 `.github/workflows/linux-packages.yml` checks the Linux packages on every push:
 it installs the .deb on Ubuntu 24.04 and the package built from `PKGBUILD` on
 Arch Linux, starts them and the AppImage on a virtual screen with a link to a

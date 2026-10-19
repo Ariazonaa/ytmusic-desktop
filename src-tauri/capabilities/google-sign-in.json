@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "google-sign-in",
+  "description": "Lets the injected script on the Google sign-in page ask a security key to sign in, as WebKitGTK on Linux cannot. Linux only: elsewhere the browser asks the key itself, and the sign-in page gets nothing from the app. The command itself checks that the window shows accounts.google.com and that the page asks only for its own site. Nothing else.",
+  "windows": ["main"],
+  "platforms": ["linux"],
+  "remote": {
+    "urls": ["https://accounts.google.com/*"]
+  },
+  "permissions": ["allow-webauthn-get", "allow-webauthn-cancel"]
+}

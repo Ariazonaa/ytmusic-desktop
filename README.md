@@ -12,7 +12,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/images/lyrics.png" alt="The app playing a song, with synced lyrics in a side panel and the spectrum behind the player bar" width="860">
+  <img src="docs/images/tour.gif" alt="The app playing a music video with the spectrum behind the player bar: synced lyrics in a side panel, then two themes, the equalizer with raised bass, and the cover panel" width="860">
 </p>
 
 ## Small, because it is not Electron
@@ -116,9 +116,10 @@ From the [latest release](https://github.com/Ariazonaa/ytmusic-desktop/releases/
   updated with the next release's package.
 
 On Linux the app runs in WebKitGTK instead of WebView2. It starts on Ubuntu
-and Arch, and YouTube Music plays signed out; signing in with Google and
-Premium have not been tried there yet. Tracks that need DRM would not play,
-and the memory saving in the tray is Windows only.
+and Arch, and YouTube Music plays signed out. A tester signed in with Google
+on Arch, also with a security key; Premium has not been tried there yet.
+Tracks that need DRM would not play, and the memory saving in the tray is
+Windows only.
 [docs/platforms.md](docs/platforms.md) has the details. Please report what
 works and what does not.
 

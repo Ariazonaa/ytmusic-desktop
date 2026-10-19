@@ -47,6 +47,8 @@ fn main() {
         "lyrics_overlay",
         "lyrics_overlay_line",
         "open_link",
+        "webauthn_get",
+        "webauthn_cancel",
     ]);
     tauri_build::try_build(tauri_build::Attributes::new().app_manifest(manifest))
         .expect("failed to run tauri-build");

@@ -83,7 +83,14 @@ export function asText(name: string, tracks: readonly PlaylistTrack[]): string {
   return [name, "", ...tracks.map((track) => `${track.artist} – ${track.title}`)].join("\n") + "\n";
 }
 
-const csvField = (value: string): string => (/[",\n\r]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value);
+/** A spreadsheet runs a cell that starts with one of these, also after spaces or control characters. */
+const FORMULA = /^[\s\u0000-\u001f\u007f]*[=+@-]/u;
+
+function csvField(value: string): string {
+  // Quoting does not stop a formula: an apostrophe in front makes it text.
+  const text = FORMULA.test(value) ? `'${value}` : value;
+  return /[",\n\r]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+}
 
 /** A spreadsheet's view: title, artist, album, length and link per track. */
 export function asCsv(tracks: readonly PlaylistTrack[]): string {

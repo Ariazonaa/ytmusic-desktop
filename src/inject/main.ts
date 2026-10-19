@@ -15,11 +15,12 @@ import { OutputDeviceWatcher } from "../core/audio/output-device";
 import { HealthReporter, PageCheck } from "../core/health";
 import { setLanguage } from "../core/i18n";
 import { navigate } from "../core/injector/navigate";
+import { installWebAuthn } from "../core/injector/webauthn";
 import { addShortcut } from "../core/injector/shortcuts";
 import { describeLogArguments, fileLogger } from "../core/log";
 import { Notifier } from "../core/notify";
 import { getJson, sendRequest } from "../core/net/json";
-import { openLink } from "../core/settings/client";
+import { openLink, webAuthnCancel, webAuthnGet } from "../core/settings/client";
 import { addToQueue, moveInQueue, readQueue, removeFromQueue } from "../core/player/queue";
 import { controlPlayer, seekTo, setPlaybackRate } from "../core/player/controls";
 import { readLikeStatus, setLikeStatus } from "../core/player/like";
@@ -216,6 +217,13 @@ declare global {
     /** Called from Rust, see `control_player`, `apply_settings`, `reload_plugins`, `notification_clicked` and `update_available` in `window.rs`. */
     __ytmDesktop?: Hooks;
   }
+}
+
+// WebKitGTK has no Web Authentication: without this, signing in with a
+// security key never ends. Before the page's own scripts look for it.
+if (window.top === window && location.hostname === "accounts.google.com") {
+  setLanguage("system");
+  installWebAuthn({ get: webAuthnGet, cancel: webAuthnCancel });
 }
 
 // The window also visits the Google sign-in pages; plugins only run on YouTube Music itself.

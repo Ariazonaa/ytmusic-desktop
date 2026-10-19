@@ -92,7 +92,10 @@ export interface SandboxApi {
   };
   /** Requires `ui.inject`. The plugin cannot touch the page's DOM itself. */
   ui: {
-    /** Adds CSS to the page. Resolves with a function that removes it. */
+    /**
+     * Adds CSS to the page. Resolves with a function that removes it. CSS that
+     * loads something (`url()`, `@import`, `image-set()`, escapes) is refused.
+     */
     injectCss(css: string): Promise<() => Promise<void>>;
     /** Shows a short message at the bottom of the window. */
     showNotice(text: string): Promise<void>;

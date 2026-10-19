@@ -26,6 +26,7 @@ mod themes;
 mod tray;
 mod update;
 mod watch;
+mod webauthn;
 mod webview_runtime;
 mod window;
 
@@ -38,6 +39,8 @@ pub fn run() {
     #[cfg(windows)]
     webview_runtime::use_unregistered_runtime();
     tauri::Builder::default()
+        // Before anything can ask for a plugin's files.
+        .manage(frames::FrameGuard::default())
         // Must be registered first. A second launch focuses the running app,
         // which may be hidden in the tray.
         .plugin(tauri_plugin_single_instance::init(
@@ -65,7 +68,8 @@ pub fn run() {
         .register_uri_scheme_protocol(plugins::SCHEME, |context, request| {
             // An empty path matches nothing, so this answers 404 without a config directory.
             let dir = plugins::dir(context.app_handle()).unwrap_or_default();
-            plugins::respond(&dir, request.uri().path())
+            let guarded = context.app_handle().state::<frames::FrameGuard>().active();
+            plugins::serve(&dir, request.uri().path(), guarded)
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_settings,
@@ -112,7 +116,9 @@ pub fn run() {
             commands::save_text,
             commands::lyrics_overlay,
             commands::lyrics_overlay_line,
-            commands::open_link
+            commands::open_link,
+            commands::webauthn_get,
+            commands::webauthn_cancel
         ])
         .setup(|app| {
             let config_dir = app.path().app_config_dir()?;
@@ -139,6 +145,8 @@ pub fn run() {
             app.manage(stats::StatsStore::default());
             app.manage(update::UpdateStore::default());
             app.manage(discord::Discord::default());
+            #[cfg(target_os = "linux")]
+            app.manage(webauthn::WebAuthn::default());
             tray::create(app.handle(), &app.state::<SettingsStore>().get().language)?;
             let link = window::music_link(std::env::args().skip(1));
             window::create_main_window(app.handle(), hidden, link)?;

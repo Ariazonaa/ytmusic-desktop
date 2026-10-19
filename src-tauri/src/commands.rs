@@ -120,7 +120,7 @@ fn commit(
 #[tauri::command]
 pub fn list_external_plugins(app: AppHandle) -> Vec<ExternalPlugin> {
     plugins::dir(&app)
-        .map(|dir| plugins::list(&dir))
+        .map(|dir| plugins::list(&dir, app.state::<crate::frames::FrameGuard>().active()))
         .unwrap_or_default()
 }
 
@@ -683,6 +683,43 @@ pub fn discord_preview(
     presence
         .last()
         .or_else(|| sample.map(|request| discord::check(&request, discord::now_ms())))
+}
+
+/// Asks a security key to sign in, for the Google sign-in, which WebKitGTK
+/// leaves without Web Authentication. Errors start with the name of the
+/// `DOMException` the page gets. Sign-in page only, Linux only.
+#[tauri::command]
+pub async fn webauthn_get(
+    app: AppHandle,
+    webview: tauri::Webview,
+    request: crate::webauthn::GetRequest,
+) -> Result<crate::webauthn::Assertion, String> {
+    #[cfg(target_os = "linux")]
+    {
+        // The page the window shows, not one the script claims.
+        let page = webview.url().map_err(|err| err.to_string())?;
+        // Waits for a touch of the key, which can take a while.
+        tauri::async_runtime::spawn_blocking(move || {
+            crate::webauthn::get(&app.state::<crate::webauthn::WebAuthn>(), &page, request)
+        })
+        .await
+        .map_err(|err| err.to_string())?
+        .map_err(|failure| failure.to_string())
+    }
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = (app, webview, request);
+        Err("NotSupportedError: the browser has its own".into())
+    }
+}
+
+/// Cancels the request of `webauthn_get`, as the page's `AbortSignal` asks.
+#[tauri::command]
+pub fn webauthn_cancel(app: AppHandle) {
+    #[cfg(target_os = "linux")]
+    crate::webauthn::cancel(&app.state::<crate::webauthn::WebAuthn>());
+    #[cfg(not(target_os = "linux"))]
+    let _ = app;
 }
 
 #[cfg(test)]

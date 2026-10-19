@@ -6,6 +6,25 @@ this file needs a new heading.
 
 ## 0.9.0
 
+- Linux: signing in to Google with a security key (a YubiKey and the like)
+  works. WebKitGTK cannot ask a key itself, so for Google's sign-in page the
+  app does, over USB; a key with a PIN asks for it in a small dialog. From a
+  pull request by Herobr1ne (GitHub #2).
+- Linux: signing out of YouTube Music no longer shows a dialog with the
+  message "false".
+- `audio-only`: where a video has no song to switch to (every music video
+  without Premium, and videos without a song version also with Premium), the
+  cover now shows in place of the picture instead of a grey area.
+- Plugins from others are held tighter, from a review by Tumult1337 (GitHub
+  pull request #1): CSS they put in the page may not load anything (`url()`,
+  `@import` and the like), since that went out past the `network` permission.
+  On Linux their frames can no longer leave their document: the navigation is
+  stopped, nothing opens in the browser. On Windows the app watches the frames
+  before YouTube Music loads, and plugins from others do not run if it cannot.
+- Playlist export: a title that starts like a formula (`=`, `+`, `-`, `@`) is
+  written to the CSV as text, so a spreadsheet does not run it.
+- Pictures for notifications: at most 1 MB, four at a time, ten seconds each,
+  no redirects. The now-playing page answers at most eight connections at once.
 - Linux: playback no longer stops after about a minute of a track. The app
   now presents itself as Safari on Linux, as GNOME Web does, instead of as
   Chrome, so that YouTube's check of the browser succeeds.

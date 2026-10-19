@@ -7,7 +7,7 @@ use std::fs;
 use std::io::{Read, Write};
 use std::net::{TcpListener, TcpStream};
 use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Manager, Runtime};
@@ -151,8 +151,15 @@ impl NowPlaying {
             while !stopped.load(Ordering::Relaxed) {
                 match listener.accept() {
                     Ok((stream, _)) => {
+                        // Beyond the limit the connection is closed unanswered.
+                        let Some(slot) = Slot::take() else {
+                            continue;
+                        };
                         let shared = Arc::clone(&shared);
-                        std::thread::spawn(move || answer(stream, port, &shared));
+                        std::thread::spawn(move || {
+                            answer(stream, port, &shared);
+                            drop(slot);
+                        });
                     }
                     Err(_) => std::thread::sleep(Duration::from_millis(100)),
                 }
@@ -200,11 +207,42 @@ struct Status<'a> {
     version: u64,
 }
 
+/// Connections answered at the same time, over all servers: a browser source
+/// needs one or two, and a stopped server's last answers may still be running.
+const MAX_CONNECTIONS: usize = 8;
+static CONNECTIONS: AtomicUsize = AtomicUsize::new(0);
+
+/// One of the `MAX_CONNECTIONS`, given back when dropped.
+struct Slot(&'static AtomicUsize);
+
+impl Slot {
+    fn take() -> Option<Self> {
+        Self::take_from(&CONNECTIONS)
+    }
+
+    fn take_from(counter: &'static AtomicUsize) -> Option<Self> {
+        counter
+            .try_update(Ordering::AcqRel, Ordering::Acquire, |n| {
+                (n < MAX_CONNECTIONS).then_some(n + 1)
+            })
+            .ok()
+            .map(|_| Slot(counter))
+    }
+}
+
+impl Drop for Slot {
+    fn drop(&mut self) {
+        self.0.fetch_sub(1, Ordering::AcqRel);
+    }
+}
+
 /// Answers one request. Only for this machine: the `Host` must be the
 /// address served, so that a web page cannot reach it under a name of its own.
 fn answer(mut stream: TcpStream, port: u16, shared: &Mutex<Shared>) {
     let _ = stream.set_nonblocking(false);
+    // A client that reads or writes slowly holds a slot at most this long each way.
     let _ = stream.set_read_timeout(Some(Duration::from_secs(5)));
+    let _ = stream.set_write_timeout(Some(Duration::from_secs(5)));
     let mut buffer = [0u8; 4096];
     let Ok(read) = stream.read(&mut buffer) else {
         return;
@@ -386,6 +424,18 @@ mod tests {
             .0,
             "405 Method Not Allowed"
         );
+    }
+
+    #[test]
+    fn answers_a_limited_number_at_once() {
+        static COUNTER: AtomicUsize = AtomicUsize::new(0);
+        let slots: Vec<Slot> = (0..MAX_CONNECTIONS)
+            .map(|_| Slot::take_from(&COUNTER).unwrap())
+            .collect();
+        assert!(Slot::take_from(&COUNTER).is_none());
+        drop(slots);
+        assert!(Slot::take_from(&COUNTER).is_some());
+        assert_eq!(COUNTER.load(Ordering::Acquire), 0);
     }
 
     #[test]

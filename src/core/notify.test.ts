@@ -12,7 +12,32 @@ describe("loadImage", () => {
     const fetchMock = vi.fn(() => Promise.resolve(new Response(new Uint8Array([0xff, 0xd8, 0xff, 0x00]))));
     vi.stubGlobal("fetch", fetchMock);
     expect(await loadImage(COVER)).toBe("/9j/AA==");
-    expect(fetchMock).toHaveBeenCalledWith(COVER, { credentials: "omit", referrerPolicy: "no-referrer" });
+    expect(fetchMock).toHaveBeenCalledWith(
+      COVER,
+      expect.objectContaining({ credentials: "omit", referrerPolicy: "no-referrer", redirect: "error" }),
+    );
+  });
+
+  it("loads at most four at a time and gives up on a slow server", async () => {
+    vi.useFakeTimers();
+    try {
+      // A server that never answers until the request is cancelled.
+      const fetchMock = vi.fn(
+        (_url: string, init: RequestInit) =>
+          new Promise<Response>((_resolve, reject) => init.signal?.addEventListener("abort", () => reject(new Error("aborted")))),
+      );
+      vi.stubGlobal("fetch", fetchMock);
+      const slow = [1, 2, 3, 4].map(() => loadImage(COVER));
+      expect(await loadImage(COVER)).toBeNull();
+      expect(fetchMock).toHaveBeenCalledTimes(4);
+      await vi.advanceTimersByTimeAsync(10_000);
+      expect(await Promise.all(slow)).toEqual([null, null, null, null]);
+      // Once they gave up, there is room again.
+      vi.stubGlobal("fetch", () => Promise.resolve(new Response(new Uint8Array([0xff, 0xd8, 0xff, 0x00]))));
+      expect(await loadImage(COVER)).toBe("/9j/AA==");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("does not even ask for addresses that are not covers", async () => {

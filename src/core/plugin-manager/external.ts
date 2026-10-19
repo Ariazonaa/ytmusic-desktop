@@ -17,6 +17,19 @@ const MAX_HANDLES = 32;
 
 type Logger = Pick<Console, "error">;
 
+/**
+ * CSS in the page loads what it points to from anywhere, out of reach of the
+ * frame's network rules: `url()`, `@import`, `image-set()`, `image()`, `src()`.
+ * Escapes could spell those, so CSS with a backslash is refused as well.
+ */
+const LOADS = /url\s*\(|@import|image-set\s*\(|(?<![\w-])image\s*\(|(?<![\w-])src\s*\(|\\/i;
+
+function pageCss(value: unknown): string {
+  const css = text(value, MAX_CSS_LENGTH, "css");
+  if (LOADS.test(css)) throw new Error("css may not load anything (url(), @import, image-set(), escapes)");
+  return css;
+}
+
 function text(value: unknown, maxLength: number, what: string): string {
   if (typeof value !== "string") throw new Error(`${what} must be a string`);
   if (value.length > maxLength) throw new Error(`${what} is too long`);
@@ -148,7 +161,7 @@ export function createExternalPlugin(
         // The API checks every value against the plugin's schema.
         return api.settings.update(values as Record<string, never>);
       },
-      "ui.injectCss": ([css]) => keep(api.ui.injectCss(text(css, MAX_CSS_LENGTH, "css"))),
+      "ui.injectCss": ([css]) => keep(api.ui.injectCss(pageCss(css))),
       "ui.removeCss": release,
       "ui.showNotice": ([message]) => api.ui.showNotice(text(message, MAX_NOTICE_LENGTH, "text")),
       "ui.addNavButton": ([label]) => {

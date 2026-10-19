@@ -81,8 +81,9 @@ pub struct ExternalPlugin {
     pub name: String,
     /// The parsed `plugin.json`, validated by the frontend.
     pub manifest: Value,
-    /// The document to load in the plugin's iframe.
-    pub frame_url: String,
+    /// The document to load in the plugin's iframe. None where the frames of
+    /// plugins are not guarded (see `frames.rs`): the plugin does not run.
+    pub frame_url: Option<String>,
 }
 
 /// The folder users put external plugins into.
@@ -91,7 +92,8 @@ pub fn dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
 }
 
 /// Finds the plugins in `dir`. Folders that are not usable plugins are skipped.
-pub fn list(dir: &Path) -> Vec<ExternalPlugin> {
+/// `guarded` says whether their frames are kept on their own document.
+pub fn list(dir: &Path, guarded: bool) -> Vec<ExternalPlugin> {
     let Ok(entries) = fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -100,7 +102,7 @@ pub fn list(dir: &Path) -> Vec<ExternalPlugin> {
             let name = entry.ok()?.file_name().into_string().ok()?;
             match read_manifest(dir, &name) {
                 Ok(manifest) => Some(ExternalPlugin {
-                    frame_url: format!("{ORIGIN}/{name}/"),
+                    frame_url: guarded.then(|| format!("{ORIGIN}/{name}/")),
                     name,
                     manifest,
                 }),
@@ -136,12 +138,23 @@ fn read_limited(path: &Path, max_bytes: u64) -> Option<Vec<u8>> {
     fs::read(path).ok()
 }
 
+/// Answers a request to the plugin scheme, see `respond`; nothing while the
+/// frames of plugins are not guarded, see `frames.rs`.
+pub fn serve(dir: &Path, path: &str, guarded: bool) -> Response<Cow<'static, [u8]>> {
+    if !guarded {
+        return base_response(StatusCode::FORBIDDEN, "text/plain; charset=utf-8")
+            .body(Cow::Borrowed(&b"plugins from others are switched off"[..]))
+            .expect("the response is valid");
+    }
+    respond(dir, path)
+}
+
 /// Answers a request to the plugin scheme:
 ///
 /// - `/_bootstrap.js`: the `ytmd` API for the iframe
 /// - `/<plugin>/`: the iframe document
 /// - `/<plugin>/<file>`: a script, stylesheet or image from the plugin's folder
-pub fn respond(dir: &Path, path: &str) -> Response<Cow<'static, [u8]>> {
+fn respond(dir: &Path, path: &str) -> Response<Cow<'static, [u8]>> {
     if path == "/_bootstrap.js" {
         return script(bootstrap());
     }
@@ -365,18 +378,36 @@ mod tests {
             }
         }
 
-        let plugins = list(dir.path());
+        let plugins = list(dir.path(), true);
 
         assert_eq!(plugins.len(), 1);
         assert_eq!(plugins[0].name, "hello");
         assert_eq!(plugins[0].manifest["name"], "hello");
-        assert_eq!(plugins[0].frame_url, format!("{ORIGIN}/hello/"));
+        assert_eq!(plugins[0].frame_url, Some(format!("{ORIGIN}/hello/")));
+    }
+
+    #[test]
+    fn nothing_runs_while_frames_are_not_guarded() {
+        let dir = plugin_dir();
+        assert_eq!(list(dir.path(), false)[0].frame_url, None);
+        for path in ["/hello/", "/hello/index.js", "/_bootstrap.js"] {
+            assert_eq!(
+                serve(dir.path(), path, false).status(),
+                StatusCode::FORBIDDEN,
+                "{path}"
+            );
+            assert_eq!(
+                serve(dir.path(), path, true).status(),
+                StatusCode::OK,
+                "{path}"
+            );
+        }
     }
 
     #[test]
     fn missing_plugin_folder_lists_nothing() {
         let dir = tempfile::tempdir().unwrap();
-        assert_eq!(list(&dir.path().join("missing")), Vec::new());
+        assert_eq!(list(&dir.path().join("missing"), true), Vec::new());
     }
 
     #[test]

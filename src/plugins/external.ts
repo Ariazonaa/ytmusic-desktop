@@ -20,6 +20,8 @@ export function validateExternalPlugins(
   const valid: ExternalManifest[] = [];
   for (const { name: folder, manifest: json, frameUrl } of found) {
     try {
+      // The backend leaves it out where a plugin's frame cannot be kept on its document.
+      if (!frameUrl) throw new Error("plugins from others are switched off: their frames cannot be guarded here");
       const manifest = parseManifest(json);
       if (manifest.name !== folder) {
         throw new Error(`manifest name "${manifest.name}" does not match the folder`);

@@ -66,16 +66,17 @@ pub fn open_music_link(app: &AppHandle, url: Url) {
 /// `hidden` starts the app in the tray: the page loads, but no window shows.
 /// `link` is a page of YouTube Music to start on instead of the home page.
 pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> tauri::Result<()> {
-    // In development the window starts empty: `dev_inject` registers the
-    // script first and then opens the page.
-    let url = if cfg!(all(debug_assertions, windows)) {
-        "about:blank".parse().expect("the start URL is valid")
+    let url: Url = link.unwrap_or_else(|| YTM_URL.parse().expect("the start URL is valid"));
+    // On Windows the window starts empty: `frames::watch` opens the page once
+    // the frames of plugins are watched.
+    let first: Url = if cfg!(windows) {
+        "about:blank".parse().expect("the blank URL is valid")
     } else {
-        link.unwrap_or_else(|| YTM_URL.parse().expect("the start URL is valid"))
+        url.clone()
     };
     let nav_app = app.clone();
     let popup_app = app.clone();
-    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(url))
+    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(first))
         .title("YouTube Music")
         // Both windows are dark. On Linux this also picks the dark variant of
         // the GTK theme, in which WebKitGTK draws the lists of selects.
@@ -84,9 +85,14 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
         .additional_browser_args(browser_args(app))
         .inner_size(1280.0, 800.0)
         .min_inner_size(480.0, 360.0)
-        .on_navigation(move |url| match classify(url) {
+        .on_navigation(move |url| match in_window(url, FRAMES_ASK) {
             Navigation::Allow => true,
-            Navigation::Block => false,
+            Navigation::Block => {
+                if url.scheme() == "https" || url.scheme() == "http" {
+                    log_error!("stopped a navigation to {}", url.host_str().unwrap_or("?"));
+                }
+                false
+            }
             Navigation::OpenExternally => {
                 open_in_browser(&nav_app, url);
                 false
@@ -106,19 +112,43 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     let window = builder.initialization_script(INJECT_SCRIPT).build()?;
     #[cfg(all(debug_assertions, windows))]
     let window = builder.build()?;
-    #[cfg(all(debug_assertions, windows))]
-    crate::dev_inject::start(&window, YTM_URL);
     // Without a connection, the app shows a page of its own instead of the browser's error page.
     let language_app = app.clone();
     crate::offline::watch(&window, YTM_URL, move || {
         language_app.state::<SettingsStore>().get().language
     });
-    // A plugin's frame must not leave its document.
-    crate::frames::watch(&window);
+    // A plugin's frame must not leave its document. On Windows this also
+    // opens the page (in development through `dev_inject`).
+    crate::frames::watch(&window, url);
+    #[cfg(target_os = "linux")]
+    leave_without_asking(&window);
     if hidden {
         background::set_hidden(&window, true);
     }
     Ok(())
+}
+
+/// Answers "leave" when a page asks before it is left, as YouTube Music does
+/// on signing out. WebKitGTK would show its own dialog with the page's return
+/// value as the message, "false"; in the app, leaving a page is always what
+/// the user asked for.
+#[cfg(target_os = "linux")]
+fn leave_without_asking(window: &tauri::WebviewWindow) {
+    use webkit2gtk::{ScriptDialogType, WebViewExt};
+
+    let result = window.with_webview(|webview| {
+        webview.inner().connect_script_dialog(|_, dialog| {
+            if dialog.dialog_type() != ScriptDialogType::BeforeUnloadConfirm {
+                // Alerts and the rest keep WebKitGTK's dialogs.
+                return false;
+            }
+            dialog.confirm_set_confirmed(true);
+            true
+        });
+    });
+    if let Err(err) = result {
+        log_error!("cannot reach the webview: {err}");
+    }
 }
 
 /// Brings the main window back from the tray or from behind other windows.
@@ -325,6 +355,20 @@ fn classify(url: &Url) -> Navigation {
     }
 }
 
+/// WebKitGTK asks the window's navigation handler about the navigations of
+/// frames as well, without saying whose. WebView2 asks only about the window's.
+const FRAMES_ASK: bool = cfg!(target_os = "linux");
+
+/// What the main window's navigation handler does. Where frames ask too, a
+/// page outside the app is not opened in the browser: the asking frame may be
+/// a plugin's, and the address would carry whatever it put in there.
+fn in_window(url: &Url, frames_ask: bool) -> Navigation {
+    match classify(url) {
+        Navigation::OpenExternally if frames_ask => Navigation::Block,
+        other => other,
+    }
+}
+
 fn is_in_app_host(host: &str) -> bool {
     const GOOGLE_HOSTS: [&str; 2] = ["consent.google.com", "gds.google.com"];
     host == "youtube.com"
@@ -425,5 +469,17 @@ mod tests {
             classify_str("ytmd-plugin://localhost/scrobbler/"),
             Navigation::Allow
         );
+    }
+
+    #[test]
+    fn opens_nothing_in_the_browser_where_frames_ask_too() {
+        let outside: Url = "https://example.com/?what=is-playing".parse().unwrap();
+        assert_eq!(in_window(&outside, false), Navigation::OpenExternally);
+        assert_eq!(in_window(&outside, true), Navigation::Block);
+        // The app's own pages are not affected.
+        let music: Url = "https://music.youtube.com/".parse().unwrap();
+        assert_eq!(in_window(&music, true), Navigation::Allow);
+        let plugin: Url = "ytmd-plugin://localhost/scrobbler/".parse().unwrap();
+        assert_eq!(in_window(&plugin, true), Navigation::Allow);
     }
 }
