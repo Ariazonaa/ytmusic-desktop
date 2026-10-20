@@ -66,8 +66,10 @@ it("hands the page's request to the app", () => {
     timeout: undefined,
     appId: "https://www.gstatic.com/securitykey/origins.json",
   });
-  // The app reads whole milliseconds.
+  // The app reads whole milliseconds, five minutes at most.
   expect(toRequest({ ...options().publicKey!, timeout: 60000.4 }).timeout).toBe(60000);
+  expect(toRequest({ ...options().publicKey!, timeout: 1e30 }).timeout).toBe(300000);
+  expect(toRequest({ ...options().publicKey!, timeout: Number.NaN }).timeout).toBeUndefined();
 });
 
 it("gives the page a credential as a browser would", async () => {
@@ -144,6 +146,43 @@ it("cancels the key's request when the page aborts", async () => {
   controller.abort();
   await expect(pending).rejects.toMatchObject({ name: "AbortError" });
   expect(app.cancel).toHaveBeenCalledOnce();
+});
+
+it("gives no credential when the page gave up while the key answered", async () => {
+  const controller = new AbortController();
+  const app = backend(() => {
+    controller.abort();
+    return Promise.resolve(parts);
+  });
+  const win = bareWindow();
+  installWebAuthn(app, vi.fn(), win);
+  await expect(win.navigator.credentials.get({ ...options(), signal: controller.signal })).rejects.toMatchObject({
+    name: "AbortError",
+  });
+});
+
+it("ends a conditional request at once when the page has given up already", async () => {
+  const win = bareWindow();
+  installWebAuthn(backend(() => Promise.resolve(parts)), vi.fn(), win);
+  const controller = new AbortController();
+  controller.abort();
+  await expect(
+    win.navigator.credentials.get({ ...options(), mediation: "conditional", signal: controller.signal }),
+  ).rejects.toMatchObject({ name: "AbortError" });
+});
+
+it("takes no PIN longer than 63 bytes and says so", async () => {
+  const pending = askPinInPage(false, null);
+  const dialog = document.querySelector<HTMLFormElement>('form[role="dialog"]')!;
+  const input = dialog.querySelector("input")!;
+  // 40 letters, 80 bytes.
+  input.value = "ä".repeat(40);
+  dialog.requestSubmit();
+  expect(document.contains(dialog)).toBe(true);
+  expect(dialog.textContent).toContain("The PIN is too long.");
+  input.value = "123456";
+  dialog.requestSubmit();
+  expect(await pending).toBe("123456");
 });
 
 it("closes the PIN dialog when the page aborts, without asking the key again", async () => {

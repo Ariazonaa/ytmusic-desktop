@@ -13,6 +13,25 @@
       "hosts": [],
       "url": "https://raw.githubusercontent.com/Ariazonaa/ytmusic-desktop/main/plugins/zips/hello-0.1.0.zip",
       "sha256": "ccb3d422b621c52c803cbc329cc5b2266db621552a2256d5d5ea84f08fe15c5d"
+    },
+    {
+      "name": "scrobbler",
+      "version": "0.1.0",
+      "description": "Sends what you listen to to ListenBrainz or Last.fm: a track counts once half of it played, or four minutes.",
+      "author": "Ariazonaa",
+      "homepage": "https://github.com/Ariazonaa/ytmd-scrobbler",
+      "permissions": [
+        "music.read",
+        "ui.inject",
+        "network"
+      ],
+      "hosts": [
+        "api.listenbrainz.org",
+        "ws.audioscrobbler.com",
+        "www.last.fm"
+      ],
+      "url": "https://raw.githubusercontent.com/Ariazonaa/ytmusic-desktop/main/plugins/zips/scrobbler-0.1.0.zip",
+      "sha256": "a56fb8915b53408cba762c574f7615534978966f8e32b8298a30158f2e1c02a8"
     }
   ]
 }

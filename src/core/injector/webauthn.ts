@@ -3,6 +3,7 @@
 // "Use your security key". This stands in for `navigator.credentials.get` and
 // lets the app ask the key, see `src-tauri/src/webauthn.rs`, which also does
 // the browser's checks of origin and relying party.
+import { toBase64Url as bytesToBase64Url } from "../base64";
 import { t } from "../i18n";
 
 /** The parts of an assertion, binary values as base64url. */
@@ -43,14 +44,17 @@ export type AskPin = (
   signal?: AbortSignal | null,
 ) => Promise<string | null>;
 
+/** The longest wait for the key the app allows, in milliseconds. */
+const MAX_TIMEOUT = 300_000;
+/** The longest PIN keys take, in bytes of UTF-8. */
+const MAX_PIN_BYTES = 63;
+
 export function toBase64Url(source: BufferSource): string {
-  const bytes =
+  return bytesToBase64Url(
     source instanceof ArrayBuffer
       ? new Uint8Array(source)
-      : new Uint8Array(source.buffer, source.byteOffset, source.byteLength);
-  let binary = "";
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+      : new Uint8Array(source.buffer, source.byteOffset, source.byteLength),
+  );
 }
 
 export function fromBase64Url(text: string): ArrayBuffer {
@@ -69,8 +73,8 @@ export function toRequest(options: PublicKeyCredentialRequestOptions): GetReques
       .filter((credential) => credential.type === "public-key")
       .map((credential) => toBase64Url(credential.id)),
     userVerification: options.userVerification,
-    // Milliseconds as a whole number, which is what the app reads.
-    timeout: options.timeout === undefined ? undefined : Math.max(0, Math.round(options.timeout)),
+    // Whole milliseconds, which is what the app reads; it allows five minutes at most.
+    timeout: Number.isFinite(options.timeout) ? Math.min(Math.max(0, Math.round(options.timeout!)), MAX_TIMEOUT) : undefined,
     appId: (options.extensions as { appid?: string } | undefined)?.appid,
   };
 }
@@ -109,7 +113,10 @@ export async function getAssertion(
   try {
     for (;;) {
       try {
-        return await backend.get(request);
+        const parts = await backend.get(request);
+        // The page gave up while the key answered: it gets no credential.
+        if (signal?.aborted) throw aborted();
+        return parts;
       } catch (error) {
         // A cancelled request ends as "not allowed" in the app.
         if (signal?.aborted) throw aborted();
@@ -191,7 +198,9 @@ export function installWebAuthn(backend: WebAuthnBackend, askPin: AskPin = askPi
   scope.AuthenticatorAssertionResponse = AuthenticatorAssertionResponse;
 
   // A request still waiting for the key when the page goes away ends then,
-  // or the key would go on asking for a touch for a page that is gone.
+  // or the key would go on asking for a touch for a page that is gone. This
+  // call often does not get through as the page unloads; the app ends the
+  // request itself when the next page starts to load.
   let running = 0;
   win.addEventListener("pagehide", () => {
     if (running > 0) void backend.cancel();
@@ -209,8 +218,10 @@ export function installWebAuthn(backend: WebAuthnBackend, askPin: AskPin = askPi
     if (options.mediation === "conditional") {
       // Offered with the autofill of the username, which is not available
       // here: like a browser without passkeys, wait until the page gives up.
+      const signal = options.signal;
+      if (signal?.aborted) return Promise.reject(new DOMException("aborted", "AbortError"));
       return new Promise((_, reject) => {
-        options.signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")));
+        signal?.addEventListener("abort", () => reject(new DOMException("aborted", "AbortError")), { once: true });
       });
     }
     running++;
@@ -281,20 +292,21 @@ export function askPinInPage(
     Object.assign(title.style, { fontSize: "18px", fontWeight: "500" });
     form.setAttribute("aria-label", title.textContent);
     form.appendChild(title);
+    const warning = doc.createElement("div");
+    warning.style.color = "#f2b8b5";
+    warning.hidden = !wrong;
     if (wrong) {
-      const warning = doc.createElement("div");
       warning.textContent =
         attemptsLeft === null ? t("Wrong PIN.") : t("Wrong PIN. {count} attempts left.", { count: attemptsLeft });
-      warning.style.color = "#f2b8b5";
-      form.appendChild(warning);
     }
+    form.appendChild(warning);
     const input = doc.createElement("input");
     input.type = "password";
     input.autocomplete = "off";
     input.required = true;
-    // What keys take: 4 to 63 characters.
+    // What keys take: 4 characters at least, 63 bytes at most (checked on sending).
     input.minLength = 4;
-    input.maxLength = 63;
+    input.maxLength = MAX_PIN_BYTES;
     Object.assign(input.style, {
       padding: "10px 12px",
       border: "1px solid #8e918f",
@@ -337,6 +349,12 @@ export function askPinInPage(
     signal?.addEventListener("abort", onAbort);
     form.addEventListener("submit", (event) => {
       event.preventDefault();
+      // Letters like ä take two bytes, so fewer than 63 of them can be too many.
+      if (new TextEncoder().encode(input.value).length > MAX_PIN_BYTES) {
+        warning.textContent = t("The PIN is too long.");
+        warning.hidden = false;
+        return;
+      }
       close(input.value);
     });
     cancel.addEventListener("click", () => close(null));

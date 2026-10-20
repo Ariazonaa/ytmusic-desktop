@@ -1,7 +1,9 @@
 // Notifications of the operating system for plugins: fetches the picture and
 // remembers what to do when a notification is clicked.
 import type { NotifyOptions } from "../shared/types";
+import { toBase64 } from "./base64";
 import { isSafeImageUrl } from "./net/cover-url";
+import { readBytes } from "./net/json";
 
 const MAX_IMAGE_BYTES = 1024 * 1024;
 const MAX_IMAGE_LOADS = 4;
@@ -12,15 +14,6 @@ const MAX_PENDING_CLICKS = 20;
 
 /** Sends a notification to the backend. `image` is a file in base64. */
 type Send = (title: string, body: string, image: string | null, clickId: number | null) => Promise<void>;
-
-function toBase64(bytes: Uint8Array): string {
-  let binary = "";
-  // In pieces: one call with a whole picture would exceed the argument limit.
-  for (let start = 0; start < bytes.length; start += 0x8000) {
-    binary += String.fromCharCode(...bytes.subarray(start, start + 0x8000));
-  }
-  return btoa(binary);
-}
 
 /**
  * Loads a cover for a notification. Only covers from YouTube's image servers
@@ -43,8 +36,9 @@ export async function loadImage(url: unknown): Promise<string | null> {
       signal: abort.signal,
     });
     if (!response.ok) return null;
-    const bytes = await readAtMost(response, MAX_IMAGE_BYTES);
-    return bytes?.length ? toBase64(bytes) : null;
+    // A picture larger than that is left out, not cut.
+    const { bytes, complete } = await readBytes(response, MAX_IMAGE_BYTES);
+    return complete && bytes.length ? toBase64(bytes) : null;
   } catch {
     return null;
   } finally {
@@ -52,31 +46,6 @@ export async function loadImage(url: unknown): Promise<string | null> {
     abort.abort();
     loading--;
   }
-}
-
-/** The body, or `null` once it grows past `max` bytes: what a server claims to send is not read whole. */
-async function readAtMost(response: Response, max: number): Promise<Uint8Array | null> {
-  if (!response.body) return null;
-  const reader = response.body.getReader();
-  const chunks: Uint8Array[] = [];
-  let length = 0;
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    length += value.length;
-    if (length > max) {
-      await reader.cancel();
-      return null;
-    }
-    chunks.push(value);
-  }
-  const bytes = new Uint8Array(length);
-  let at = 0;
-  for (const chunk of chunks) {
-    bytes.set(chunk, at);
-    at += chunk.length;
-  }
-  return bytes;
 }
 
 export class Notifier {

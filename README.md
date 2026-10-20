@@ -116,10 +116,9 @@ From the [latest release](https://github.com/Ariazonaa/ytmusic-desktop/releases/
   updated with the next release's package.
 
 On Linux the app runs in WebKitGTK instead of WebView2. It starts on Ubuntu
-and Arch, and YouTube Music plays signed out. A tester signed in with Google
-on Arch, also with a security key; Premium has not been tried there yet.
-Tracks that need DRM would not play, and the memory saving in the tray is
-Windows only.
+and Arch, and YouTube Music plays signed out. A tester uses it on Arch with a
+Premium account, signed in with Google and a security key. Tracks that need
+DRM would not play, and the memory saving in the tray is Windows only.
 [docs/platforms.md](docs/platforms.md) has the details. Please report what
 works and what does not.
 

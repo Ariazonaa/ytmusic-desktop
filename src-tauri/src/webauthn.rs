@@ -108,6 +108,18 @@ fn encode(bytes: &[u8]) -> String {
     URL_SAFE_NO_PAD.encode(bytes)
 }
 
+/// Checks that the call came from the sign-in page's own document, as the
+/// browser names it in the call's `Origin`. The window's address alone is
+/// not enough: it names the next page as soon as that starts to load.
+pub fn check_caller(origin: Option<&str>) -> Result<(), Failure> {
+    match origin {
+        Some(origin) if origin.strip_prefix("https://") == Some(SIGN_IN_HOST) => Ok(()),
+        _ => Err(Failure::Security(
+            "only the Google sign-in may use a security key",
+        )),
+    }
+}
+
 /// Checks a request from the page at `page`, and writes the client data the
 /// key signs.
 fn check(page: &tauri::Url, request: &GetRequest) -> Result<Checked, Failure> {
@@ -176,19 +188,24 @@ mod device {
     use authenticator::statecallback::StateCallback;
     use authenticator::{Pin, PinError, StatusPinUv, StatusUpdate};
     use sha2::{Digest, Sha256};
+    use std::sync::atomic::{AtomicU64, Ordering};
     use std::sync::mpsc::channel;
     use std::sync::{Arc, Mutex};
 
-    /// The connection to the keys, made on first use. One request at a time.
+    /// The connection to the keys, made on first use, and the number of the
+    /// latest request. One request at a time.
     #[derive(Default)]
-    pub struct WebAuthn(Mutex<Option<AuthenticatorService>>);
+    pub struct WebAuthn {
+        service: Mutex<Option<AuthenticatorService>>,
+        latest: AtomicU64,
+    }
 
     impl WebAuthn {
         fn with_service<T>(
             &self,
             f: impl FnOnce(&mut AuthenticatorService) -> T,
         ) -> Result<T, Failure> {
-            let mut guard = self.0.lock().unwrap_or_else(|err| err.into_inner());
+            let mut guard = self.service.lock().unwrap_or_else(|err| err.into_inner());
             if guard.is_none() {
                 let mut service = AuthenticatorService::new().map_err(|err| {
                     Failure::NotAllowed(format!("no access to security keys: {err}"))
@@ -198,11 +215,19 @@ mod device {
             }
             Ok(f(guard.as_mut().expect("the service was just made")))
         }
+
+        /// Like `with_service`, but only if the connection is made already.
+        fn with_made_service(&self, f: impl FnOnce(&mut AuthenticatorService)) {
+            let mut guard = self.service.lock().unwrap_or_else(|err| err.into_inner());
+            if let Some(service) = guard.as_mut() {
+                f(service);
+            }
+        }
     }
 
     /// Cancels the running request, if any.
     pub fn cancel(state: &WebAuthn) {
-        let _ = state.with_service(|service| {
+        state.with_made_service(|service| {
             // Fails only when nothing runs.
             let _ = service.cancel();
         });
@@ -282,16 +307,25 @@ mod device {
         let callback = StateCallback::new(Box::new(move |result| {
             let _ = result_tx.send(result);
         }));
-        // A request still running for a page that went away ends now.
+        // Signing ends a request still running for a page that went away.
+        let mut number = 0;
         state
             .with_service(|service| {
-                let _ = service.cancel();
+                number = state.latest.fetch_add(1, Ordering::AcqRel) + 1;
                 service.sign(checked.timeout_ms, args, status_tx, callback)
             })?
             .map_err(|err| Failure::NotAllowed(err.to_string()))?;
         let result = result_rx
             .recv()
-            .map_err(|_| Failure::NotAllowed("the security key did not answer".into()))?;
+            .map_err(|_| Failure::NotAllowed("the security key did not answer".into()));
+        // The library would watch for keys until the time is up; this request
+        // is over, unless a newer one has taken its place meanwhile.
+        state.with_made_service(|service| {
+            if state.latest.load(Ordering::Acquire) == number {
+                let _ = service.cancel();
+            }
+        });
+        let result = result?;
 
         let signed = match result {
             Ok(signed) => signed,
@@ -435,6 +469,23 @@ mod tests {
             check(&sign_in, &garbage),
             Err(Failure::Invalid(_))
         ));
+    }
+
+    #[test]
+    fn only_the_sign_in_page_may_call() {
+        assert!(check_caller(Some("https://accounts.google.com")).is_ok());
+        for origin in [
+            None,
+            Some("https://music.youtube.com"),
+            Some("http://accounts.google.com"),
+            Some("https://accounts.google.com.evil.example"),
+            Some("null"),
+        ] {
+            assert!(
+                matches!(check_caller(origin), Err(Failure::Security(_))),
+                "{origin:?}"
+            );
+        }
     }
 
     #[test]

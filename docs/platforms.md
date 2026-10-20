@@ -8,9 +8,10 @@ The app is made and tested mostly on Windows. As of 2026-10-16:
   Linux. Every push starts all three on a virtual screen
   (`.github/workflows/linux-packages.yml`): the app starts, YouTube Music and
   the app's own parts (gear button, settings window) are there, and a track
-  plays signed out, also with the `adblock` plugin on. Not tried yet: signing
-  in with Google, Premium, sound on a real audio device, tray and global
-  shortcuts on a real desktop.
+  plays signed out, also with the `adblock` plugin on. A tester uses it on
+  Arch (CachyOS) with a Premium account, signed in with a security key. The
+  tray, global shortcuts and the volume were checked on virtual machines
+  with Arch, Fedora and Debian (XFCE).
 - **macOS is unknown.** There is no Mac to test on. Nothing found so far rules
   it out.
 
@@ -75,8 +76,9 @@ The tracks checked on Windows were not encrypted either (see Playback in
 
 - **Signing in.** A tester signed in on Arch (CachyOS), also with a security
   key. Other distributions not yet.
-- **Premium playback.** Whether a signed-in Premium account gets the same
-  quality and no DRM-only content.
+- **Premium.** A tester uses the app with a Premium account on Arch
+  (CachyOS). The sound quality and tracks that may need DRM were not checked
+  separately.
 - **Sound, tray, shortcuts.** The CI runners have no audio device and no
   desktop; the audio chain asks for 192 kHz, which was only tried in WebView2.
 - **External plugins** are served from `ytmd-plugin://localhost` instead of

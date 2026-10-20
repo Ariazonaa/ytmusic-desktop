@@ -23,6 +23,12 @@ impl FrameGuard {
     fn set(&self, active: bool) {
         self.0.store(active, Ordering::Release);
     }
+
+    /// Switches plugins from others off; true if they were on until now.
+    #[cfg(any(windows, test))]
+    fn turn_off(&self) -> bool {
+        self.0.swap(false, Ordering::AcqRel)
+    }
 }
 
 /// Watches the frames of the main window, then opens `start` in it. The
@@ -94,10 +100,13 @@ pub fn watch(window: &WebviewWindow, start: Url) {
             })();
             if let Err(err) = watched {
                 // A frame without a watch may be a plugin's: no more plugins
-                // from others, and the page loads again without them.
-                log_error!("cannot watch a frame, plugins from others are switched off: {err}");
-                unguarded.state::<FrameGuard>().set(false);
-                let _ = unguarded.reload();
+                // from others, and the page loads again without them. Only
+                // the first time: the page's own frames come back with it, and
+                // a watch that fails for them would reload it again and again.
+                if unguarded.state::<FrameGuard>().turn_off() {
+                    log_error!("cannot watch a frame, plugins from others are switched off: {err}");
+                    let _ = unguarded.reload();
+                }
             }
             Ok(())
         }));
@@ -153,6 +162,16 @@ mod tests {
         guard.set(true);
         assert!(guard.active());
         guard.set(false);
+        assert!(!guard.active());
+    }
+
+    #[test]
+    fn turning_off_tells_whether_it_was_on() {
+        let guard = FrameGuard::default();
+        guard.set(true);
+        assert!(guard.turn_off());
+        // Already off: nothing to do, the page is not loaded again.
+        assert!(!guard.turn_off());
         assert!(!guard.active());
     }
 }

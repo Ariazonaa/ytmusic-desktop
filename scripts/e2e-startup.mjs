@@ -6,7 +6,18 @@
 // environment variables. The app must not be running. The test plays some
 // seconds of one track, silently, in the profile the app normally uses, and
 // puts settings and the remembered track back afterwards.
-import { checklist, closeWindow, connect, launch, preflight, sleep, stop, until } from "./e2e-lib.mjs";
+import {
+  changeSettings,
+  checklist,
+  closeWindow,
+  connect,
+  launch,
+  preflight,
+  restoreSettings,
+  sleep,
+  stop,
+  until,
+} from "./e2e-lib.mjs";
 
 const TRACK = "lYBUbBu4W08";
 const START_URL = `https://music.youtube.com/watch?v=${TRACK}&list=RDAMVM${TRACK}`;
@@ -35,7 +46,6 @@ async function main() {
   const { check, finish } = checklist();
   let app;
   let page;
-  let original;
   let rememberedBefore;
   const snapshot = async () => JSON.parse(await page.evaluate(SNAPSHOT));
   const start = async (args) => {
@@ -43,15 +53,18 @@ async function main() {
     page = await connect(app);
   };
 
+  // With "minimize to tray" off, closing the window ends the app the regular way.
+  const settingsBefore = changeSettings((settings) => ({
+    ...settings,
+    plugins: [],
+    resumePlayback: true,
+    startInTray: true,
+    minimizeToTray: false,
+  }));
   try {
     // First run: play a track to a known position and close the window.
     await start();
-    original = await page.invoke("get_settings");
     rememberedBefore = await page.evaluate("localStorage.getItem('ytmd-resume')");
-    await page.invoke("set_settings", {
-      // With "minimize to tray" off, closing the window ends the app the regular way.
-      settings: { ...original, plugins: [], resumePlayback: true, startInTray: true, minimizeToTray: false },
-    });
     await page.send("Page.navigate", { url: START_URL });
     await until("the track to load", async () => (await snapshot().catch(() => null))?.videoId === TRACK, 40000);
     await sleep(2000);
@@ -99,8 +112,7 @@ async function main() {
     check("the test runs to its end", false, error.message);
   } finally {
     try {
-      if (page && original) {
-        await page.invoke("set_settings", { settings: original });
+      if (page && rememberedBefore !== undefined) {
         await page.evaluate(
           rememberedBefore === null || rememberedBefore === undefined
             ? "localStorage.removeItem('ytmd-resume')"
@@ -108,10 +120,11 @@ async function main() {
         );
       }
     } catch (error) {
-      console.error("could not put the settings back:", error.message);
+      console.error("could not put the remembered track back:", error.message);
     }
     page?.close();
     if (app) stop(app);
+    restoreSettings(settingsBefore);
   }
   return finish();
 }

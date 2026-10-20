@@ -692,11 +692,18 @@ pub fn discord_preview(
 pub async fn webauthn_get(
     app: AppHandle,
     webview: tauri::Webview,
+    call: tauri::ipc::Request<'_>,
     request: crate::webauthn::GetRequest,
 ) -> Result<crate::webauthn::Assertion, String> {
     #[cfg(target_os = "linux")]
     {
-        // The page the window shows, not one the script claims.
+        // The page the window shows, not one the script claims, and the
+        // document the call came from must be that page as well.
+        let origin = call
+            .headers()
+            .get("Origin")
+            .and_then(|value| value.to_str().ok());
+        crate::webauthn::check_caller(origin).map_err(|failure| failure.to_string())?;
         let page = webview.url().map_err(|err| err.to_string())?;
         // Waits for a touch of the key, which can take a while.
         tauri::async_runtime::spawn_blocking(move || {
@@ -708,7 +715,7 @@ pub async fn webauthn_get(
     }
     #[cfg(not(target_os = "linux"))]
     {
-        let _ = (app, webview, request);
+        let _ = (app, webview, call, request);
         Err("NotSupportedError: the browser has its own".into())
     }
 }

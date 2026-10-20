@@ -5945,7 +5945,7 @@ dependencies = [
 
 [[package]]
 name = "ytmusic-desktop"
-version = "0.9.0-beta.3"
+version = "0.9.0"
 dependencies = [
  "authenticator",
  "base64 0.22.1",

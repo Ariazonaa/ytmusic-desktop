@@ -166,6 +166,7 @@ const de: Readonly<Record<string, string>> = {
   "Enter the PIN of your security key": "PIN deines Sicherheitsschlüssels eingeben",
   "Wrong PIN.": "Falsche PIN.",
   "Wrong PIN. {count} attempts left.": "Falsche PIN. Noch {count} Versuche.",
+  "The PIN is too long.": "Die PIN ist zu lang.",
   Cancel: "Abbrechen",
   OK: "OK",
 };

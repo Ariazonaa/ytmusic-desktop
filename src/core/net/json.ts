@@ -23,7 +23,14 @@ export async function getJson(url: string): Promise<JsonResponse> {
  * a huge answer does not have to arrive, nor fit in memory, before it is cut.
  */
 export async function readLimited(response: Response, maxBytes: number): Promise<{ text: string; complete: boolean }> {
-  if (!response.body) return { text: "", complete: true };
+  const { bytes, complete } = await readBytes(response, maxBytes);
+  // `stream` leaves a character cut in two at the end out instead of garbling it.
+  return { text: new TextDecoder().decode(bytes, { stream: !complete }), complete };
+}
+
+/** The bytes of an answer, at most `maxBytes`; `complete` is false if there were more. */
+export async function readBytes(response: Response, maxBytes: number): Promise<{ bytes: Uint8Array; complete: boolean }> {
+  if (!response.body) return { bytes: new Uint8Array(0), complete: true };
   const reader = response.body.getReader();
   const chunks: Uint8Array[] = [];
   let length = 0;
@@ -47,8 +54,7 @@ export async function readLimited(response: Response, maxBytes: number): Promise
     bytes.set(chunk, offset);
     offset += chunk.length;
   }
-  // `stream` leaves a character cut in two at the end out instead of garbling it.
-  return { text: new TextDecoder().decode(bytes, { stream: !complete }), complete };
+  return { bytes, complete };
 }
 
 function parseJson(text: string): unknown {

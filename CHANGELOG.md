@@ -18,8 +18,10 @@ this file needs a new heading.
 - Plugins from others are held tighter, from a review by Tumult1337 (GitHub
   pull request #1): CSS they put in the page may not load anything (`url()`,
   `@import` and the like), since that went out past the `network` permission.
-  On Linux their frames can no longer leave their document: the navigation is
-  stopped, nothing opens in the browser. On Windows the app watches the frames
+  On Linux their frames can no longer go to a page outside the app, nor to a
+  `data:` or `blob:` document: the navigation is stopped, nothing opens in the
+  browser, and a plugin whose frame loads another page all the same is
+  stopped. On Windows the app keeps the frames on their own document, watched
   before YouTube Music loads, and plugins from others do not run if it cannot.
 - Playlist export: a title that starts like a formula (`=`, `+`, `-`, `@`) is
   written to the CSV as text, so a spreadsheet does not run it.
@@ -73,6 +75,9 @@ this file needs a new heading.
 - "YouTube Music has changed" no longer shows up when the app looked while a
   page was still loading: what is missing counts only if it is still missing
   15 seconds later, and the message goes away by itself once it is there.
+- Linux: over the .deb of 0.9.0-beta.3 this version goes with
+  `sudo apt install --allow-downgrades ./ytmusic-desktop_0.9.0_amd64.deb`;
+  Debian counts `-beta.3` as a later build of 0.9.0.
 
 ## 0.8.0
 

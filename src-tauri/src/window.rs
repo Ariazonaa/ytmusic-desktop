@@ -88,8 +88,14 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
         .on_navigation(move |url| match in_window(url, FRAMES_ASK) {
             Navigation::Allow => true,
             Navigation::Block => {
-                if url.scheme() == "https" || url.scheme() == "http" {
-                    log_error!("stopped a navigation to {}", url.host_str().unwrap_or("?"));
+                match url.scheme() {
+                    "https" | "http" => {
+                        log_error!("stopped a navigation to {}", url.host_str().unwrap_or("?"))
+                    }
+                    "data" | "blob" => {
+                        log_error!("stopped a navigation to a {}: address", url.scheme())
+                    }
+                    _ => {}
                 }
                 false
             }
@@ -107,6 +113,14 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
         });
     #[cfg(target_os = "linux")]
     let builder = builder.user_agent(LINUX_USER_AGENT);
+    // A request to a security key ends with the page that made it: the page's
+    // own call as it goes away does not reach the app (tried).
+    #[cfg(target_os = "linux")]
+    let builder = builder.on_page_load(|window, payload| {
+        if payload.event() == tauri::webview::PageLoadEvent::Started {
+            crate::webauthn::cancel(&window.state::<crate::webauthn::WebAuthn>());
+        }
+    });
 
     #[cfg(not(all(debug_assertions, windows)))]
     let window = builder.initialization_script(INJECT_SCRIPT).build()?;
@@ -361,10 +375,17 @@ const FRAMES_ASK: bool = cfg!(target_os = "linux");
 
 /// What the main window's navigation handler does. Where frames ask too, a
 /// page outside the app is not opened in the browser: the asking frame may be
-/// a plugin's, and the address would carry whatever it put in there.
+/// a plugin's, and the address would carry whatever it put in there. Nor does
+/// anything go to a `data:` or `blob:` document there. WebKitGTK 2.54 gives
+/// such a document the content security policy of the plugin frame that made
+/// it (tried), so this is a second layer, for versions that might not. The
+/// app and YouTube Music open none.
 fn in_window(url: &Url, frames_ask: bool) -> Navigation {
     match classify(url) {
         Navigation::OpenExternally if frames_ask => Navigation::Block,
+        Navigation::Allow if frames_ask && matches!(url.scheme(), "data" | "blob") => {
+            Navigation::Block
+        }
         other => other,
     }
 }
@@ -481,5 +502,21 @@ mod tests {
         assert_eq!(in_window(&music, true), Navigation::Allow);
         let plugin: Url = "ytmd-plugin://localhost/scrobbler/".parse().unwrap();
         assert_eq!(in_window(&plugin, true), Navigation::Allow);
+    }
+
+    #[test]
+    fn no_data_or_blob_documents_where_frames_ask_too() {
+        for address in [
+            "data:text/html,<script>fetch('https://example.com/')</script>",
+            "blob:null/0b5b3c4e-7d2a-4c41-9f0e-2f1e1c2d3a4b",
+        ] {
+            let url: Url = address.parse().unwrap();
+            assert_eq!(in_window(&url, true), Navigation::Block, "{address}");
+            // WebView2 asks only about the window's own navigations.
+            assert_eq!(in_window(&url, false), Navigation::Allow, "{address}");
+        }
+        // YouTube Music's own empty frames still load.
+        let blank: Url = "about:blank".parse().unwrap();
+        assert_eq!(in_window(&blank, true), Navigation::Allow);
     }
 }

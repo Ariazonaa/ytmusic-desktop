@@ -4,11 +4,41 @@
 //   YTMD_EXE       the app to test, default src-tauri/target/release/ytmusic-desktop.exe
 //   YTMD_E2E_PORT  DevTools port, default 9333
 import { spawn, spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
-import { resolve } from "node:path";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { join, resolve } from "node:path";
 
 export const EXE = resolve(process.env.YTMD_EXE ?? "src-tauri/target/release/ytmusic-desktop.exe");
 export const PORT = Number(process.env.YTMD_E2E_PORT ?? 9333);
+
+const { identifier } = JSON.parse(readFileSync(new URL("../src-tauri/tauri.conf.json", import.meta.url), "utf8"));
+/** The app's settings file, where the app keeps it outside portable mode. */
+export const SETTINGS_FILE = join(
+  process.platform === "win32"
+    ? process.env.APPDATA
+    : process.platform === "darwin"
+      ? join(homedir(), "Library", "Application Support")
+      : (process.env.XDG_CONFIG_HOME ?? join(homedir(), ".config")),
+  identifier,
+  "settings.json",
+);
+
+/**
+ * Changes the settings for the app's next start, as the page may only change
+ * its plugins' settings. Call while the app is not running. Returns the file
+ * as it was, for `restoreSettings`.
+ */
+export function changeSettings(change) {
+  const before = existsSync(SETTINGS_FILE) ? readFileSync(SETTINGS_FILE, "utf8") : null;
+  writeFileSync(SETTINGS_FILE, JSON.stringify(change(before === null ? {} : JSON.parse(before)), null, 2));
+  return before;
+}
+
+/** Puts the settings file back as `changeSettings` found it. Call once the app has ended. */
+export function restoreSettings(before) {
+  if (before === null) rmSync(SETTINGS_FILE, { force: true });
+  else writeFileSync(SETTINGS_FILE, before);
+}
 
 export const sleep = (ms) => new Promise((done) => setTimeout(done, ms));
 
@@ -109,7 +139,11 @@ export async function connect(app) {
     ]);
     if (!answer) throw new Error(`the page did not answer: ${expression.slice(0, 60)}`);
     const { result } = answer;
-    if (result.exceptionDetails) throw new Error(`in the page: ${result.exceptionDetails.exception?.description}`);
+    if (result.exceptionDetails) {
+      const { exception, text } = result.exceptionDetails;
+      // A refused `invoke` rejects with a string, which has no description.
+      throw new Error(`in the page: ${exception?.description ?? JSON.stringify(exception?.value) ?? text}`);
+    }
     return result.result.value;
   };
   const invoke = (command, args) =>

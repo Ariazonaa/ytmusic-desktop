@@ -11,7 +11,7 @@
 //
 // The app must not be running. The test plays the end of one track and the
 // start of the next, silently, in the profile the app normally uses.
-import { checklist, connect, launch, preflight, sleep, stop, until } from "./e2e-lib.mjs";
+import { changeSettings, checklist, connect, launch, preflight, restoreSettings, sleep, stop, until } from "./e2e-lib.mjs";
 
 const FIRST_TRACK = "dQw4w9WgXcQ";
 const START_URL = `https://music.youtube.com/watch?v=${FIRST_TRACK}&list=RDAMVM${FIRST_TRACK}`;
@@ -91,9 +91,6 @@ function parsePageTime(text) {
 async function run(page, check) {
   const { send, evaluate, consoleLines } = page;
   const snapshot = async () => JSON.parse(await evaluate(SNAPSHOT));
-  const invoke = (command, args) =>
-    evaluate(`window.__TAURI_INTERNALS__.invoke(${JSON.stringify(command)}, ${JSON.stringify(args ?? {})})`);
-
   await send("Page.enable");
   await send("Runtime.enable");
   await send("Page.addScriptToEvaluateOnNewDocument", { source: TAP });
@@ -102,16 +99,7 @@ async function run(page, check) {
     () => evaluate("Boolean(window.__TAURI_INTERNALS__ && window.__ytmDesktop?.inspect)").catch(() => false),
     40000,
   );
-  const original = await invoke("get_settings");
   try {
-    // `demo` logs every song change it is told about; `audio-tools` puts the sound through the audio chain.
-    await invoke("set_settings", {
-      settings: {
-        ...original,
-        plugins: ["demo", "audio-tools"],
-        pluginSettings: { ...original.pluginSettings, demo: { ...original.pluginSettings?.demo, logSongs: true } },
-      },
-    });
     await send("Page.navigate", { url: START_URL });
     await until("the first track to load", async () => (await snapshot().catch(() => null))?.playerVideoId === FIRST_TRACK, 40000);
     await sleep(2000);
@@ -182,9 +170,6 @@ async function run(page, check) {
     check("sound still runs through the audio chain", levelAfter !== null && levelAfter > SILENCE_DB, `${levelAfter} dB`);
   } finally {
     await evaluate("document.querySelector('video')?.pause()").catch(() => {});
-    await invoke("set_settings", { settings: original }).catch((error) => {
-      console.error("could not restore the settings:", error.message);
-    });
   }
 }
 
@@ -195,6 +180,12 @@ async function main() {
     return 2;
   }
   const { check, finish } = checklist();
+  // `demo` logs every song change it is told about; `audio-tools` puts the sound through the audio chain.
+  const settingsBefore = changeSettings((settings) => ({
+    ...settings,
+    plugins: ["demo", "audio-tools"],
+    pluginSettings: { ...settings.pluginSettings, demo: { ...settings.pluginSettings?.demo, logSongs: true } },
+  }));
   const app = launch();
   let page;
   try {
@@ -205,6 +196,7 @@ async function main() {
   } finally {
     page?.close();
     stop(app);
+    restoreSettings(settingsBefore);
   }
   return finish();
 }
