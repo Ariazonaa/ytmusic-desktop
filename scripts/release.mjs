@@ -21,6 +21,7 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
+  chmodSync,
   copyFileSync,
   existsSync,
   mkdirSync,
@@ -46,6 +47,10 @@ Start ytmusic-desktop.exe. Nothing is installed.
   the installed app: %APPDATA%\\io.github.ariazonaa.ytmusic-desktop and
   %LOCALAPPDATA%\\io.github.ariazonaa.ytmusic-desktop. Delete those two to
   remove everything.
+- Portable mode: put an empty file named "portable" or "portable.txt" in
+  this folder. Then everything, the sign-in too, is kept in the folder
+  ytmusic-desktop-data here instead, and this folder can be copied around.
+  The two folders above are not used then.
 - Updates: the settings window says when there is a new version and opens
   the download page. Unpack the new zip over this folder.
 
@@ -53,9 +58,10 @@ ${REPOSITORY}
 `.replace(/\n/g, "\r\n");
 
 const { version } = JSON.parse(readFileSync("package.json", "utf8"));
-// A version like 1.2.0-beta.1 is published as a pre-release: for testers,
-// who download it themselves. Installed apps ask for releases/latest, which
-// GitHub never points at a pre-release, so it reaches none of them.
+// A version like 1.2.0-beta.1 is published as a pre-release: for testers.
+// Installed apps ask for releases/latest, which GitHub never points at a
+// pre-release; only those with "Also offer test versions" on look for the
+// newest release of all (update.rs) and are offered it.
 if (!/^\d+\.\d+\.\d+(-[\w.]+)?$/.test(version)) throw new Error(`unexpected version: ${version}`);
 const preRelease = version.includes("-");
 // A pre-release has the notes of the version it comes before.
@@ -76,6 +82,26 @@ function built(kind, ending) {
   const file = existsSync(dir) && readdirSync(dir).find((name) => name.endsWith(ending) && name.includes(`_${version}_`));
   if (!file) throw new Error(`no ${ending} for ${version} in ${dir}`);
   return join(dir, file);
+}
+
+/**
+ * Copies a .deb with another version in its control file. Debian takes what
+ * follows the hyphen in 1.2.0-beta.1 as the package's revision and counts it
+ * as later than 1.2.0, so apt would not take the release over the beta. A
+ * tilde sorts before everything, even the end: 1.2.0~beta.1 comes before 1.2.0.
+ */
+function debWithVersion(from, to, debVersion) {
+  const temp = mkdtempSync(join(tmpdir(), "ytmusic-deb-"));
+  const root = join(temp, "deb");
+  execFileSync("dpkg-deb", ["--raw-extract", from, root]);
+  // The folder itself becomes "./" in the package, so it gets the usual rights.
+  chmodSync(root, 0o755);
+  const control = join(root, "DEBIAN", "control");
+  const text = readFileSync(control, "utf8");
+  if (!/^Version: /m.test(text)) throw new Error(`${from} has no Version in its control file`);
+  writeFileSync(control, text.replace(/^Version: .*$/m, `Version: ${debVersion}`));
+  execFileSync("dpkg-deb", ["--root-owner-group", "--build", root, to], { stdio: ["ignore", "ignore", "inherit"] });
+  rmSync(temp, { recursive: true, force: true });
 }
 
 /** The updater's signature of a file, written by the build when it knows the signing key. */
@@ -106,7 +132,8 @@ function collect() {
     const out = join(PARTS, "linux");
     rmSync(out, { recursive: true, force: true });
     mkdirSync(out, { recursive: true });
-    copyFileSync(built("deb", ".deb"), join(out, names.deb));
+    if (preRelease) debWithVersion(built("deb", ".deb"), join(out, names.deb), version.replace("-", "~"));
+    else copyFileSync(built("deb", ".deb"), join(out, names.deb));
     const appimage = built("appimage", ".AppImage");
     copyFileSync(appimage, join(out, names.appimage));
     writeFileSync(join(out, `${names.appimage}.sig`), signature(appimage));
@@ -126,7 +153,7 @@ function releaseNotes() {
   // The changelog wraps its lines; the app shows the notes as they are, so each point becomes one line.
   const notes = (end < 0 ? rest : rest.slice(0, end)).trim().replace(/\n {2,}(?=\S)/g, " ");
   if (!notes) throw new Error(`the entry for ${changelogVersion} in CHANGELOG.md is empty`);
-  return preRelease ? `A test version before ${changelogVersion}. Installed apps are not updated to it.\n\n${notes}` : notes;
+  return preRelease ? `A test version before ${changelogVersion}. Installed apps are offered it only with "Also offer test versions" on in their settings.\n\n${notes}` : notes;
 }
 
 function assemble(tag) {

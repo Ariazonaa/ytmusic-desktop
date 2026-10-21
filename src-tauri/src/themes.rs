@@ -14,7 +14,7 @@ use std::{
     fs,
     path::{Path, PathBuf},
 };
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 
 const MAX_FILE_BYTES: u64 = 64 * 1024;
 const MAX_THEMES: usize = 100;
@@ -53,7 +53,7 @@ impl Kind {
 
 /// The folder users put files of this kind into.
 pub fn dir<R: Runtime>(app: &AppHandle<R>, kind: Kind) -> Option<PathBuf> {
-    Some(app.path().app_config_dir().ok()?.join(kind.folder()))
+    Some(crate::portable::config_dir(app).ok()?.join(kind.folder()))
 }
 
 /// Reads the theme files in `dir`, sorted by name. Unreadable files are skipped.

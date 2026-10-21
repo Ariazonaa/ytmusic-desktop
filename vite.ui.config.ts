@@ -27,6 +27,7 @@ export default defineConfig({
         // Relative to the folder the build runs in, the repository's.
         main: "src/ui/index.html",
         overlay: "src/ui/overlay.html",
+        mini: "src/ui/mini.html",
       },
     },
   },

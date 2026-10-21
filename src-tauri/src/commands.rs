@@ -87,6 +87,34 @@ pub fn update_plugin_settings(
     })
 }
 
+/// The tray's "Always on top": saved like a change in the settings window.
+pub fn set_always_on_top(app: &AppHandle, on: bool) {
+    let store = app.state::<SettingsStore>();
+    let result = commit(app, &store, |current| {
+        Ok(Settings {
+            always_on_top: on,
+            ..current.clone()
+        })
+    });
+    if let Err(err) = result {
+        log_error!("cannot save \"always on top\": {err}");
+    }
+}
+
+/// The device chosen in the tray menu; empty for the system's default.
+pub fn set_output_device(app: &AppHandle, name: &str) {
+    let store = app.state::<SettingsStore>();
+    let result = commit(app, &store, |current| {
+        Ok(Settings {
+            output_device: name.to_owned(),
+            ..current.clone()
+        })
+    });
+    if let Err(err) = result {
+        log_error!("cannot save the sound device: {err}");
+    }
+}
+
 /// Validates, saves and applies new settings.
 fn apply(app: &AppHandle, store: &SettingsStore, settings: Settings) -> Result<(), String> {
     commit(app, store, |_| Ok(settings)).map(|_| ())
@@ -100,7 +128,9 @@ fn commit(
     store: &SettingsStore,
     change: impl FnOnce(&Settings) -> Result<Settings, String>,
 ) -> Result<Settings, String> {
+    let mut output_changed = false;
     let settings = store.edit(change, |current, next| {
+        output_changed = next.output_device != current.output_device;
         if next.shortcuts != current.shortcuts {
             if let Err(err) = shortcuts::apply(app, &next.shortcuts) {
                 // Keep what worked before; the rejected settings are not saved.
@@ -113,6 +143,11 @@ fn commit(
     autostart::sync(app, settings.startup);
     tray::set_language(app, &settings.language);
     window::apply_settings(app, &settings);
+    window::apply_window_settings(app, &settings);
+    tray::set_always_on_top(app, settings.always_on_top);
+    if output_changed {
+        crate::audio_output::chosen_changed(app, &settings.output_device);
+    }
     Ok(settings)
 }
 
@@ -162,10 +197,11 @@ pub fn save_shared(
     themes::save(&dir, &name, settings)
 }
 
-/// Shows the tray what is playing. An empty title means nothing is.
+/// Shows the tray and the mini player what is playing. An empty title means nothing is.
 #[tauri::command]
-pub fn set_now_playing(app: AppHandle, title: String, artist: String) {
+pub fn set_now_playing(app: AppHandle, title: String, artist: String, cover: Option<String>) {
     tray::set_now_playing(&app, &title, &artist);
+    crate::mini::set_track(&app, &title, &artist, cover.as_deref());
 }
 
 /// Adds a line from the page to the log file. Lines are bounded and counted.
@@ -481,6 +517,64 @@ pub fn open_link(app: AppHandle, limit: State<'_, OpenLimit>, url: String) -> Re
         .map_err(|err| err.to_string())
 }
 
+/// What plays, for the taskbar's play / pause button and progress. The page
+/// sends it when playback pauses or goes on, and about once a second.
+#[tauri::command]
+pub fn set_playback(app: AppHandle, paused: bool, position: f64, duration: Option<f64>) {
+    let duration = duration.filter(|total| total.is_finite() && *total > 0.0);
+    let position = if position.is_finite() { position } else { 0.0 };
+    crate::unload::playback(&app, paused, position, duration.is_some());
+    crate::taskbar::set_playback(&app, paused, position, duration);
+    crate::mini::set_playback(&app, paused, position, duration);
+}
+
+/// What the mini player shows when it opens. Mini player only. Its page asks
+/// once loaded, when the window is surely shown: it is kept above others
+/// again then, for a window manager that took longer than `keep_above` waits.
+#[tauri::command]
+pub fn mini_player_state(window: tauri::WebviewWindow) -> crate::mini::MiniState {
+    let state = window.state::<crate::mini::MiniPlayer>().current();
+    window::keep_above(window);
+    state
+}
+
+/// A button of the mini player: previous, play / pause, next, or the main window. Mini player only.
+#[tauri::command]
+pub fn mini_player_control(app: AppHandle, action: String) {
+    if action == "main" {
+        window::show_main_window(&app);
+    } else if let Some(action) = crate::mini::action(&action) {
+        window::control_player(&app, action);
+    }
+}
+
+/// Closes the mini player. Mini player only.
+#[tauri::command]
+pub fn mini_player_close(app: AppHandle) {
+    crate::mini::show(&app, false);
+}
+
+/// The sleep timer's "at the end of the track" has paused playback.
+#[tauri::command]
+pub fn sleep_done(app: AppHandle) {
+    crate::sleep::done(&app);
+}
+
+/// The project's page, for "About" in the settings window.
+const REPOSITORY: &str = "https://github.com/Ariazonaa/ytmusic-desktop";
+
+/// Opens the project's page in the browser. Settings window only; it names
+/// no address, so the window cannot open anything else with it.
+#[tauri::command]
+pub fn open_repository(app: AppHandle, limit: State<'_, OpenLimit>) -> Result<(), String> {
+    if !limit.allow() {
+        return Err("opened a moment ago, try again".into());
+    }
+    app.opener()
+        .open_url(REPOSITORY, None::<&str>)
+        .map_err(|err| err.to_string())
+}
+
 /// Fetches the public list of plugins from others. Settings window only.
 #[tauri::command]
 pub async fn marketplace_list(
@@ -552,6 +646,13 @@ pub fn output_device() -> Option<String> {
 #[tauri::command]
 pub fn app_version(app: AppHandle) -> String {
     app.package_info().version.to_string()
+}
+
+/// The folder a portable copy keeps everything in, or none for a usual one.
+/// Settings window only.
+#[tauri::command]
+pub fn portable_folder() -> Option<String> {
+    crate::portable::data_dir().map(|dir| dir.display().to_string())
 }
 
 /// The update the last check found, if any. Settings window only.

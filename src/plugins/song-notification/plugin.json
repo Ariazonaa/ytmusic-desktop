@@ -1,0 +1,7 @@
+{
+  "name": "song-notification",
+  "version": "0.1.0",
+  "description": "A notification with the cover when a new track starts, while the app's window is not in front.",
+  "category": "tools",
+  "permissions": ["music.read", "notify"]
+}

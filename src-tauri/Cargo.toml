@@ -1,6 +1,6 @@
 [package]
 name = "ytmusic-desktop"
-version = "0.9.0"
+version = "0.10.0-beta.1"
 edition = "2021"
 license = "MIT"
 
@@ -16,7 +16,6 @@ tauri = { version = "2", features = ["tray-icon"] }
 tauri-plugin-autostart = "2"
 tauri-plugin-dialog = "2"
 tauri-plugin-global-shortcut = "2"
-tauri-plugin-notification = "2"
 tauri-plugin-opener = "2"
 tauri-plugin-single-instance = "2"
 # Without "zip": updates are the installer and the AppImage themselves, not
@@ -25,6 +24,7 @@ tauri-plugin-updater = { version = "2", default-features = false, features = ["r
 tauri-plugin-window-state = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+semver = "1"
 sys-locale = "0.3"
 base64 = "0.22"
 zip = { version = "9", default-features = false, features = ["deflate"] }
@@ -35,7 +35,13 @@ rustls = { version = "0.23", default-features = false, features = ["ring"] }
 sha2 = "0.10"
 tempfile = "3"
 
+[target.'cfg(not(windows))'.dependencies]
+# Notifications where Windows' own toasts are not, see `notification.rs`. The
+# library tauri-plugin-notification uses, without its script in every page.
+notify-rust = "4"
+
 [target.'cfg(target_os = "linux")'.dependencies]
+libc = "0.2"
 # Security keys for the Google sign-in, which WebKitGTK cannot ask itself. The
 # same library Firefox uses, with its cryptography in Rust, so no crypto library
 # of the system; it finds the keys through libudev.
@@ -45,10 +51,14 @@ webkit2gtk = "2.0"
 
 [target.'cfg(windows)'.dependencies]
 # Must match the versions Tauri itself uses, see Cargo.lock.
-tauri-winrt-notification = "0.8"
 webview2-com = "0.39"
 windows-core = "0.62"
+# The same version the autostart plugin uses, for its entry with quotes.
+windows-registry = "0.6"
 windows = { version = "0.62", features = [
+    "Data_Xml_Dom",
+    "Foundation",
+    "UI_Notifications",
     "Win32_Devices_FunctionDiscovery",
     "Win32_Foundation",
     "Win32_Media_Audio",
@@ -56,5 +66,10 @@ windows = { version = "0.62", features = [
     "Win32_System_Com_StructuredStorage",
     "Win32_System_Variant",
     "Win32_UI_Shell_PropertiesSystem",
+    "Win32_Graphics_Gdi",
+    "Win32_Storage_EnhancedStorage",
+    "Win32_UI_Shell",
+    "Win32_UI_Shell_Common",
+    "Win32_UI_WindowsAndMessaging",
 ] }
 

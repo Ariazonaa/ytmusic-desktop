@@ -70,8 +70,18 @@ export function openSharedFolder(kind: SharedKind): Promise<void> {
 }
 
 /** Shows the tray what is playing. An empty title means nothing is. */
-export function setNowPlaying(title: string, artist: string): Promise<void> {
-  return invoke("set_now_playing", { title, artist });
+export function setNowPlaying(title: string, artist: string, cover: string | null): Promise<void> {
+  return invoke("set_now_playing", { title, artist, cover });
+}
+
+/** The sleep timer's "at the end of the track" has paused. */
+export function sleepDone(): Promise<void> {
+  return invoke("sleep_done");
+}
+
+/** What plays, for the taskbar's play / pause button and progress. */
+export function setPlayback(paused: boolean, position: number, duration: number | null): Promise<void> {
+  return invoke("set_playback", { paused, position, duration });
 }
 
 /** Adds a line to the app's log file. The backend bounds and counts these. */
@@ -215,6 +225,11 @@ export function marketplaceInstall(name: string): Promise<string> {
   return invoke<string>("marketplace_install", { name });
 }
 
+/** Opens the project's page in the browser. Settings window only. */
+export function openRepository(): Promise<void> {
+  return invoke("open_repository");
+}
+
 /** Opens the homepage of a plugin from the list fetched last. Settings window only. */
 export function marketplaceOpenHomepage(name: string): Promise<void> {
   return invoke("marketplace_open_homepage", { name });
@@ -258,6 +273,11 @@ export function restartApp(): Promise<void> {
 /** The version of the running app. Settings window only. */
 export function appVersion(): Promise<string> {
   return invoke<string>("app_version");
+}
+
+/** The folder a portable copy keeps everything in, or null. Settings window only. */
+export function portableFolder(): Promise<string | null> {
+  return invoke<string | null>("portable_folder");
 }
 
 /** The update the last check found, without asking again. Settings window only. */

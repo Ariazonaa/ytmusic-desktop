@@ -20,12 +20,14 @@ const client = vi.hoisted(() => ({
   installPlugin: vi.fn(),
   removePlugin: vi.fn(),
   appVersion: vi.fn(),
+  portableFolder: vi.fn(),
   pendingUpdate: vi.fn(),
   checkUpdate: vi.fn(),
   installUpdate: vi.fn(),
   marketplaceList: vi.fn(),
   marketplaceInstall: vi.fn(),
   marketplaceOpenHomepage: vi.fn(),
+  openRepository: vi.fn(() => Promise.resolve()),
 }));
 /** The first tab's panel, with the plugins. */
 const pluginsTab = (): HTMLElement => document.querySelector<HTMLElement>("[role=tabpanel]")!;
@@ -45,6 +47,11 @@ const settings = (changes: Partial<Settings> = {}): Settings => ({
   reloadPluginsOnChange: false,
   hardwareAcceleration: true,
   checkForUpdates: true,
+  betaUpdates: false,
+  alwaysOnTop: false,
+  zoom: 100,
+  outputDevice: "",
+  unloadAfterMinutes: 0,
   pluginSettings: {},
   shortcuts: { playPause: "", next: "", previous: "", volumeUp: "", volumeDown: "", toggleMute: "" },
   windowShortcuts: { like: "", dislike: "" },
@@ -86,6 +93,7 @@ beforeEach(() => {
   client.getHealth.mockResolvedValue({ pageProblems: [], pluginErrors: {} });
   client.isFirstRun.mockResolvedValue(false);
   client.appVersion.mockResolvedValue("1.0.0");
+  client.portableFolder.mockResolvedValue(null);
   client.pendingUpdate.mockResolvedValue(null);
 });
 
@@ -130,6 +138,31 @@ describe("settings window", () => {
     expect(lastSaved().language).toBe("de");
     expect(document.documentElement.lang).toBe("de");
     await waitFor(() => expect(setTitle).toHaveBeenLastCalledWith("Einstellungen"));
+  });
+
+  it("sets the page's zoom", async () => {
+    render(App);
+    await fireEvent.click(await screen.findByRole("tab", { name: "General" }));
+    await fireEvent.click(screen.getByRole("combobox", { name: "Zoom" }));
+    await fireEvent.mouseDown(screen.getByRole("option", { name: "125 %" }));
+    expect(lastSaved().zoom).toBe(125);
+  });
+
+  it("opens the project's page from About", async () => {
+    render(App);
+    await fireEvent.click(await screen.findByRole("tab", { name: "About" }));
+    await fireEvent.click(screen.getByRole("button", { name: "Open the project on GitHub" }));
+    expect(client.openRepository).toHaveBeenCalledOnce();
+    expect(screen.queryByText(/Portable/)).toBeNull();
+  });
+
+  it("says under About where a portable copy keeps everything", async () => {
+    client.portableFolder.mockResolvedValue("/opt/ytmusic/ytmusic-desktop-data");
+    render(App);
+    await fireEvent.click(await screen.findByRole("tab", { name: "About" }));
+    expect(
+      await screen.findByText("Portable: settings, plugins and login are kept in /opt/ytmusic/ytmusic-desktop-data"),
+    ).toBeTruthy();
   });
 
   it("follows the system language when the setting says so", async () => {
@@ -211,6 +244,7 @@ describe("settings window", () => {
       "Shortcuts",
       "Updates",
       "Backup",
+      "About",
     ]);
     expect(panelOf("Plugins from others")?.hidden).toBe(false);
     expect(panelOf("Start at sign-in")?.hidden).toBe(true);
@@ -455,6 +489,15 @@ describe("settings window", () => {
     await fireEvent.click(screen.getByRole("tab", { name: "Updates" }));
     await fireEvent.click(screen.getByRole("switch", { name: /Look for updates at start/ }));
     expect(client.updateSettings).toHaveBeenLastCalledWith({ checkForUpdates: false });
+  });
+
+  it("offers test versions only when asked to", async () => {
+    render(App);
+    await fireEvent.click(await screen.findByRole("tab", { name: "Updates" }));
+    const betas = screen.getByRole<HTMLInputElement>("switch", { name: /Also offer test versions/ });
+    expect(betas.checked).toBe(false);
+    await fireEvent.click(betas);
+    expect(client.updateSettings).toHaveBeenLastCalledWith({ betaUpdates: true });
   });
 
   it("says so when the settings cannot be loaded", async () => {

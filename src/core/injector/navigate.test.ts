@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { NavigationTarget } from "../../shared/types";
-import { endpointFor, navigate } from "./navigate";
+import { endpointFor, endpointForLink, navigate, openMusicLink } from "./navigate";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -43,5 +43,68 @@ describe("navigate", () => {
     app.addEventListener("yt-navigate", onNavigate);
     expect(() => navigate({ type: "track", videoId: "" })).toThrow();
     expect(onNavigate).not.toHaveBeenCalled();
+  });
+});
+
+describe("endpointForLink", () => {
+  const link = (path: string) => endpointForLink(`https://music.youtube.com${path}`);
+
+  it("reads the kinds of links YouTube Music has", () => {
+    expect(link("/watch?v=dQw4w9WgXcQ")).toEqual({ watchEndpoint: { videoId: "dQw4w9WgXcQ" } });
+    expect(link("/watch?v=dQw4w9WgXcQ&list=RDAMVM1")).toEqual({ watchEndpoint: { videoId: "dQw4w9WgXcQ", playlistId: "RDAMVM1" } });
+    expect(link("/playlist?list=PL123")).toEqual({ browseEndpoint: { browseId: "VLPL123" } });
+    expect(link("/browse/MPREb_abc")).toEqual({ browseEndpoint: { browseId: "MPREb_abc" } });
+    expect(link("/channel/UC123/")).toEqual({ browseEndpoint: { browseId: "UC123" } });
+    expect(link("/search?q=rick+astley")).toEqual({ searchEndpoint: { query: "rick astley" } });
+    expect(link("/")).toEqual({ browseEndpoint: { browseId: "FEmusic_home" } });
+    expect(link("/explore")).toEqual({ browseEndpoint: { browseId: "FEmusic_explore" } });
+  });
+
+  it("knows nothing else", () => {
+    for (const other of [
+      "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
+      "http://music.youtube.com/watch?v=dQw4w9WgXcQ",
+      "https://music.youtube.com/watch?v=x",
+      "https://music.youtube.com/watch?list=PL1",
+      "https://music.youtube.com/playlist",
+      "https://music.youtube.com/search?q=",
+      "https://music.youtube.com/browse/../x",
+      "https://music.youtube.com/moods",
+      "not a link",
+    ]) {
+      expect(endpointForLink(other), other).toBeNull();
+    }
+  });
+
+  it("leaves out a playlist that is not one", () => {
+    expect(link("/watch?v=dQw4w9WgXcQ&list=a%26b")).toEqual({ watchEndpoint: { videoId: "dQw4w9WgXcQ" } });
+  });
+});
+
+describe("openMusicLink", () => {
+  it("goes there inside the page when it knows the link", () => {
+    const app = document.createElement("ytmusic-app");
+    document.body.append(app);
+    const seen = vi.fn();
+    app.addEventListener("yt-navigate", (event) => seen((event as CustomEvent).detail));
+    const load = vi.fn();
+    openMusicLink("https://music.youtube.com/watch?v=dQw4w9WgXcQ", document, load);
+    expect(seen).toHaveBeenCalledWith({ endpoint: { watchEndpoint: { videoId: "dQw4w9WgXcQ" } } });
+    expect(load).not.toHaveBeenCalled();
+  });
+
+  it("loads a link it does not know, and one before the page is there", () => {
+    const load = vi.fn();
+    openMusicLink("https://music.youtube.com/watch?v=dQw4w9WgXcQ", document, load);
+    document.body.append(document.createElement("ytmusic-app"));
+    openMusicLink("https://music.youtube.com/podcasts", document, load);
+    expect(load.mock.calls).toEqual([["https://music.youtube.com/watch?v=dQw4w9WgXcQ"], ["https://music.youtube.com/podcasts"]]);
+  });
+
+  it("loads nothing from elsewhere", () => {
+    const load = vi.fn();
+    openMusicLink("https://example.com/", document, load);
+    openMusicLink("not a link", document, load);
+    expect(load).not.toHaveBeenCalled();
   });
 });

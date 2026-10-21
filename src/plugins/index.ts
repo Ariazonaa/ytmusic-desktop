@@ -19,6 +19,7 @@ import playlistTools from "./playlist-tools";
 import preferOpus from "./prefer-opus";
 import skipDisliked from "./skip-disliked";
 import skipSilence from "./skip-silence";
+import songNotification from "./song-notification";
 import sponsorblock from "./sponsorblock";
 import stats from "./stats";
 import themes from "./themes";
@@ -49,6 +50,7 @@ export const builtinPlugins: readonly Plugin[] = [
   preferOpus,
   skipDisliked,
   skipSilence,
+  songNotification,
   sponsorblock,
   stats,
   themes,

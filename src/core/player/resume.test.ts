@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isFreshStart, parseResumePoint, positionToRestore, resumeUrl } from "./resume";
+import { isFreshStart, parseResumePoint, positionToRestore, resumeUrl, watchForTouch } from "./resume";
 
 describe("parseResumePoint", () => {
   it("reads a stored point", () => {
@@ -65,5 +65,25 @@ describe("isFreshStart", () => {
     expect(isFreshStart({ pathname: "/", search: "" }, session(true))).toBe(false);
     expect(isFreshStart({ pathname: "/watch", search: "?v=abc" }, session(false))).toBe(false);
     expect(isFreshStart({ pathname: "/", search: "?feature=share" }, session(false))).toBe(false);
+  });
+});
+
+describe("watchForTouch", () => {
+  it("notices a click, a key or a control from outside, until stopped", () => {
+    for (const fire of [
+      () => document.dispatchEvent(new Event("pointerdown")),
+      () => document.dispatchEvent(new Event("keydown")),
+      () => window.dispatchEvent(new Event("ytmd-control")),
+    ]) {
+      const touch = watchForTouch(window);
+      expect(touch.touched()).toBe(false);
+      fire();
+      expect(touch.touched()).toBe(true);
+      touch.stop();
+    }
+    const stopped = watchForTouch(window);
+    stopped.stop();
+    window.dispatchEvent(new Event("ytmd-control"));
+    expect(stopped.touched()).toBe(false);
   });
 });

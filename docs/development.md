@@ -75,6 +75,44 @@ the Rust side; the app's configuration reads it from there. What changed for
 users goes into [CHANGELOG.md](../CHANGELOG.md), and a test fails if the current
 version has no entry.
 
+## Checking a build on Windows
+
+`scripts/windows-check.ps1` tries an installer in the real app on this PC and
+puts everything back afterwards: the installed program, `settings.json`, the
+autostart entry, the jump list and the `ytmusic://` handler. With Windows PowerShell 5.1:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File scripts\windows-check.ps1 -Installer <setup.exe>
+```
+
+It starts playback with `--play-pause` from a second launch, clicks the
+thumbnail toolbar's buttons the way Windows does, reads title and playback
+status from Windows' media controls, checks the jump list and the autostart
+entry, opens a `ytmusic://` link through Windows, and looks at the progress under the app's taskbar button (shown for
+the moment if the taskbar hides itself). Each check prints PASS or FAIL.
+
+## Checking a build on Linux
+
+`scripts/linux-check.sh` does the same on a Linux desktop (X11), as the
+desktop's user in its session, and puts `settings.json` and the plugins
+folder back afterwards:
+
+```sh
+scripts/linux-check.sh [--app <program>] [--minutes <n>]
+```
+
+It lets a track play for some minutes and reads the position over MPRIS
+(this caught the stop after a minute that YouTube's bot check caused), tries
+`--next` and `--play-pause` from a second launch, a global shortcut, the
+notification while the window is minimized, the now-playing page, a
+`ytmusic://` link through `xdg-open` (installed packages only), and a
+plugin from others that saves a setting and then tries to leave its frame
+for a listener on this machine: it must have run, and nothing may arrive.
+It needs xdotool, xprop, dbus-send, dbus-monitor, curl and python3.
+
+Both scripts ran clean on Windows 11, Arch, Fedora 44 and Debian 13 on
+2026-10-18.
+
 ## Releases and updates
 
 A release is made by a tag:
@@ -102,8 +140,15 @@ it together with `node scripts/release.mjs <tag>` and publishes:
 
 A tag with a pre-release version, like `v1.2.0-beta.1` after
 `npm version 1.2.0-beta.1`, is published as a pre-release for testers: with
-the notes of 1.2.0 and without the Arch Linux package. Installed apps are not
-updated to it, as GitHub's `releases/latest` never points at a pre-release.
+the notes of 1.2.0 and without the Arch Linux package. Installed apps are
+offered it only with "Also offer test versions" on in the settings window:
+GitHub's `releases/latest` never points at a pre-release, so those apps ask
+GitHub's API for the newest release of all and take its `latest.json`
+(`update.rs`). Without the switch nothing changes for them.
+In its .deb, `collect` writes the version as `1.2.0~beta.1` with `dpkg-deb`:
+Debian takes what follows the hyphen as the package's revision and counts
+`1.2.0-beta.1` as later than 1.2.0, so apt would not install the release over
+the beta. The file keeps its name with the hyphen.
 
 The release's text is the version's part of the changelog. After publishing,
 a job on Arch Linux builds the package from the published .deb, which also

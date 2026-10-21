@@ -91,6 +91,18 @@ describe("controlPlayer", () => {
     expect(video.play).not.toHaveBeenCalled();
   });
 
+  it("only plays or only pauses when asked so", () => {
+    const playing = addVideo(false);
+    controlPlayer("play");
+    expect(playing.play).toHaveBeenCalledOnce();
+    expect(playing.pause).not.toHaveBeenCalled();
+    playing.remove();
+    const paused = addVideo(true);
+    controlPlayer("pause");
+    expect(paused.pause).toHaveBeenCalledOnce();
+    expect(paused.play).not.toHaveBeenCalled();
+  });
+
   it("clicks the page's next and previous buttons", () => {
     const next = addPlayerBarButton("next-button");
     const previous = addPlayerBarButton("previous-button");

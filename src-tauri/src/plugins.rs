@@ -16,7 +16,7 @@ use std::{
 };
 use tauri::{
     http::{header, Response, StatusCode},
-    AppHandle, Manager, Runtime,
+    AppHandle, Runtime,
 };
 
 pub const SCHEME: &str = "ytmd-plugin";
@@ -88,7 +88,7 @@ pub struct ExternalPlugin {
 
 /// The folder users put external plugins into.
 pub fn dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    Some(app.path().app_config_dir().ok()?.join("plugins"))
+    Some(crate::portable::config_dir(app).ok()?.join("plugins"))
 }
 
 /// Finds the plugins in `dir`. Folders that are not usable plugins are skipped.

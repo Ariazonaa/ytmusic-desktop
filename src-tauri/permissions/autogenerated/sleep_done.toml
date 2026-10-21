@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-sleep-done"
+description = "Enables the sleep_done command without any pre-configured scope."
+commands.allow = ["sleep_done"]
+
+[[permission]]
+identifier = "deny-sleep-done"
+description = "Denies the sleep_done command without any pre-configured scope."
+commands.deny = ["sleep_done"]

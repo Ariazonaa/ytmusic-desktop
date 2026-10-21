@@ -10,6 +10,8 @@ use std::{
 };
 
 const MAX_PLUGINS: usize = 64;
+pub const MIN_ZOOM: u16 = 50;
+pub const MAX_ZOOM: u16 = 200;
 const MAX_NAME_LEN: usize = 64;
 const MAX_PLUGIN_SETTINGS: usize = 64;
 /// Generous enough for a custom stylesheet.
@@ -41,6 +43,18 @@ pub struct Settings {
     pub hardware_acceleration: bool,
     /// Ask the project's releases at each start whether there is a newer version.
     pub check_for_updates: bool,
+    /// Offer test versions (betas) as updates too.
+    pub beta_updates: bool,
+    /// Keep the main window above other windows. Switched in the tray menu.
+    pub always_on_top: bool,
+    /// Zoom of the page in percent, `MIN_ZOOM` to `MAX_ZOOM`.
+    pub zoom: u16,
+    /// The sound server's name of the device to play on; empty for the
+    /// system's default. Chosen in the tray menu, Linux only so far.
+    pub output_device: String,
+    /// Minutes of a pause in the tray after which the page is unloaded to
+    /// save memory, up to `unload::MAX_MINUTES`; 0 is off.
+    pub unload_after_minutes: u16,
     /// Per-plugin settings by plugin name. What the keys mean is defined by
     /// each plugin's schema, which only the frontend knows.
     pub plugin_settings: BTreeMap<String, BTreeMap<String, Value>>,
@@ -87,6 +101,11 @@ impl Default for Settings {
             reload_plugins_on_change: false,
             hardware_acceleration: true,
             check_for_updates: true,
+            beta_updates: false,
+            always_on_top: false,
+            zoom: 100,
+            output_device: String::new(),
+            unload_after_minutes: 0,
             plugin_settings: BTreeMap::new(),
             shortcuts: Shortcuts::default(),
             window_shortcuts: WindowShortcuts::default(),
@@ -106,6 +125,18 @@ impl Settings {
         }
         if !LANGUAGES.contains(&self.language.as_str()) {
             return Err(format!("unknown language: {:?}", self.language));
+        }
+        if !(MIN_ZOOM..=MAX_ZOOM).contains(&self.zoom) {
+            return Err(format!("the zoom must be {MIN_ZOOM} to {MAX_ZOOM} percent"));
+        }
+        if self.unload_after_minutes > crate::unload::MAX_MINUTES {
+            return Err(format!(
+                "the page is unloaded after at most {} minutes",
+                crate::unload::MAX_MINUTES
+            ));
+        }
+        if !crate::audio_output::is_valid_name(&self.output_device) {
+            return Err("not a name of a sound device".into());
         }
         crate::shortcuts::validate(&self.shortcuts)?;
         crate::shortcuts::validate_window(&self.window_shortcuts)?;
@@ -451,6 +482,11 @@ mod tests {
             reload_plugins_on_change: true,
             hardware_acceleration: false,
             check_for_updates: false,
+            beta_updates: true,
+            always_on_top: true,
+            zoom: 125,
+            output_device: "alsa_output.usb-headset.analog-stereo".into(),
+            unload_after_minutes: 30,
             plugin_settings: BTreeMap::from([(
                 "lyrics".to_string(),
                 BTreeMap::from([

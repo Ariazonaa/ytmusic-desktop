@@ -62,13 +62,13 @@ const scoop = {
 writeFileSync(join(out, "scoop", "ytmusic-desktop.json"), JSON.stringify(scoop, null, 2) + "\n");
 
 const id = "Ariazonaa.YTMusicDesktop";
-const header = (type) => `# yaml-language-server: $schema=https://aka.ms/winget-manifest.${type}.1.9.0.schema.json\n\n`;
+const header = (type) => `# yaml-language-server: $schema=https://aka.ms/winget-manifest.${type}.1.12.0.schema.json\n\n`;
 const files = {
   [`${id}.yaml`]: `${header("version")}PackageIdentifier: ${id}
 PackageVersion: ${version}
 DefaultLocale: en-US
 ManifestType: version
-ManifestVersion: 1.9.0
+ManifestVersion: 1.12.0
 `,
   [`${id}.installer.yaml`]: `${header("installer")}PackageIdentifier: ${id}
 PackageVersion: ${version}
@@ -86,7 +86,7 @@ Installers:
     InstallerUrl: ${download(installer)}
     InstallerSha256: ${sums.get(installer).toUpperCase()}
 ManifestType: installer
-ManifestVersion: 1.9.0
+ManifestVersion: 1.12.0
 `,
   [`${id}.locale.en-US.yaml`]: `${header("defaultLocale")}PackageIdentifier: ${id}
 PackageVersion: ${version}
@@ -106,7 +106,7 @@ Tags:
   - lyrics
 ReleaseNotesUrl: ${REPOSITORY}/releases/tag/${tag}
 ManifestType: defaultLocale
-ManifestVersion: 1.9.0
+ManifestVersion: 1.12.0
 `,
 };
 for (const [name, text] of Object.entries(files)) writeFileSync(join(out, "winget", name), text);

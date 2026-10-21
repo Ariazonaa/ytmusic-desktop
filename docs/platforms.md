@@ -46,6 +46,22 @@ What differs from Windows:
   app in the browser and stops the navigation instead (`in_window` in
   `window.rs`); on Windows `frames.rs` watches each frame. On macOS nothing
   does, and plugins from others do not run there.
+- Sound: when the device the music plays on goes away (Bluetooth headphones
+  switched off, a USB headset pulled out), the music pauses. WirePlumber,
+  PipeWire's session manager, does that for every media player: it sends
+  Pause over MPRIS to the players that played on the device
+  (`linking.pause-playback`; in 0.5.18 on Fedora 44 and Arch, not in 0.5.8 on
+  Debian 13). A device that comes along pauses nothing, nor does moving the
+  sound to another one.
+  `wpctl settings --save linking.pause-playback false` turns it off for all
+  players.
+- Media keys and the desktop's player controls (MPRIS): WebKitGTK offers
+  only the media session that last began playback and takes the others off.
+  YouTube Music has a session besides its video, which now and then begins a
+  few milliseconds after the video starts playing, and the player was gone
+  from the desktop until the next pause. Half a second after the video starts,
+  the page calls play() on it once more (`player/desktop-controls.ts`), which
+  makes it the last again without a gap in the sound.
 - Updates: the AppImage replaces itself like the Windows version. The .deb and
   the Arch package are updated by their package manager; the settings window
   only points to the download page.

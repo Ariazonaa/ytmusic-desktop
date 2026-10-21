@@ -143,19 +143,48 @@ export function startResume(enabled: boolean, win: Win = window): void {
   win.addEventListener("pagehide", save);
 }
 
+/**
+ * Notices whether the user did something: a click, a key, or a control from
+ * outside the page such as a media key, a global shortcut or the tray.
+ */
+export function watchForTouch(win: Win): { touched: () => boolean; stop: () => void } {
+  let touched = false;
+  const mark = (): void => {
+    touched = true;
+  };
+  const inputs = ["pointerdown", "keydown"];
+  for (const type of inputs) win.document.addEventListener(type, mark, true);
+  win.addEventListener("ytmd-control", mark);
+  return {
+    touched: () => touched,
+    stop() {
+      for (const type of inputs) win.document.removeEventListener(type, mark, true);
+      win.removeEventListener("ytmd-control", mark);
+    },
+  };
+}
+
 async function restoreAtStart(point: ResumePoint, win: Win): Promise<void> {
   const doc = win.document;
-  // Whatever the page loads by itself: is it the remembered track?
-  await waitFor(win, OWN_RESTORE_MS, () => loadedVideoId(doc) !== null);
-  if (loadedVideoId(doc) === point.videoId) {
-    await seekWhenLoaded(point, win, LOAD_MS);
-    return;
-  }
-  // The user may have gone somewhere in the meantime; then they are not interrupted.
-  const untouched = win.location.pathname === "/" && doc.querySelector("video")?.paused !== false;
-  if (untouched) {
-    win.sessionStorage.setItem(PENDING_KEY, JSON.stringify(point));
-    win.location.replace(resumeUrl(point));
+  // Whoever starts something in these first seconds is not interrupted by a
+  // reload to the remembered track, or by holding it paused.
+  const touch = watchForTouch(win);
+  try {
+    // Whatever the page loads by itself: is it the remembered track?
+    await waitFor(win, OWN_RESTORE_MS, () => loadedVideoId(doc) !== null || touch.touched());
+    if (touch.touched()) return;
+    if (loadedVideoId(doc) === point.videoId) {
+      await seekWhenLoaded(point, win, LOAD_MS);
+      return;
+    }
+    // The user may have gone somewhere in the meantime; then they are not interrupted.
+    const untouched = win.location.pathname === "/" && doc.querySelector("video")?.paused !== false;
+    if (untouched && !touch.touched()) {
+      win.sessionStorage.setItem(PENDING_KEY, JSON.stringify(point));
+      win.location.replace(resumeUrl(point));
+    }
+  } finally {
+    touch.stop();
   }
 }
 

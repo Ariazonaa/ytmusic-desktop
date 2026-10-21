@@ -20,6 +20,7 @@
     "allow-install-plugin",
     "allow-remove-plugin",
     "allow-app-version",
+    "allow-portable-folder",
     "allow-pending-update",
     "allow-check-update",
     "allow-install-update",
@@ -27,6 +28,7 @@
     "allow-marketplace-list",
     "allow-marketplace-install",
     "allow-marketplace-open-homepage",
+    "allow-open-repository",
     "core:window:allow-set-title"
   ]
 }

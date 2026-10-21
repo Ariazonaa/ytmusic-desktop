@@ -35,3 +35,64 @@ export function navigate(target: NavigationTarget, doc: Document = document): vo
   if (!app) throw new Error("YouTube Music has not loaded yet");
   app.dispatchEvent(new CustomEvent("yt-navigate", { bubbles: true, composed: true, detail: { endpoint } }));
 }
+
+/** Pages with a path of their own, as YouTube Music's own links have them. */
+const PAGES: Readonly<Record<string, string>> = {
+  "": "FEmusic_home",
+  "/explore": "FEmusic_explore",
+  "/library": "FEmusic_library_landing",
+  "/charts": "FEmusic_charts",
+  "/moods_and_genres": "FEmusic_moods_and_genres",
+  "/new_releases": "FEmusic_new_releases",
+};
+
+/**
+ * The request behind a link to YouTube Music, as its own links carry it, or
+ * null for a link that is not one of the kinds it knows: a track (with its
+ * playlist), a playlist, an album, artist or channel, a search, a main page.
+ */
+export function endpointForLink(link: string): Record<string, unknown> | null {
+  let url: URL;
+  try {
+    url = new URL(link);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== "https:" || url.hostname !== "music.youtube.com") return null;
+  const path = url.pathname.replace(/\/+$/, "");
+  const params = url.searchParams;
+  const list = params.get("list");
+  const playlistId = list !== null && BROWSE_ID.test(list) ? list : null;
+  if (path === "/watch") {
+    const videoId = params.get("v");
+    if (videoId === null || !VIDEO_ID.test(videoId)) return null;
+    return { watchEndpoint: playlistId ? { videoId, playlistId } : { videoId } };
+  }
+  if (path === "/playlist") return playlistId ? { browseEndpoint: { browseId: `VL${playlistId}` } } : null;
+  const page = /^\/(?:browse|channel)\/([\w-]+)$/.exec(path);
+  if (page?.[1]) return endpointFor({ type: "page", browseId: page[1] });
+  if (path === "/search") {
+    try {
+      return endpointFor({ type: "search", query: params.get("q") ?? "" });
+    } catch {
+      return null;
+    }
+  }
+  const browseId = PAGES[path];
+  return browseId ? { browseEndpoint: { browseId } } : null;
+}
+
+/**
+ * Opens a link to YouTube Music the way its own links do, so the music plays
+ * on and the page does not ask whether to leave. A link of another kind, or
+ * one before the page is there, loads the page.
+ */
+export function openMusicLink(link: string, doc: Document = document, load = (url: string) => location.assign(url)): void {
+  const endpoint = endpointForLink(link);
+  const app = doc.querySelector("ytmusic-app");
+  if (endpoint && app) {
+    app.dispatchEvent(new CustomEvent("yt-navigate", { bubbles: true, composed: true, detail: { endpoint } }));
+  } else if (URL.canParse(link) && new URL(link).hostname === "music.youtube.com") {
+    load(link);
+  }
+}

@@ -1,0 +1,11 @@
+# Automatically generated - DO NOT EDIT!
+
+[[permission]]
+identifier = "allow-portable-folder"
+description = "Enables the portable_folder command without any pre-configured scope."
+commands.allow = ["portable_folder"]
+
+[[permission]]
+identifier = "deny-portable-folder"
+description = "Denies the portable_folder command without any pre-configured scope."
+commands.deny = ["portable_folder"]

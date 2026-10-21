@@ -119,6 +119,25 @@ const de: Readonly<Record<string, string>> = {
 
   // Backup and log
   Backup: "Sicherung",
+  About: "Über",
+  "the play queue's inner part {name}": "den inneren Teil {name} der Warteschlange",
+  "the video area": "den Videobereich",
+  "the Song / Video switch": "den Schalter Song / Video",
+  "the play queue": "die Warteschlange",
+  "the tracks in the play queue": "die Titel in der Warteschlange",
+  "A notification with the cover when a new track starts, while the app's window is not in front.":
+    "Eine Benachrichtigung mit Cover, wenn ein neuer Titel beginnt, solange das Fenster der App nicht im Vordergrund ist.",
+  Zoom: "Zoom",
+  "Save memory in the tray": "Speicher sparen im Tray",
+  "After a pause this long in the tray, YouTube Music is unloaded. It loads again when you open the window or press play, with the track where it was.":
+    "Nach so langer Pause im Tray wird YouTube Music entladen. Es lädt wieder, wenn du das Fenster öffnest oder Play drückst, mit dem Titel an derselben Stelle.",
+  Never: "Nie",
+  "{minutes} min": "{minutes} Min.",
+  "Makes YouTube Music larger or smaller in the window.": "Macht YouTube Music im Fenster größer oder kleiner.",
+  "Free software under the MIT license. Not made by YouTube or Google.": "Freie Software unter der MIT-Lizenz. Nicht von YouTube oder Google.",
+  "Open the project on GitHub": "Projekt auf GitHub öffnen",
+  "Portable: settings, plugins and login are kept in {folder}": "Portabel: Einstellungen, Plugins und Anmeldung liegen in {folder}",
+  "Questions, ideas and bugs: open an issue there.": "Fragen, Ideen und Fehler: dort ein Issue anlegen.",
   "Export writes all settings, including those of the plugins, to a file. Import replaces the current settings with those from a file.":
     "Export schreibt alle Einstellungen, auch die der Plugins, in eine Datei. Import ersetzt die aktuellen Einstellungen durch die aus einer Datei.",
   "Export settings": "Einstellungen exportieren",
@@ -416,6 +435,9 @@ const de: Readonly<Record<string, string>> = {
   // updates
   Updates: "Updates",
   "Look for updates at start": "Beim Start nach Updates suchen",
+  "Also offer test versions": "Auch Testversionen anbieten",
+  "Betas come before a release, to try what is new; they may still have faults. Switched off again, the app stays on its beta until a newer release.":
+    "Betas erscheinen vor einem Release, um Neues auszuprobieren; sie können noch Fehler haben. Wieder ausgeschaltet, bleibt die App auf ihrer Beta bis zu einem neueren Release.",
   "Asks GitHub at each start whether there is a newer version. Nothing is installed without your click.":
     "Fragt bei jedem Start bei GitHub nach, ob es eine neuere Version gibt. Installiert wird erst auf deinen Klick.",
   "Version {version} is available.": "Version {version} ist verfügbar.",

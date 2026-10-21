@@ -9,7 +9,7 @@ use tauri_plugin_opener::OpenerExt;
 pub const MAIN_WINDOW_LABEL: &str = "main";
 const SETTINGS_WINDOW_LABEL: &str = "settings";
 pub const OVERLAY_WINDOW_LABEL: &str = "lyrics-overlay";
-const YTM_URL: &str = "https://music.youtube.com";
+pub const YTM_URL: &str = "https://music.youtube.com";
 /// Safari on Linux, as GNOME Web sends it. WebKitGTK's own user agent names a
 /// Safari version that does not exist and gets "browser not supported" from
 /// YouTube Music. A Chrome one gets the page, but YouTube then runs its bot
@@ -32,7 +32,7 @@ pub fn hardware_acceleration_active(app: &AppHandle) -> bool {
 /// All windows share one browser, which refuses a window whose arguments
 /// differ from the ones it was started with. So they are fixed on first use,
 /// and a changed setting applies from the next start.
-fn browser_args(app: &AppHandle) -> &'static str {
+pub(crate) fn browser_args(app: &AppHandle) -> &'static str {
     static ARGS: OnceLock<String> = OnceLock::new();
     ARGS.get_or_init(|| {
         // Setting any arguments replaces Tauri's defaults, so they are repeated here.
@@ -45,18 +45,53 @@ fn browser_args(app: &AppHandle) -> &'static str {
     })
 }
 
+/// The app's own link scheme, registered by the installer and the Linux
+/// packages: `ytmusic://watch?v=…` is `https://music.youtube.com/watch?v=…`.
+pub const LINK_SCHEME: &str = "ytmusic";
+
+/// A `ytmusic://` link as the page it stands for. `ytmusic://music.youtube.com/…`
+/// is taken too, and a slash some browsers add after the first part is left out.
+fn from_own_scheme(arg: &str) -> Option<String> {
+    let (scheme, rest) = arg.split_once("://")?;
+    if !scheme.eq_ignore_ascii_case(LINK_SCHEME) {
+        return None;
+    }
+    let rest = rest.strip_prefix("music.youtube.com").unwrap_or(rest);
+    let rest = rest.trim_start_matches('/');
+    let (path, query) = match rest.find(['?', '#']) {
+        Some(at) => rest.split_at(at),
+        None => (rest, ""),
+    };
+    Some(format!(
+        "https://music.youtube.com/{}{query}",
+        path.trim_end_matches('/')
+    ))
+}
+
 /// The first link to YouTube Music among the program's arguments, as in
-/// `ytmusic-desktop https://music.youtube.com/watch?v=…`.
+/// `ytmusic-desktop https://music.youtube.com/watch?v=…` or `ytmusic://watch?v=…`.
 pub fn music_link(args: impl IntoIterator<Item = String>) -> Option<Url> {
     args.into_iter()
-        .filter_map(|arg| arg.parse::<Url>().ok())
+        .filter(|arg| !crate::notification::is_click_link(arg))
+        .filter_map(|arg| from_own_scheme(&arg).unwrap_or(arg).parse::<Url>().ok())
         .find(|url| url.scheme() == "https" && url.host_str() == Some("music.youtube.com"))
 }
 
-/// Opens a link to YouTube Music in the main window and shows it.
+/// Opens a link to YouTube Music in the main window and shows it. The page
+/// goes there the way its own links do (`openLink` in `inject/main.ts`):
+/// loading it anew would make YouTube Music ask whether to leave while music
+/// plays, in a dialog that holds the page. Before the app's script is there,
+/// the page is loaded.
 pub fn open_music_link(app: &AppHandle, url: Url) {
+    if crate::unload::wake(app, Some(url.clone()), None) {
+        show_main_window(app);
+        return;
+    }
     if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
-        if let Err(err) = window.navigate(url) {
+        let link = serde_json::Value::from(url.as_str());
+        let script =
+            format!("(window.__ytmDesktop?.openLink ?? ((link) => location.assign(link)))({link})");
+        if let Err(err) = window.eval(script) {
             log_error!("cannot open the link: {err}");
         }
     }
@@ -76,41 +111,45 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     };
     let nav_app = app.clone();
     let popup_app = app.clone();
-    let builder = WebviewWindowBuilder::new(app, MAIN_WINDOW_LABEL, WebviewUrl::External(first))
-        .title("YouTube Music")
-        // Both windows are dark. On Linux this also picks the dark variant of
-        // the GTK theme, in which WebKitGTK draws the lists of selects.
-        .theme(Some(tauri::Theme::Dark))
-        .visible(!hidden)
-        .additional_browser_args(browser_args(app))
-        .inner_size(1280.0, 800.0)
-        .min_inner_size(480.0, 360.0)
-        .on_navigation(move |url| match in_window(url, FRAMES_ASK) {
-            Navigation::Allow => true,
-            Navigation::Block => {
-                match url.scheme() {
-                    "https" | "http" => {
-                        log_error!("stopped a navigation to {}", url.host_str().unwrap_or("?"))
-                    }
-                    "data" | "blob" => {
-                        log_error!("stopped a navigation to a {}: address", url.scheme())
-                    }
-                    _ => {}
+    let builder = crate::portable::webview(WebviewWindowBuilder::new(
+        app,
+        MAIN_WINDOW_LABEL,
+        WebviewUrl::External(first),
+    ))
+    .title("YouTube Music")
+    // Both windows are dark. On Linux this also picks the dark variant of
+    // the GTK theme, in which WebKitGTK draws the lists of selects.
+    .theme(Some(tauri::Theme::Dark))
+    .visible(!hidden)
+    .additional_browser_args(browser_args(app))
+    .inner_size(1280.0, 800.0)
+    .min_inner_size(480.0, 360.0)
+    .on_navigation(move |url| match in_window(url, FRAMES_ASK) {
+        Navigation::Allow => true,
+        Navigation::Block => {
+            match url.scheme() {
+                "https" | "http" => {
+                    log_error!("stopped a navigation to {}", url.host_str().unwrap_or("?"))
                 }
-                false
+                "data" | "blob" => {
+                    log_error!("stopped a navigation to a {}: address", url.scheme())
+                }
+                _ => {}
             }
-            Navigation::OpenExternally => {
-                open_in_browser(&nav_app, url);
-                false
-            }
-        })
-        .on_new_window(move |url, _features| {
-            // The app is a single window: links that want a new one go to the browser.
-            if classify(&url) != Navigation::Block {
-                open_in_browser(&popup_app, &url);
-            }
-            NewWindowResponse::Deny
-        });
+            false
+        }
+        Navigation::OpenExternally => {
+            open_in_browser(&nav_app, url);
+            false
+        }
+    })
+    .on_new_window(move |url, _features| {
+        // The app is a single window: links that want a new one go to the browser.
+        if classify(&url) != Navigation::Block {
+            open_in_browser(&popup_app, &url);
+        }
+        NewWindowResponse::Deny
+    });
     #[cfg(target_os = "linux")]
     let builder = builder.user_agent(LINUX_USER_AGENT);
     // A request to a security key ends with the page that made it: the page's
@@ -134,6 +173,9 @@ pub fn create_main_window(app: &AppHandle, hidden: bool, link: Option<Url>) -> t
     // A plugin's frame must not leave its document. On Windows this also
     // opens the page (in development through `dev_inject`).
     crate::frames::watch(&window, url);
+    apply_window_settings(app, &app.state::<SettingsStore>().get());
+    crate::taskbar::attach(app, &window);
+    crate::audio_output::prepare(&window, &app.state::<SettingsStore>().get().output_device);
     #[cfg(target_os = "linux")]
     leave_without_asking(&window);
     if hidden {
@@ -170,6 +212,7 @@ pub fn show_main_window(app: &AppHandle) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return;
     };
+    crate::unload::wake(app, None, None);
     background::set_hidden(&window, false);
     let result = window
         .unminimize()
@@ -205,13 +248,14 @@ pub fn open_settings_window(app: &AppHandle) {
     let app = app.clone();
     std::thread::spawn(move || {
         let url = WebviewUrl::App("index.html".into());
-        let result = WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, url)
-            .title("Settings")
-            .theme(Some(tauri::Theme::Dark))
-            .additional_browser_args(browser_args(&app))
-            .inner_size(620.0, 700.0)
-            .min_inner_size(360.0, 320.0)
-            .build();
+        let result =
+            crate::portable::webview(WebviewWindowBuilder::new(&app, SETTINGS_WINDOW_LABEL, url))
+                .title("Settings")
+                .theme(Some(tauri::Theme::Dark))
+                .additional_browser_args(browser_args(&app))
+                .inner_size(620.0, 700.0)
+                .min_inner_size(360.0, 320.0)
+                .build();
         if let Err(err) = result {
             log_error!("cannot open the settings window: {err}");
         }
@@ -232,26 +276,45 @@ pub fn show_lyrics_overlay(app: &AppHandle, show: bool) {
             let app = app.clone();
             std::thread::spawn(move || {
                 let url = WebviewUrl::App("overlay.html".into());
-                let result = WebviewWindowBuilder::new(&app, OVERLAY_WINDOW_LABEL, url)
-                    .title("Lyrics")
-                    .theme(Some(tauri::Theme::Dark))
-                    .additional_browser_args(browser_args(&app))
-                    .inner_size(720.0, 120.0)
-                    .min_inner_size(240.0, 60.0)
-                    .decorations(false)
-                    .transparent(true)
-                    .shadow(false)
-                    .always_on_top(true)
-                    .skip_taskbar(true)
-                    .focused(false)
-                    .build();
-                if let Err(err) = result {
-                    log_error!("cannot open the lyrics window: {err}");
+                let result = crate::portable::webview(WebviewWindowBuilder::new(
+                    &app,
+                    OVERLAY_WINDOW_LABEL,
+                    url,
+                ))
+                .title("Lyrics")
+                .theme(Some(tauri::Theme::Dark))
+                .additional_browser_args(browser_args(&app))
+                .inner_size(720.0, 120.0)
+                .min_inner_size(240.0, 60.0)
+                .decorations(false)
+                .transparent(true)
+                .shadow(false)
+                .always_on_top(true)
+                .skip_taskbar(true)
+                .focused(false)
+                .build();
+                match result {
+                    Ok(overlay) => keep_above(overlay),
+                    Err(err) => log_error!("cannot open the lyrics window: {err}"),
                 }
             });
         }
         _ => {}
     }
+}
+
+/// Puts a window above others once it shows. Asked for only while the window
+/// is made, some window managers pass it over, as Xfwm on Debian 13 does.
+pub fn keep_above(window: tauri::WebviewWindow) {
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(500));
+        let result = window
+            .set_always_on_top(false)
+            .and_then(|()| window.set_always_on_top(true));
+        if let Err(err) = result {
+            log_error!("cannot keep a window above others: {err}");
+        }
+    });
 }
 
 /// Tells the injected script about changed settings so that plugins are
@@ -267,6 +330,34 @@ pub fn apply_settings(app: &AppHandle, settings: &Settings) {
     if let Err(err) = result {
         log_error!("cannot apply settings to the page: {err}");
     }
+}
+
+/// What the main window itself shows of the settings: above other windows or
+/// not, and the page's zoom.
+pub fn apply_window_settings(app: &AppHandle, settings: &Settings) {
+    let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
+        return;
+    };
+    let result = window
+        .set_always_on_top(settings.always_on_top)
+        .and_then(|()| window.set_zoom(f64::from(settings.zoom) / 100.0));
+    if let Err(err) = result {
+        log_error!("cannot apply the window's settings: {err}");
+    }
+}
+
+/// The action of a player argument such as `--next`, as given to the app by
+/// Stream Deck, a script or the taskbar's jump list. The first one counts.
+pub fn player_action(args: impl IntoIterator<Item = String>) -> Option<PlayerAction> {
+    args.into_iter().find_map(|arg| match arg.as_str() {
+        "--play-pause" => Some(PlayerAction::PlayPause),
+        "--next" => Some(PlayerAction::Next),
+        "--previous" => Some(PlayerAction::Previous),
+        "--volume-up" => Some(PlayerAction::VolumeUp),
+        "--volume-down" => Some(PlayerAction::VolumeDown),
+        "--mute" => Some(PlayerAction::ToggleMute),
+        _ => None,
+    })
 }
 
 /// Makes the injected script read the plugins folder again and restart the
@@ -304,9 +395,13 @@ pub fn notification_clicked(app: &AppHandle, id: u32) {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlayerAction {
     PlayPause,
+    /// Only plays, for waking the page (`unload.rs`).
+    Play,
+    /// Only pauses, for the sleep timer.
+    Pause,
     Next,
     Previous,
     VolumeUp,
@@ -319,6 +414,8 @@ impl PlayerAction {
     fn as_str(self) -> &'static str {
         match self {
             Self::PlayPause => "playPause",
+            Self::Play => "play",
+            Self::Pause => "pause",
             Self::Next => "next",
             Self::Previous => "previous",
             Self::VolumeUp => "volumeUp",
@@ -333,6 +430,9 @@ pub fn control_player(app: &AppHandle, action: PlayerAction) {
     let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) else {
         return;
     };
+    if crate::unload::wake_for(app, action) {
+        return;
+    }
     let script = format!("window.__ytmDesktop?.control('{}')", action.as_str());
     if let Err(err) = window.eval(script) {
         log_error!("cannot control the player: {err}");
@@ -445,6 +545,59 @@ mod tests {
     }
 
     #[test]
+    fn a_click_on_a_notification_is_no_page() {
+        let link =
+            |list: &[&str]| music_link(list.iter().map(|arg| arg.to_string())).map(String::from);
+        assert_eq!(link(&["ytmusic://notification-clicked?id=7&key=k1"]), None);
+        assert_eq!(
+            link(&["ytmusic://notification-clicked", "ytmusic://watch?v=abc"]).as_deref(),
+            Some("https://music.youtube.com/watch?v=abc")
+        );
+    }
+
+    #[test]
+    fn own_scheme_stands_for_a_page_of_youtube_music() {
+        let link = |arg: &str| music_link([arg.to_string()]).map(String::from);
+        for (arg, page) in [
+            (
+                "ytmusic://watch?v=abc",
+                "https://music.youtube.com/watch?v=abc",
+            ),
+            (
+                "ytmusic://watch/?v=abc&list=x",
+                "https://music.youtube.com/watch?v=abc&list=x",
+            ),
+            (
+                "YTMUSIC://playlist?list=PL1",
+                "https://music.youtube.com/playlist?list=PL1",
+            ),
+            (
+                "ytmusic://music.youtube.com/watch?v=abc",
+                "https://music.youtube.com/watch?v=abc",
+            ),
+            (
+                "ytmusic:///channel/UC1/",
+                "https://music.youtube.com/channel/UC1",
+            ),
+            ("ytmusic://", "https://music.youtube.com/"),
+            ("ytmusic://search#x", "https://music.youtube.com/search#x"),
+        ] {
+            assert_eq!(link(arg).as_deref(), Some(page), "{arg}");
+        }
+        // Whatever follows, the page stays on YouTube Music.
+        for arg in [
+            "ytmusic://@evil.com/x",
+            "ytmusic://music.youtube.com.evil.com/",
+            "ytmusic://\\evil.com/",
+            "ytmusic://%2F%2Fevil.com",
+        ] {
+            let url = music_link([arg.to_string()]).expect(arg);
+            assert_eq!(url.host_str(), Some("music.youtube.com"), "{arg}");
+        }
+        assert_eq!(link("ytmusicx://watch?v=abc"), None);
+    }
+
+    #[test]
     fn youtube_and_sign_in_stay_in_app() {
         for url in [
             "https://music.youtube.com/watch?v=abc",
@@ -490,6 +643,25 @@ mod tests {
             classify_str("ytmd-plugin://localhost/scrobbler/"),
             Navigation::Allow
         );
+    }
+
+    #[test]
+    fn reads_a_player_action_among_the_arguments() {
+        let args = |list: &[&str]| list.iter().map(|arg| arg.to_string()).collect::<Vec<_>>();
+        assert_eq!(player_action(args(&["--next"])), Some(PlayerAction::Next));
+        assert_eq!(
+            player_action(args(&["--autostart", "--play-pause", "--next"])),
+            Some(PlayerAction::PlayPause)
+        );
+        assert_eq!(
+            player_action(args(&["--mute"])),
+            Some(PlayerAction::ToggleMute)
+        );
+        assert_eq!(
+            player_action(args(&["https://music.youtube.com/watch?v=x"])),
+            None
+        );
+        assert_eq!(player_action(args(&["--Next", "next"])), None);
     }
 
     #[test]

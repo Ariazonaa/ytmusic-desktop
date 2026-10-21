@@ -86,7 +86,11 @@ warn about an unknown publisher; "More info" and "Run anyway" get past that.
 **Without installing:** the same release has
 `ytmusic-desktop_…_x64-portable.zip`. Unpack it anywhere and start
 `ytmusic-desktop.exe`. Settings and your sign-in are kept in your user
-profile all the same.
+profile all the same, unless you put an empty file named `portable` (or
+`portable.txt`) next to the program: then everything, sign-in included, is
+kept in the folder `ytmusic-desktop-data` beside it, for a USB stick or a
+folder you copy around. The settings window says so under About. The same
+works next to the AppImage on Linux.
 
 `SHA256SUMS.txt` next to them holds the checksums of both, to check a
 download with `certutil -hashfile <file> SHA256`.
@@ -179,6 +183,7 @@ macOS is not supported yet.
 | `now-playing` | For streaming with OBS and the like: the playing track as text files and a cover in a folder (`now-playing` in the app's settings folder), and if you like as a page on `http://127.0.0.1` for a browser source. The text is yours to word, e.g. `{artist} – {title}`. |
 | `stats` | Your most heard tracks and artists and your listening time per day, in a panel. Counted and kept on this computer only; a track counts once heard for 30 seconds. |
 | `playlist-tools` | Saves the open playlist as a text file or as a CSV for a spreadsheet, and lists the tracks that are in it more than once, also as another version of the same song. |
+| `song-notification` | A notification with the cover when a new track starts, while the app's window is not in front. |
 | `discord` | Shows in your Discord profile what you are listening to: title, artist, cover, how far the track is, and a button for others to listen too. What shows, and whether it stays while paused, is up to you; a preview in the settings window shows how it looks. Needs the Discord app running on the same computer. |
 | `demo` | A working template for people who write plugins. |
 
@@ -216,8 +221,39 @@ and [how to add it to the list](docs/plugins.md#the-plugin-list).
 ## The desktop side
 
 - **Tray icon:** shows the playing song. Its menu has Play / Pause, Next,
-  Previous, the volume and Quit. Closing the window can keep the music playing
-  in the tray, where the app also gives back most of its memory.
+  Previous, the volume, "Always on top" for the window, and Quit. Closing the
+  window can keep the music playing in the tray, where the app also gives back
+  most of its memory.
+- **Taskbar (Windows):** Previous, Play / Pause and Next under the window's
+  thumbnail and in the right-click list of the taskbar button, and the track's
+  progress in the button itself.
+- **From outside:** `ytmusic-desktop --play-pause` (also `--next`,
+  `--previous`, `--volume-up`, `--volume-down`, `--mute`) controls the running
+  app, for a Stream Deck or a script.
+- **Links:** `ytmusic://` links open in the app, e.g.
+  `ytmusic://watch?v=dQw4w9WgXcQ` or `ytmusic://playlist?list=…`: whatever
+  follows `music.youtube.com/` in a normal link. The installer and the Linux
+  packages register it. A normal `https://music.youtube.com/…` link opens
+  in the app with `ytmusic-desktop <link>`; your browser keeps those.
+- **Zoom:** YouTube Music larger or smaller, in the settings window.
+- **Save memory in the tray:** in the settings window, after a pause of 10,
+  30 or 60 minutes in the tray YouTube Music is unloaded (on Linux that gave
+  back about 300 MB). Opening the window or Play / Pause loads it again, with
+  the track where it was. Off by default.
+- **Output:** the tray menu lists the sound devices; the music goes to the
+  one you pick, say headphones, while everything else stays on the system's
+  default. Also `ytmusic-desktop --output="<device>"` and
+  `--output=default`. On Linux this uses `pactl`, which PulseAudio and
+  PipeWire have. On Windows the page can only see the devices with the
+  microphone permission, so YouTube Music has it while a device other than
+  the default is chosen; the app keeps the page from opening the
+  microphone all the same.
+- **Mini player:** a small window above other programs with the cover, the
+  track, its progress and Previous, Play / Pause and Next; from the tray menu
+  or with `ytmusic-desktop --mini-player`. Drag it anywhere.
+- **Sleep timer:** in the tray menu, pauses after 15 to 90 minutes or at the
+  end of the playing track; the menu shows the minutes left. From outside:
+  `ytmusic-desktop --sleep=30`, `--sleep=end` or `--sleep=off`.
 - **Global shortcuts:** key combinations for play / pause, next, previous,
   volume and mute that work while another program has the focus. None are set
   at first; click a field in the settings window and press the combination.

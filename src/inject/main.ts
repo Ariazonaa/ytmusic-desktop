@@ -10,11 +10,12 @@ import { applyRatingShortcuts } from "../core/injector/rating-shortcuts";
 import { showUpdateNotice } from "../core/injector/update-notice";
 import { createExternalPlugin } from "../core/plugin-manager/external";
 import { PluginManager } from "../core/plugin-manager/manager";
-import { AudioChain } from "../core/audio/chain";
+import { AudioChain, engineAppliesElementVolume } from "../core/audio/chain";
+import { OutputSwitch, blockMicrophone } from "../core/audio/output-switch";
 import { OutputDeviceWatcher } from "../core/audio/output-device";
 import { HealthReporter, PageCheck } from "../core/health";
 import { setLanguage } from "../core/i18n";
-import { navigate } from "../core/injector/navigate";
+import { navigate, openMusicLink } from "../core/injector/navigate";
 import { installWebAuthn } from "../core/injector/webauthn";
 import { addShortcut } from "../core/injector/shortcuts";
 import { describeLogArguments, fileLogger } from "../core/log";
@@ -23,9 +24,12 @@ import { getJson, sendRequest } from "../core/net/json";
 import { openLink, webAuthnCancel, webAuthnGet } from "../core/settings/client";
 import { addToQueue, moveInQueue, readQueue, removeFromQueue } from "../core/player/queue";
 import { controlPlayer, seekTo, setPlaybackRate } from "../core/player/controls";
+import { keepOnDesktopControls } from "../core/player/desktop-controls";
 import { readLikeStatus, setLikeStatus } from "../core/player/like";
 import { readLoudnessLkfs, readTrackType, readPlaybackState, readVideoId, watchPlayback } from "../core/player/playback";
+import { PlaybackReport } from "../core/player/report";
 import { startResume } from "../core/player/resume";
+import { SleepAtTrackEnd } from "../core/player/sleep";
 import { SongWatcher, readCurrentSong } from "../core/player/song";
 import { getVolume, setVolume } from "../core/player/volume";
 import {
@@ -37,6 +41,8 @@ import {
   openSettings,
   reportHealth,
   setNowPlaying,
+  setPlayback,
+  sleepDone,
   updatePluginSettings,
 } from "../core/settings/client";
 import { builtinPlugins } from "../plugins";
@@ -83,7 +89,16 @@ async function start(): Promise<void> {
   startResume(settings.resumePlayback);
   applyRatingShortcuts(settings.windowShortcuts);
   let current = settings;
+  // WebKitGTK (Linux): the player stays on the desktop's media controls.
+  if (!engineAppliesElementVolume()) keepOnDesktopControls();
   const audioChain = new AudioChain();
+  // Windows (WebView2, a Chromium): the page sends the sound to the chosen
+  // device. On Linux the app moves the sound server's streams instead.
+  const output = new OutputSwitch(audioChain, document, navigator.mediaDevices, log);
+  if (engineAppliesElementVolume()) {
+    hooks.setOutput = (name) => void output.set(name).catch((error: unknown) => log.error("[ytm-desktop] cannot send the sound to its device", error));
+    if (settings.outputDevice !== "") hooks.setOutput(settings.outputDevice);
+  }
   /** How far the heard sound lags behind the player, in seconds of the track. */
   let outputDelay = 0;
 
@@ -141,13 +156,20 @@ async function start(): Promise<void> {
       current = await updatePluginSettings(plugin, values);
     },
   }, log);
-  const pageCheck = new PageCheck((problems) => health.setPageProblems(problems));
+  let loggedProblems = "";
+  const pageCheck = new PageCheck((problems) => {
+    health.setPageProblems(problems);
+    // Into the log too, once per change: the settings window shows them, the log keeps them.
+    const text = problems.join(", ");
+    if (text && text !== loggedProblems) log.error(`[ytm-desktop] parts of YouTube Music not found: ${text}`);
+    loggedProblems = text;
+  });
   const watcher = new SongWatcher(readCurrentSong, (song) => {
     manager.notifySongChange(song);
     // Only with a song is all of the player bar there to be looked at.
     pageCheck.songChanged();
     // For the tray's tooltip and menu.
-    setNowPlaying(song.title, song.artist).catch(() => {});
+    setNowPlaying(song.title, song.artist, song.artworkUrl).catch(() => {});
   });
 
   /** The external plugins as last read from the folder. */
@@ -167,6 +189,10 @@ async function start(): Promise<void> {
     manager.setPluginSettings(changed.pluginSettings);
     manager.setEnabled(changed.plugins);
   };
+  const sleep = new SleepAtTrackEnd(() => {
+    sleepDone().catch(() => {});
+  });
+  hooks.sleepAtTrackEnd = (on) => sleep.set(on);
   hooks.inspect = () => ({
     song: music.getCurrentSong(),
     playback: music.getPlaybackState(),
@@ -181,7 +207,19 @@ async function start(): Promise<void> {
     manager.setEnabled(current.plugins);
   };
   watcher.start();
-  watchPlayback((state) => manager.notifyPlaybackChange(heard(state)));
+  const report = new PlaybackReport((paused, position, duration) => {
+    setPlayback(paused, position, duration).catch(() => {});
+  });
+  watchPlayback((state) => {
+    const now = heard(state);
+    manager.notifyPlaybackChange(now);
+    report.update(now);
+  });
+  // The events above say nothing while a track just plays on: the taskbar's progress needs a look now and then.
+  setInterval(() => {
+    const state = readPlaybackState();
+    report.update(state ? heard(state) : null);
+  }, 1000);
   const navBar = await waitForElement(SELECTORS.navBar);
   addSettingsButton(navBar, () => void openSettings());
   manager.notifyUIReady();
@@ -198,6 +236,12 @@ interface Hooks {
   notificationClicked: (id: number) => void;
   /** The check at start found a newer version of the app. */
   updateAvailable: (version: string) => void;
+  /** A link to YouTube Music from outside, see `open_music_link` in `window.rs`. */
+  openLink: (link: string) => void;
+  /** The device the sound goes to, as Windows names it; "" for the default. Windows only. */
+  setOutput?: (name: string) => void;
+  /** The sleep timer: pause at the end of the playing track, or not. */
+  sleepAtTrackEnd?: (on: boolean) => void;
   /** What plugins are told about the playing song. Read by `scripts/e2e-transition.mjs`. */
   inspect?: () => { song: Song | null; playback: PlaybackState | null; videoId: string | null };
 }
@@ -209,6 +253,7 @@ const hooks: Hooks = {
     controlPlayer(action);
   },
   notificationClicked: (id) => notifier.clicked(id),
+  openLink: (link) => openMusicLink(link),
   updateAvailable: (version) => showUpdateNotice(version, () => void openSettings()),
 };
 
@@ -228,6 +273,9 @@ if (window.top === window && location.hostname === "accounts.google.com") {
 
 // The window also visits the Google sign-in pages; plugins only run on YouTube Music itself.
 if (window.top === window && location.hostname === "music.youtube.com") {
+  // Before the page's own scripts: it has no use for the microphone, also
+  // while it may list the sound devices.
+  blockMicrophone();
   window.__ytmDesktop = hooks;
   start().catch((error: unknown) => {
     log.error("[ytm-desktop] failed to start", error);

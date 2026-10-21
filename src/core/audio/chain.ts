@@ -110,6 +110,8 @@ export class AudioChain {
   private failed = false;
   /** Where the element's volume is applied, on engines that leave that to the chain. */
   private volume: GainNode | undefined;
+  /** The device the sound goes to, by the id the page knows it by; "" is the default. */
+  private sinkId = "";
 
   constructor(
     private readonly doc: Document = document,
@@ -136,6 +138,23 @@ export class AudioChain {
     };
   }
 
+  /** Whether the player's sound runs through the chain, so that only the chain can send it elsewhere. */
+  get tapped(): boolean {
+    return this.context !== undefined;
+  }
+
+  /** Sends the chain's sound to a device, now and in a context made later. */
+  async setSink(id: string): Promise<void> {
+    this.sinkId = id;
+    await this.applySink();
+  }
+
+  private async applySink(): Promise<void> {
+    const context = this.context as (AudioContext & { sinkId?: unknown; setSinkId?(id: string): Promise<void> }) | undefined;
+    if (!context?.setSinkId || context.sinkId === this.sinkId) return;
+    await context.setSinkId(this.sinkId);
+  }
+
   /** Taps the player once it exists, then wires up the effects. */
   private connect(): void {
     if (this.failed) return;
@@ -157,6 +176,7 @@ export class AudioChain {
         return;
       }
       if (!this.elementVolumeApplied) this.volume = this.context.createGain();
+      if (this.sinkId !== "") this.applySink().catch((error: unknown) => this.log.error("[ytm-desktop] cannot send the sound to its device", error));
       for (const type of ACTIVITY) this.doc.addEventListener(type, this.onActivity, true);
       this.adopt(video);
       return;

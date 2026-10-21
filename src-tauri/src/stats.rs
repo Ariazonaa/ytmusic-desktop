@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 
 const FILE: &str = "stats.json";
 /// Heard this long, a track counts as played.
@@ -189,7 +189,7 @@ impl Stats {
 }
 
 pub fn path<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    Some(app.path().app_config_dir().ok()?.join(FILE))
+    Some(crate::portable::config_dir(app).ok()?.join(FILE))
 }
 
 pub fn load(path: &Path) -> Stats {

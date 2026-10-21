@@ -15,7 +15,9 @@
     marketplaceOpenHomepage,
     openLog,
     openPluginsFolder,
+    openRepository,
     pendingUpdate,
+    portableFolder,
     reloadPlugins,
     removePlugin,
     restartApp,
@@ -67,7 +69,11 @@
   let welcome = $state(false);
   let search = $state("");
 
-  const TABS = ["plugins", "general", "shortcuts", "updates", "backup"] as const;
+  const TABS = ["plugins", "general", "shortcuts", "updates", "backup", "about"] as const;
+  /** The zoom levels offered, in percent. */
+  const ZOOM_LEVELS = [50, 67, 75, 80, 90, 100, 110, 125, 150, 175, 200];
+  /** After how many minutes of a pause in the tray the page may be unloaded; 0 is never. */
+  const UNLOAD_MINUTES = [0, 10, 30, 60];
   type Tab = (typeof TABS)[number];
   let tab = $state<Tab>("plugins");
   const tabLabel = (id: Tab): string =>
@@ -77,6 +83,7 @@
       shortcuts: t("Shortcuts"),
       updates: t("Updates"),
       backup: t("Backup"),
+      about: t("About"),
     })[id];
 
   /** Which plugins the list shows: all, the ones switched on, or one kind. */
@@ -157,7 +164,9 @@
   const pagePart = (name: string): string =>
     name.startsWith("player.")
       ? t("the player's function {name}", { name: name.slice("player.".length) })
-      : t(
+      : name.startsWith("queue.") || name.startsWith("app.")
+        ? t("the play queue's inner part {name}", { name })
+        : t(
           {
             navBar: "the navigation bar",
             playerBar: "the player bar",
@@ -169,6 +178,10 @@
             progressBar: "the progress bar",
             likeButtons: "the like buttons",
             player: "the player",
+            playerArea: "the video area",
+            songVideoSwitch: "the Song / Video switch",
+            queue: "the play queue",
+            queueItems: "the tracks in the play queue",
           }[name] ?? name,
         );
 
@@ -389,6 +402,12 @@
 
   appVersion().then(
     (current) => (version = current),
+    () => {},
+  );
+  /** Where a portable copy keeps everything, shown under About. */
+  let portable = $state<string | null>(null);
+  portableFolder().then(
+    (folder) => (portable = folder),
     () => {},
   );
 
@@ -810,6 +829,35 @@
             onchange={(language) => update({ language })}
           />
         </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <span class="min-w-0">
+            <span class="block font-medium">{t("Zoom")}</span>
+            <span class="block text-neutral-400">{t("Makes YouTube Music larger or smaller in the window.")}</span>
+          </span>
+          <Dropdown
+            label={t("Zoom")}
+            options={ZOOM_LEVELS.map((level) => ({ value: String(level), label: `${level} %` }))}
+            value={String(settings.zoom)}
+            onchange={(zoom) => update({ zoom: Number(zoom) })}
+          />
+        </div>
+        <div class="flex items-center justify-between gap-4 py-3">
+          <span class="min-w-0">
+            <span class="block font-medium">{t("Save memory in the tray")}</span>
+            <span class="block text-neutral-400">
+              {t("After a pause this long in the tray, YouTube Music is unloaded. It loads again when you open the window or press play, with the track where it was.")}
+            </span>
+          </span>
+          <Dropdown
+            label={t("Save memory in the tray")}
+            options={UNLOAD_MINUTES.map((minutes) => ({
+              value: String(minutes),
+              label: minutes === 0 ? t("Never") : t("{minutes} min", { minutes: String(minutes) }),
+            }))}
+            value={String(settings.unloadAfterMinutes)}
+            onchange={(minutes) => update({ unloadAfterMinutes: Number(minutes) })}
+          />
+        </div>
       </div>
     </section>
 
@@ -879,6 +927,14 @@
             )}
           </span>
         </Toggle>
+        <Toggle checked={settings.betaUpdates} onchange={(betaUpdates) => update({ betaUpdates })}>
+          <span class="block font-medium">{t("Also offer test versions")}</span>
+          <span class="block text-neutral-400">
+            {t(
+              "Betas come before a release, to try what is new; they may still have faults. Switched off again, the app stays on its beta until a newer release.",
+            )}
+          </span>
+        </Toggle>
       </div>
       {#if available}
         <div class="mt-2 rounded-md border border-emerald-800 bg-emerald-950 px-3 py-2 text-emerald-100">
@@ -912,6 +968,23 @@
       {#if updateNotice}
         <p role="status" class="mt-2 text-neutral-300">{updateNotice}</p>
       {/if}
+    </section>
+
+    <section role="tabpanel" hidden={tab !== "about"}>
+      <div class="rounded-lg bg-neutral-900 px-4 py-3">
+        <span class="block font-medium">YouTube Music Desktop</span>
+        {#if version}
+          <span class="block text-neutral-400">{t("Version {version}", { version })}</span>
+        {/if}
+        <p class="mt-2 text-neutral-400">{t("Free software under the MIT license. Not made by YouTube or Google.")}</p>
+        {#if portable}
+          <p class="mt-2 text-neutral-400">{t("Portable: settings, plugins and login are kept in {folder}", { folder: portable })}</p>
+        {/if}
+      </div>
+      <div class="mt-2 flex flex-wrap items-center gap-3">
+        {@render action(t("Open the project on GitHub"), () => void openRepository().catch(() => {}))}
+      </div>
+      <p class="mt-2 text-neutral-400">{t("Questions, ideas and bugs: open an issue there.")}</p>
     </section>
 
     <section role="tabpanel" hidden={tab !== "backup"}>

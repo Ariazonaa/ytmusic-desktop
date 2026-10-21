@@ -4,6 +4,52 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.10.0
+
+- "Save memory in the tray" in the settings window: after a pause of 10, 30
+  or 60 minutes in the tray, YouTube Music is unloaded, and loaded again with
+  the track where it was when the window opens or Play / Pause is pressed.
+- "Output" in the tray menu plays the music on another device than the
+  system's default, e.g. headphones; also `--output="<device>"` and
+  `--output=default`. On Linux it needs `pactl`. On Windows YouTube Music
+  gets the microphone permission while a device is chosen, as the page sees
+  the devices only with it; the app keeps it from opening the microphone.
+- `ytmusic://` links open in the app: `ytmusic://watch?v=…` is the page
+  `music.youtube.com/watch?v=…`. The installer and the Linux packages
+  register the scheme; the uninstaller removes it.
+- Portable mode: with an empty file `portable` or `portable.txt` next to the
+  program (or next to the AppImage), settings, plugins, the log and the
+  sign-in are kept in the folder `ytmusic-desktop-data` beside it. The
+  settings window says so under About.
+- Mini player: a small window above other programs with cover, title,
+  artist, progress and the buttons, opened from the tray menu or with
+  `--mini-player`. Its corner buttons bring back the main window or close it.
+- Sleep timer in the tray menu: pauses after 15, 30, 45, 60 or 90 minutes, or
+  at the end of the playing track, and shows the minutes left. Also
+  `--sleep=30`, `--sleep=end` and `--sleep=off`. It only ever pauses.
+- Taskbar on Windows: Previous, Play / Pause and Next under the window's
+  thumbnail and in the taskbar button's right-click list, and the track's
+  progress in the button.
+- `ytmusic-desktop --play-pause`, `--next`, `--previous`, `--volume-up`,
+  `--volume-down` and `--mute` control the running app, e.g. from a Stream Deck.
+- "Always on top" for the window, in the tray menu.
+- Zoom of the page, in the settings window under General.
+- New plugin `song-notification`: a notification with the cover when a new
+  track starts, while the window is not in front.
+- Windows: a click on a notification brings the window back also from the
+  notification centre, after its banner has gone; until now only a click on
+  the banner did. The click comes as a `ytmusic://` link, which the installer
+  sets up; a portable copy keeps the old way.
+- "About" in the settings window, with a link to the project.
+- The autostart entry on Windows has the program's path in quotes.
+- Updates: "Also offer test versions" in the settings window offers betas as
+  updates too; it is off. A copy that cannot replace itself (the portable zip,
+  the Linux packages) now opens the release page of the version found, not
+  the newest regular one.
+- Linux: the .deb of a beta carries its version as `0.10.0~beta.1` and so on,
+  which apt counts as before 0.10.0, so the release installs over it as an
+  update, without `--allow-downgrades`.
+
 ## 0.9.0
 
 - Linux: signing in to Google with a security key (a YubiKey and the like)

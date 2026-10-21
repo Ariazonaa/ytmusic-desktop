@@ -107,6 +107,16 @@ export interface Settings {
   hardwareAcceleration: boolean;
   /** Ask the project's releases at each start whether there is a newer version. */
   checkForUpdates: boolean;
+  /** Offer test versions (betas) as updates too. */
+  betaUpdates: boolean;
+  /** Keep the main window above other windows. Switched in the tray menu. */
+  alwaysOnTop: boolean;
+  /** Zoom of the page in percent, 50 to 200. */
+  zoom: number;
+  /** The sound server's name of the device to play on, "" for the system's default. Chosen in the tray menu, Linux only so far. */
+  outputDevice: string;
+  /** Minutes of a pause in the tray after which the page is unloaded to save memory; 0 is off. */
+  unloadAfterMinutes: number;
   /** Only values the user changed are stored; the rest come from the schema defaults. */
   pluginSettings: StoredPluginSettings;
   shortcuts: Shortcuts;
@@ -135,6 +145,8 @@ export interface Shortcuts {
 /** What the tray menu can ask the player to do. */
 export type PlayerAction =
   | "playPause"
+  | "pause"
+  | "play"
   | "next"
   | "previous"
   | "volumeUp"

@@ -14,7 +14,25 @@ const PAGE_PARTS: Readonly<Record<string, string>> = {
   timeInfo: SELECTORS.timeInfo,
   progressBar: SELECTORS.progressBar,
   likeButtons: SELECTORS.likeButtons,
+  // Beyond the player bar: there whenever a track plays, also while another page is open.
+  playerArea: "ytmusic-player",
+  songVideoSwitch: "ytmusic-av-toggle",
+  queue: "ytmusic-player-queue",
+  queueItems: "ytmusic-player-queue ytmusic-player-queue-item .song-title",
 };
+
+/** What plugins change the play queue through, see `addToQueue` in `player/queue.ts`. */
+function missingQueueInternals(doc: Document): string[] {
+  type Queue = Element & { dispatch?: unknown; queue?: { store?: { store?: { getState?: unknown } } } };
+  const queue = doc.querySelector("ytmusic-player-queue") as Queue | null;
+  if (!queue) return [];
+  const app = doc.querySelector("ytmusic-app") as (Element & { networkManager?: { fetch?: unknown } }) | null;
+  return [
+    typeof queue.dispatch === "function" ? null : "queue.dispatch",
+    typeof queue.queue?.store?.store?.getState === "function" ? null : "queue.store",
+    typeof app?.networkManager?.fetch === "function" ? null : "app.networkManager",
+  ].filter((name): name is string => name !== null);
+}
 
 /** What the app calls on the player. */
 const PLAYER_FUNCTIONS = ["getCurrentTime", "getVideoData", "getPlayerResponse", "seekTo"];
@@ -25,9 +43,12 @@ const PLAYER_FUNCTIONS = ["getCurrentTime", "getVideoData", "getPlayerResponse",
  * change shows up as a message instead of as a feature that silently stopped.
  */
 export function checkPage(doc: Document = document): string[] {
-  const missing = Object.entries(PAGE_PARTS)
-    .filter(([, selector]) => doc.querySelector(selector) === null)
-    .map(([name]) => name);
+  const missing = [
+    ...Object.entries(PAGE_PARTS)
+      .filter(([, selector]) => doc.querySelector(selector) === null)
+      .map(([name]) => name),
+    ...missingQueueInternals(doc),
+  ];
   const player = doc.querySelector("#movie_player") as (Element & Record<string, unknown>) | null;
   if (!player) return [...missing, "player"];
   return [

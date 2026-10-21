@@ -10,7 +10,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use tauri::{AppHandle, Manager, Runtime};
+use tauri::{AppHandle, Runtime};
 
 const FOLDER: &str = "now-playing";
 const MAX_TEXT_CHARS: usize = 500;
@@ -66,7 +66,7 @@ struct Server {
 }
 
 pub fn dir<R: Runtime>(app: &AppHandle<R>) -> Option<PathBuf> {
-    Some(app.path().app_config_dir().ok()?.join(FOLDER))
+    Some(crate::portable::config_dir(app).ok()?.join(FOLDER))
 }
 
 /// Writes `bytes` to `path` whole: a reader never sees half a file.

@@ -17,6 +17,15 @@ function buildPage(): { player: Record<string, unknown> } {
   add("span", { class: "time-info" });
   add("div", { id: "progress-bar" });
   add("ytmusic-like-button-renderer", {});
+  document.body.appendChild(document.createElement("ytmusic-player"));
+  document.body.appendChild(document.createElement("ytmusic-av-toggle"));
+  const queue = Object.assign(document.body.appendChild(document.createElement("ytmusic-player-queue")), {
+    dispatch: () => {},
+    queue: { store: { store: { getState: () => ({}) } } },
+  });
+  const item = queue.appendChild(document.createElement("ytmusic-player-queue-item"));
+  item.appendChild(document.createElement("span")).className = "song-title";
+  Object.assign(document.body.appendChild(document.createElement("ytmusic-app")), { networkManager: { fetch: () => {} } });
   const player = Object.assign(document.body.appendChild(document.createElement("div")), {
     id: "movie_player",
     getCurrentTime: () => 0,
@@ -44,6 +53,15 @@ describe("checkPage", () => {
     document.querySelector("ytmusic-like-button-renderer")?.remove();
     player.seekTo = undefined;
     expect(checkPage()).toEqual(["volumeSlider", "likeButtons", "player.seekTo"]);
+  });
+
+  it("names the play queue, the song / video switch and what plugins change the queue through", () => {
+    buildPage();
+    document.querySelector("ytmusic-av-toggle")?.remove();
+    document.querySelector("ytmusic-player-queue-item")?.remove();
+    Object.assign(document.querySelector("ytmusic-player-queue")!, { dispatch: undefined });
+    Object.assign(document.querySelector("ytmusic-app")!, { networkManager: {} });
+    expect(checkPage()).toEqual(["songVideoSwitch", "queueItems", "queue.dispatch", "app.networkManager"]);
   });
 
   it("names the player when it is missing altogether", () => {

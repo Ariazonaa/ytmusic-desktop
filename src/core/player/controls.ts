@@ -60,5 +60,13 @@ export function controlPlayer(action: PlayerAction, doc: Document = document): v
     case "toggleMute":
       toggleMute(doc);
       return;
+    // Only ever stops: the sleep timer must not start what was paused already.
+    case "pause":
+      doc.querySelector("video")?.pause();
+      return;
+    // Only ever starts: sent again until it plays when the page comes back from being unloaded.
+    case "play":
+      void doc.querySelector("video")?.play();
+      return;
   }
 }

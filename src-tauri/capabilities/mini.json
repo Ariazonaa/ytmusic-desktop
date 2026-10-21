@@ -1,0 +1,16 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "mini-player",
+  "description": "Lets the mini player hear what plays, ask for it once when it opens, be dragged, press its buttons and close itself.",
+  "windows": [
+    "mini-player"
+  ],
+  "permissions": [
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "core:window:allow-start-dragging",
+    "allow-mini-player-state",
+    "allow-mini-player-control",
+    "allow-mini-player-close"
+  ]
+}
