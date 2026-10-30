@@ -1,0 +1,11 @@
+# Read by `cargo audit` in this folder (the audit workflows run it here).
+
+[advisories]
+ignore = [
+  # crypto-bigint 0.5: operations meant to take constant time may not, fixed only
+  # in 0.7.6. It comes in through authenticator 0.5 (the newest) -> p256 0.13,
+  # Linux only, where it does the key agreement for a security key's PIN, with a
+  # new key each time; measuring it takes someone on the same machine. Drop this
+  # once authenticator moves to a p256 on crypto-bigint 0.7.
+  "RUSTSEC-2026-0387",
+]

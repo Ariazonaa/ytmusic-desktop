@@ -100,7 +100,9 @@ function debWithVersion(from, to, debVersion) {
   const text = readFileSync(control, "utf8");
   if (!/^Version: /m.test(text)) throw new Error(`${from} has no Version in its control file`);
   writeFileSync(control, text.replace(/^Version: .*$/m, `Version: ${debVersion}`));
-  execFileSync("dpkg-deb", ["--root-owner-group", "--build", root, to], { stdio: ["ignore", "ignore", "inherit"] });
+  // xz: Ubuntu's dpkg-deb, on the release runner, packs with zstd, which dpkg
+  // before 1.21.18 (Debian 11) cannot unpack.
+  execFileSync("dpkg-deb", ["-Zxz", "--root-owner-group", "--build", root, to], { stdio: ["ignore", "ignore", "inherit"] });
   rmSync(temp, { recursive: true, force: true });
 }
 

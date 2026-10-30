@@ -11,6 +11,7 @@ on:
     paths:
       - package-lock.json
       - src-tauri/Cargo.lock
+      - src-tauri/.cargo/audit.toml
       - .github/workflows/audit.yml
   workflow_dispatch:
 
