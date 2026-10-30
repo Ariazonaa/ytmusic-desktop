@@ -1,0 +1,38 @@
+{
+  "name": "fine-volume",
+  "version": "0.1.0",
+  "description": "The volume in even steps down to very quiet, a larger slider with its value, and finer steps with the mouse wheel.",
+  "category": "audio",
+  "permissions": ["music.control", "audio", "ui.inject"],
+  "conflicts": ["wheel-volume"],
+  "settings": {
+    "range": {
+      "type": "range",
+      "label": "Range",
+      "description": "How far below full volume 1 on the slider is. The more, the quieter it goes.",
+      "default": 50,
+      "min": 40,
+      "max": 60,
+      "step": 10,
+      "unit": "dB"
+    },
+    "step": {
+      "type": "range",
+      "label": "Step",
+      "description": "How far one notch of the mouse wheel over the player bar changes the volume. With Shift held it is 1.",
+      "default": 2,
+      "min": 1,
+      "max": 10,
+      "step": 1,
+      "unit": "%"
+    },
+    "volume": {
+      "type": "number",
+      "label": "Volume",
+      "default": -1,
+      "min": -1,
+      "max": 100,
+      "hidden": true
+    }
+  }
+}

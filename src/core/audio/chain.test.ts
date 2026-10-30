@@ -100,6 +100,41 @@ describe("AudioChain", () => {
     expect(() => (video.volume = 2)).toThrow();
   });
 
+  it("takes the volume over on any engine once a level is set, also without effects", () => {
+    const { chain, path, context } = setup(true, true);
+    const video = document.querySelector("video")!;
+    const real = (): unknown => Object.getOwnPropertyDescriptor(HTMLMediaElement.prototype, "volume")!.get!.call(video);
+    video.volume = 0.3;
+    chain.setVolumeLevel(0.05);
+    expect(path()).toEqual(["source1", "volume", "destination"]);
+    const gain = context.createGain.mock.results[0]!.value as { gain: { value: number } };
+    expect(gain.gain.value).toBeCloseTo(0.05);
+    expect([video.volume, real()]).toEqual([0.3, 1]);
+
+    // What the page sets no longer counts, mute still does.
+    video.volume = 0.8;
+    expect(gain.gain.value).toBeCloseTo(0.05);
+    video.muted = true;
+    expect(gain.gain.value).toBe(0);
+    video.muted = false;
+    chain.setVolumeLevel(0.2);
+    expect(gain.gain.value).toBeCloseTo(0.2);
+
+    // Cleared, the page's volume counts again, now applied by the chain.
+    chain.setVolumeLevel(null);
+    expect(gain.gain.value).toBeCloseTo(0.8);
+    expect(real()).toBe(1);
+  });
+
+  it("takes the volume over when a level comes after the effects", () => {
+    const { chain, effect, path, context } = setup(true, true);
+    chain.addEffect(10, effect("equalizer").build);
+    expect(path()).toEqual(["source1", "equalizer", "destination"]);
+    chain.setVolumeLevel(0.5);
+    expect(path()).toEqual(["source1", "equalizer", "volume", "destination"]);
+    expect(context.createGain).toHaveBeenCalledOnce();
+  });
+
   it("leaves the volume to engines that apply it", () => {
     const { chain, effect, path, context } = setup(true, true);
     chain.addEffect(10, effect("equalizer").build);

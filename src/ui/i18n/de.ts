@@ -220,6 +220,8 @@ const de: Readonly<Record<string, string>> = {
     "Das Spektrum der Musik als Balken hinter der Player-Leiste.",
   "Changes the volume with the mouse wheel over the player bar.":
     "Ändert die Lautstärke mit dem Mausrad über der Player-Leiste.",
+  "The volume in even steps down to very quiet, a larger slider with its value, and finer steps with the mouse wheel.":
+    "Die Lautstärke in gleichmäßigen Stufen bis ganz leise, ein größerer Regler mit seinem Wert und feinere Schritte mit dem Mausrad.",
 
   // Units
   s: "s",
@@ -417,6 +419,13 @@ const de: Readonly<Record<string, string>> = {
   // visualizer
   Opacity: "Deckkraft",
   "How strongly the bars show behind the player bar.": "Wie deutlich die Balken hinter der Player-Leiste zu sehen sind.",
+
+  // fine-volume
+  Range: "Bereich",
+  "How far below full volume 1 on the slider is. The more, the quieter it goes.":
+    "Wie weit 1 auf dem Regler unter der vollen Lautstärke liegt. Je mehr, desto leiser geht es.",
+  "How far one notch of the mouse wheel over the player bar changes the volume. With Shift held it is 1.":
+    "Um wie viel eine Raste des Mausrads über der Player-Leiste die Lautstärke ändert. Mit gedrückter Umschalttaste ist es 1.",
 
   // wheel-volume
   Step: "Schrittweite",

@@ -108,8 +108,10 @@ export class AudioChain {
   private entries: Entry[] = [];
   private waiting = false;
   private failed = false;
-  /** Where the element's volume is applied, on engines that leave that to the chain. */
+  /** Where the element's volume is applied, on engines that leave that to the chain or once a level is set. */
   private volume: GainNode | undefined;
+  /** A plugin's own volume, replacing the page's; `null` while the page's counts. */
+  private level: number | null = null;
   /** The device the sound goes to, by the id the page knows it by; "" is the default. */
   private sinkId = "";
 
@@ -136,6 +138,23 @@ export class AudioChain {
       this.entries = this.entries.filter((other) => other !== entry);
       this.rewire();
     };
+  }
+
+  /**
+   * Plays the sound at this linear gain instead of the volume the page sets,
+   * on every engine; mute still counts. `null` gives the volume back to the
+   * page. The element stays taken over: its volume is applied here from then
+   * on, which sounds the same.
+   */
+  setVolumeLevel(level: number | null): void {
+    this.level = level;
+    if (level !== null && this.context && !this.volume) {
+      this.volume = this.context.createGain();
+      if (this.element) takeOverVolume(this.element);
+      this.rewire();
+    }
+    this.followVolume();
+    if (level !== null && !this.context) this.connect();
   }
 
   /** Whether the player's sound runs through the chain, so that only the chain can send it elsewhere. */
@@ -165,7 +184,7 @@ export class AudioChain {
         this.waiting = true;
         void waitForElement("video", this.doc).then(() => {
           this.waiting = false;
-          if (this.entries.length > 0) this.connect();
+          if (this.entries.length > 0 || this.level !== null) this.connect();
         });
         return;
       }
@@ -175,7 +194,7 @@ export class AudioChain {
         this.fail(error);
         return;
       }
-      if (!this.elementVolumeApplied) this.volume = this.context.createGain();
+      if (!this.elementVolumeApplied || this.level !== null) this.volume = this.context.createGain();
       if (this.sinkId !== "") this.applySink().catch((error: unknown) => this.log.error("[ytm-desktop] cannot send the sound to its device", error));
       for (const type of ACTIVITY) this.doc.addEventListener(type, this.onActivity, true);
       this.adopt(video);
@@ -216,10 +235,10 @@ export class AudioChain {
     this.rewire();
   }
 
-  /** Applies the element's volume and mute to the sound, where the engine does not. */
+  /** Applies the element's volume, or the level set, and mute to the sound, where the chain has the volume. */
   private readonly followVolume = (): void => {
     if (!this.volume || !this.element) return;
-    this.volume.gain.value = this.element.muted ? 0 : this.element.volume;
+    this.volume.gain.value = this.element.muted ? 0 : (this.level ?? this.element.volume);
   };
 
   private fail(error: unknown): void {

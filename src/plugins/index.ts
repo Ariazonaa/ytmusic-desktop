@@ -8,6 +8,7 @@ import crossfade from "./crossfade";
 import demo from "./demo";
 import discord from "./discord";
 import equalizer from "./equalizer";
+import fineVolume from "./fine-volume";
 import headphones from "./headphones";
 import keepPlaying from "./keep-playing";
 import limiter from "./limiter";
@@ -39,6 +40,7 @@ export const builtinPlugins: readonly Plugin[] = [
   demo,
   discord,
   equalizer,
+  fineVolume,
   headphones,
   keepPlaying,
   limiter,

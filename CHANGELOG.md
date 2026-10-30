@@ -4,6 +4,14 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.11.0
+
+- Plugin `fine-volume`: the volume in even steps of loudness, down to very
+  quiet. YouTube Music's own slider is linear, so 5 is already -26 dB; in the
+  older player bar it is silent below 5 and the same from 5 to 9. A wide
+  slider with its value is always shown in the player bar, and the mouse wheel
+  over the bar moves it, by 1 with Shift.
+
 ## 0.10.0
 
 - "Save memory in the tray" in the settings window: after a pause of 10, 30

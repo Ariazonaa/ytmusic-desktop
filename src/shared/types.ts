@@ -297,6 +297,12 @@ export interface AudioApi {
    * when the plugin unloads.
    */
   setOutputDelay(seconds: number): void;
+  /**
+   * Plays the sound at this linear gain (0 to 1) instead of the volume the
+   * page's slider sets; mute still counts. `null` gives the volume back to the
+   * page, as does unloading the plugin.
+   */
+  setVolumeLevel(level: number | null): void;
 }
 
 export interface JsonResponse {

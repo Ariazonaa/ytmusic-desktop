@@ -555,6 +555,7 @@ manifest does not list throws a `PermissionError`. The calls are those of
 | `api.ui.addPanel(title)` | `ui.inject` | a `Panel` with `body`, `open`, `show()`, `hide()`, `setTitle()`, `onClose()` |
 | `api.audio.addEffect(order, build)` | `audio` | see [Audio effects](#audio-effects) |
 | `api.audio.setOutputDelay(seconds)` | `audio` | see [Audio effects](#audio-effects) |
+| `api.audio.setVolumeLevel(level)` | `audio` | see [Audio effects](#audio-effects) |
 
 `src/shared/types.ts` documents every member.
 
@@ -600,6 +601,11 @@ tapped only once, and the chain already did.
 
 An effect that delays the sound must report by how much with
 `setOutputDelay`, so that positions given to plugins describe what is heard.
+
+`api.audio.setVolumeLevel(level)` plays the sound at a linear gain of its own,
+0 to 1, instead of the volume the page's slider sets; mute still counts.
+`fine-volume` uses it to turn the slider into even steps of loudness. `null`,
+or unloading the plugin, gives the volume back to the page.
 
 `api.audio.getOutputDevice()` resolves with the name of the device sound goes
 to, as the system shows it, or `null` where the app cannot tell (anywhere but
@@ -658,8 +664,11 @@ These cost time to find out. They apply to both kinds of plugin unless noted.
 - **`songChange` comes from the Media Session.** The title and artist are what
   YouTube Music announces to the system. Titles of music videos often carry
   additions like "(Official Video)".
-- **Volume is not linear.** `getVolume` and `setVolume` use the page's slider,
-  where 44 is about 16 % of full loudness.
+- **The volume depends on the player bar.** `getVolume` and `setVolume` use
+  the page's slider. In the older bar (`ytmusic-player-bar`) 44 is 16 % of full
+  loudness, in whole percent, so below 5 it is silent. In the newer one
+  (`ytmusic-miniplayer`), which WebKitGTK gets, the slider is linear. Which one
+  a window gets is YouTube Music's choice.
 - **In the tray, timers slow down.** A hidden page runs timers at most about
   once a second. Do not rely on finer timing while the window is hidden.
 - **Leaving a playing page asks first.** YouTube Music shows a "leave site?"

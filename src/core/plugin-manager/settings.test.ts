@@ -70,7 +70,7 @@ describe("PluginManager plugin settings", () => {
   const services: Services = {
     music: { getCurrentSong: () => null, getPlaybackState: () => null, getVideoId: () => null, getLoudnessLkfs: () => null, getLikeStatus: () => null, getTrackType: () => null, getQueue: () => [] },
     player: { seekTo: () => {}, setPlaybackRate: () => {}, getVolume: () => null, setVolume: () => null, next: () => {}, setLikeStatus: () => true, addToQueue: () => Promise.resolve(), removeFromQueue: () => {}, moveInQueue: () => {} },
-    audio: { addEffect: () => () => {}, setOutputDelay: () => {}, getOutputDevice: () => Promise.resolve(null), onOutputDeviceChange: () => () => {} },
+    audio: { addEffect: () => () => {}, setOutputDelay: () => {}, setVolumeLevel: () => {}, getOutputDevice: () => Promise.resolve(null), onOutputDeviceChange: () => () => {} },
     net: { getJson: () => Promise.resolve({ status: 200, data: null }), request: () => Promise.resolve({ status: 200, text: "{}", data: {} }), openInBrowser: () => Promise.resolve() },
     notify: { show: () => Promise.resolve() },
     saveSettings,

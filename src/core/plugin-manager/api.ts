@@ -318,6 +318,7 @@ export function createApi(
   };
 
   let resetsOutputDelay = false;
+  let resetsVolumeLevel = false;
   const audio: AudioApi = {
     addEffect: (order, build) => tracked(services.audio.addEffect(order, build)),
     getOutputDevice: () => services.audio.getOutputDevice(),
@@ -328,6 +329,13 @@ export function createApi(
         tracked(() => services.audio.setOutputDelay(0));
       }
       services.audio.setOutputDelay(seconds);
+    },
+    setVolumeLevel(level) {
+      if (!resetsVolumeLevel) {
+        resetsVolumeLevel = true;
+        tracked(() => services.audio.setVolumeLevel(null));
+      }
+      services.audio.setVolumeLevel(level === null ? null : Math.min(1, Math.max(0, Number(level) || 0)));
     },
   };
 

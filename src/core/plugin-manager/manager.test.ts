@@ -16,7 +16,7 @@ function makeServices() {
       getLoudnessLkfs: () => null, getLikeStatus: () => null, getTrackType: () => null, getQueue: () => [],
     },
     player: { seekTo: vi.fn(), setPlaybackRate: vi.fn(), getVolume: () => 50, setVolume: vi.fn(() => 50), next: vi.fn(), setLikeStatus: vi.fn(() => true), addToQueue: vi.fn(() => Promise.resolve()), removeFromQueue: vi.fn(), moveInQueue: vi.fn() },
-    audio: { addEffect: vi.fn(() => vi.fn()), setOutputDelay: vi.fn(), getOutputDevice: vi.fn(() => Promise.resolve(null)), onOutputDeviceChange: vi.fn(() => vi.fn()) },
+    audio: { addEffect: vi.fn(() => vi.fn()), setOutputDelay: vi.fn(), setVolumeLevel: vi.fn(), getOutputDevice: vi.fn(() => Promise.resolve(null)), onOutputDeviceChange: vi.fn(() => vi.fn()) },
     net: { getJson: vi.fn(() => Promise.resolve({ status: 200, data: { ok: true } })), request: vi.fn(() => Promise.resolve({ status: 200, text: "{}", data: {} })), openInBrowser: vi.fn(() => Promise.resolve()) },
     notify: { show: vi.fn(() => Promise.resolve()) },
     saveSettings: vi.fn(() => Promise.resolve()),
@@ -308,6 +308,24 @@ describe("plugin API permissions", () => {
 
     expect(services.audio.setOutputDelay).toHaveBeenLastCalledWith(0);
     expect(services.audio.setOutputDelay).toHaveBeenCalledTimes(3);
+  });
+
+  it("gives the volume back to the page when the plugin unloads", () => {
+    const { services } = makeServices();
+    const plugin = makePlugin("p", ["audio"], {
+      onLoad: (api) => {
+        api.audio.setVolumeLevel(0.1);
+        api.audio.setVolumeLevel(0.2);
+      },
+    });
+    const manager = new PluginManager([plugin], services, silent);
+    manager.enable(["p"]);
+    expect(services.audio.setVolumeLevel).toHaveBeenLastCalledWith(0.2);
+
+    manager.unloadAll();
+
+    expect(services.audio.setVolumeLevel).toHaveBeenLastCalledWith(null);
+    expect(services.audio.setVolumeLevel).toHaveBeenCalledTimes(3);
   });
 
   it("removes injected CSS only once", () => {

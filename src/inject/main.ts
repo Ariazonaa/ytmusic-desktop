@@ -137,6 +137,7 @@ async function start(): Promise<void> {
       },
       getOutputDevice: () => outputDevice.current(),
       onOutputDeviceChange: (handler) => outputDevice.onChange(handler),
+      setVolumeLevel: (level) => audioChain.setVolumeLevel(level),
     },
     ui: {
       injectCss,

@@ -152,6 +152,7 @@ const de: Readonly<Record<string, string>> = {
 
   // notices
   "Volume {volume} %": "Lautstärke {volume} %",
+  Volume: "Lautstärke",
   "Skipped a track you disliked": "Einen Titel übersprungen, der dir nicht gefällt",
   "Skipped {what}, {length} · {total} skipped so far": "{what} übersprungen, {length} · bisher {total} übersprungen",
   "Play it": "Doch abspielen",
