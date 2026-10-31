@@ -238,6 +238,11 @@ export interface PlayerApi {
   getVolume(): number | null;
   /** Sets the volume, 0 to 100, and returns the value that was applied. */
   setVolume(percent: number): number | null;
+  /**
+   * How far the tray menu's volume entries and the volume shortcuts move the
+   * volume. `null` goes back to the usual 10. Set it back when unloading.
+   */
+  setVolumeStep(step: number | null): void;
   /** Goes to the next track in the queue. */
   next(): void;
   /**

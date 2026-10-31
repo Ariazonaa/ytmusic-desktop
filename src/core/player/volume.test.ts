@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { changeVolume, getVolume, setVolume, toggleMute } from "./volume";
+import { controlPlayer } from "./controls";
+import { changeVolume, getVolume, setVolume, setVolumeStep, toggleMute } from "./volume";
 
 function addPlayerBar(volume: number) {
   const bar = document.body.appendChild(document.createElement("ytmusic-player-bar"));
@@ -17,6 +18,7 @@ function addPlayerBar(volume: number) {
 
 afterEach(() => {
   document.body.replaceChildren();
+  setVolumeStep(null);
 });
 
 describe("volume", () => {
@@ -57,6 +59,30 @@ describe("volume", () => {
     addPlayerBar(95);
     expect(changeVolume(10)).toBe(100);
     expect(changeVolume(-30)).toBe(70);
+  });
+
+  it("moves by 10 for the tray and shortcuts, or by the step asked for", () => {
+    addPlayerBar(50);
+    controlPlayer("volumeUp");
+    expect(getVolume()).toBe(60);
+    setVolumeStep(2);
+    controlPlayer("volumeUp");
+    expect(getVolume()).toBe(62);
+    controlPlayer("volumeDown");
+    expect(getVolume()).toBe(60);
+    setVolumeStep(null);
+    controlPlayer("volumeDown");
+    expect(getVolume()).toBe(50);
+  });
+
+  it("ignores a step that makes no sense", () => {
+    addPlayerBar(50);
+    setVolumeStep(0);
+    controlPlayer("volumeUp");
+    expect(getVolume()).toBe(60);
+    setVolumeStep(Number.NaN);
+    controlPlayer("volumeUp");
+    expect(getVolume()).toBe(70);
   });
 
   it("mutes through the page's button", () => {
@@ -126,5 +152,27 @@ describe("the newer player bar", () => {
     expect(setVolume(60)).toBe(60);
     expect(slider.value).toBe("60");
     expect(events).toEqual(["input", "change"]);
+  });
+
+  it("leaves unmuting to the page: its slider shows another scale than it sets", () => {
+    const bar = document.body.appendChild(document.createElement("ytmusic-miniplayer"));
+    const slider = bar.appendChild(document.createElement("input"));
+    Object.assign(slider, { type: "range", id: "slider", min: "0", max: "100", value: "73" });
+    const wrapper = bar.appendChild(document.createElement("div"));
+    wrapper.className = "ytMusicMiniPlayerMuteButton";
+    const button = wrapper.appendChild(document.createElement("button"));
+    const player = { volume: 44, muted: false };
+    Object.assign(document.body.appendChild(document.createElement("div")), { id: "movie_player", getVolume: () => player.volume });
+    button.addEventListener("click", () => {
+      player.muted = !player.muted;
+      slider.value = player.muted ? "0" : "64";
+    });
+    const set = vi.fn();
+    slider.addEventListener("input", set);
+    toggleMute();
+    expect(player.muted).toBe(true);
+    toggleMute();
+    expect(player.muted).toBe(false);
+    expect(set).not.toHaveBeenCalled();
   });
 });

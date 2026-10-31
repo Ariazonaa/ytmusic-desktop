@@ -14,7 +14,7 @@ function setup(permissions: Permission[], hosts?: string[]) {
   let clickButton: (() => void) | undefined;
   const services: Services = {
     music: { getCurrentSong: () => song, getPlaybackState: () => null, getVideoId: () => "abc", getLoudnessLkfs: () => null, getLikeStatus: () => null, getTrackType: () => null, getQueue: () => [] },
-    player: { seekTo: vi.fn(), setPlaybackRate: vi.fn(), getVolume: () => 50, setVolume: vi.fn(() => 50), next: vi.fn(), setLikeStatus: vi.fn(() => true), addToQueue: vi.fn(() => Promise.resolve()), removeFromQueue: vi.fn(), moveInQueue: vi.fn() },
+    player: { setVolumeStep: vi.fn(), seekTo: vi.fn(), setPlaybackRate: vi.fn(), getVolume: () => 50, setVolume: vi.fn(() => 50), next: vi.fn(), setLikeStatus: vi.fn(() => true), addToQueue: vi.fn(() => Promise.resolve()), removeFromQueue: vi.fn(), moveInQueue: vi.fn() },
     audio: { addEffect: vi.fn(() => vi.fn()), setOutputDelay: vi.fn(), setVolumeLevel: vi.fn(), getOutputDevice: vi.fn(() => Promise.resolve(null)), onOutputDeviceChange: vi.fn(() => vi.fn()) },
     ui: {
       injectCss: vi.fn(() => removeCss),

@@ -46,6 +46,7 @@ describe("wheelDelta", () => {
 describe("fine-volume", () => {
   let slider: HTMLElement & { value: number };
   let setVolumeLevel: ReturnType<typeof vi.fn>;
+  let setVolumeStep: ReturnType<typeof vi.fn>;
   let settings: PluginSettingValues;
   let api: PluginApi;
   let saved: ReturnType<typeof vi.fn>;
@@ -54,10 +55,12 @@ describe("fine-volume", () => {
     document.body.innerHTML = '<ytmusic-player-bar><div id="right"><div id="volume-slider"></div></div></ytmusic-player-bar>';
     slider = Object.assign(document.querySelector<HTMLElement>("#volume-slider")!, { value: 40 });
     setVolumeLevel = vi.fn();
+    setVolumeStep = vi.fn();
     settings = { range: 50, step: 2, volume: -1 };
     saved = vi.fn(() => Promise.resolve());
     api = {
       player: {
+        setVolumeStep,
         getVolume: () => slider.value,
         setVolume: (percent: number) => {
           slider.value = Math.min(100, Math.max(0, percent));
@@ -96,6 +99,15 @@ describe("fine-volume", () => {
     slider.value = 0;
     document.querySelector("video")!.dispatchEvent(new Event("volumechange"));
     expect(lastLevel()).toBe(0);
+  });
+
+  it("gives the tray and shortcuts its step, and takes it back", () => {
+    expect(setVolumeStep).toHaveBeenLastCalledWith(2);
+    settings.step = 5;
+    fineVolume.onSettingsChange?.(settings);
+    expect(setVolumeStep).toHaveBeenLastCalledWith(5);
+    fineVolume.onUnload?.();
+    expect(setVolumeStep).toHaveBeenLastCalledWith(null);
   });
 
   it("takes a new range at once", () => {

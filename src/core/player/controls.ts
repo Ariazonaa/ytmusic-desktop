@@ -1,7 +1,7 @@
 import type { PlayerAction } from "../../shared/types";
 import { SELECTORS } from "../injector/dom";
 import { findPlayer } from "./playback";
-import { VOLUME_STEP, changeVolume, toggleMute } from "./volume";
+import { changeVolume, currentVolumeStep, toggleMute } from "./volume";
 
 /**
  * Jumps to a position in the current track.
@@ -52,10 +52,10 @@ export function controlPlayer(action: PlayerAction, doc: Document = document): v
       doc.querySelector<HTMLElement>(SELECTORS.previousButton)?.click();
       return;
     case "volumeUp":
-      changeVolume(VOLUME_STEP, doc);
+      changeVolume(currentVolumeStep(), doc);
       return;
     case "volumeDown":
-      changeVolume(-VOLUME_STEP, doc);
+      changeVolume(-currentVolumeStep(), doc);
       return;
     case "toggleMute":
       toggleMute(doc);

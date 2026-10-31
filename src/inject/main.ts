@@ -31,7 +31,7 @@ import { PlaybackReport } from "../core/player/report";
 import { startResume } from "../core/player/resume";
 import { SleepAtTrackEnd } from "../core/player/sleep";
 import { SongWatcher, readCurrentSong } from "../core/player/song";
-import { getVolume, setVolume } from "../core/player/volume";
+import { getVolume, setVolume, setVolumeStep } from "../core/player/volume";
 import {
   getOutputDevice,
   getSettings,
@@ -124,6 +124,7 @@ async function start(): Promise<void> {
       setPlaybackRate,
       getVolume,
       setVolume,
+      setVolumeStep,
       next: () => controlPlayer("next"),
       setLikeStatus: (status) => setLikeStatus(status),
       addToQueue: (videoId, position = "next") => addToQueue(videoId, position),

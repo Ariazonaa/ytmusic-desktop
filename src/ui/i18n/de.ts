@@ -424,8 +424,8 @@ const de: Readonly<Record<string, string>> = {
   Range: "Bereich",
   "How far below full volume 1 on the slider is. The more, the quieter it goes.":
     "Wie weit 1 auf dem Regler unter der vollen Lautstärke liegt. Je mehr, desto leiser geht es.",
-  "How far one notch of the mouse wheel over the player bar changes the volume. With Shift held it is 1.":
-    "Um wie viel eine Raste des Mausrads über der Player-Leiste die Lautstärke ändert. Mit gedrückter Umschalttaste ist es 1.",
+  "How far one notch of the mouse wheel over the player bar, a shortcut or the tray menu changes the volume. With Shift held the wheel moves it by 1.":
+    "Um wie viel eine Raste des Mausrads über der Player-Leiste, ein Tastenkürzel oder das Tray-Menü die Lautstärke ändert. Mit gedrückter Umschalttaste ändert das Mausrad sie um 1.",
 
   // wheel-volume
   Step: "Schrittweite",

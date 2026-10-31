@@ -65,6 +65,12 @@ jobs:
     # There is no Linux release yet. This keeps the code building there,
     # see docs/platforms.md.
     runs-on: ubuntu-latest
+    # Without debug info the build takes 2.2 GB instead of 6.3 GB. A runner with
+    # less room left than that kills the linker with a bus error.
+    env:
+      CARGO_INCREMENTAL: "0"
+      CARGO_PROFILE_DEV_DEBUG: "0"
+      CARGO_PROFILE_TEST_DEBUG: "0"
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

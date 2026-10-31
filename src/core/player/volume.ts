@@ -3,8 +3,17 @@ import { SELECTORS } from "../injector/dom";
 /** YouTube Music's volume sliders are custom elements with a numeric `value`. */
 type Slider = HTMLElement & { value: number };
 
-/** How far the tray menu's volume entries move the slider. */
-export const VOLUME_STEP = 10;
+/** How far the tray menu's volume entries and the shortcuts move the slider. */
+const VOLUME_STEP = 10;
+
+let volumeStep = VOLUME_STEP;
+
+/** Sets that step, in percentage points. `null` goes back to the usual one. */
+export function setVolumeStep(step: number | null): void {
+  volumeStep = step !== null && step >= 1 ? Math.round(step) : VOLUME_STEP;
+}
+
+export const currentVolumeStep = (): number => volumeStep;
 
 const clamp = (percent: number): number => Math.min(100, Math.max(0, Math.round(percent)));
 
@@ -63,6 +72,12 @@ let beforeMute: { slider: number; player: number | null } | undefined;
 export function toggleMute(doc: Document = document): void {
   const button = doc.querySelector<HTMLElement>(SELECTORS.muteButton);
   if (!button) return;
+  // The newer player bar brings its volume back by itself, and shows it on
+  // another scale than it sets it: 0.44 reads 73, and setting 73 makes it louder.
+  if (doc.querySelector(SELECTORS.volumeSlider) instanceof HTMLInputElement) {
+    button.click();
+    return;
+  }
   const slider = getVolume(doc);
   const player = playerVolume(doc);
   button.click();

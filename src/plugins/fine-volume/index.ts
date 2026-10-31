@@ -235,6 +235,7 @@ const fineVolume: Plugin = {
   onLoad(pluginApi) {
     api = pluginApi;
     api.ui.injectCss(CSS);
+    api.player.setVolumeStep(setting("step", 2));
     for (const type of SLIDER_EVENTS) document.addEventListener(type, update, true);
     document.addEventListener("timeupdate", placeControl, true);
     const saved = setting("volume", -1);
@@ -255,6 +256,7 @@ const fineVolume: Plugin = {
   },
 
   onSettingsChange() {
+    api?.player.setVolumeStep(setting("step", 2));
     if (volume !== null) apply(volume);
   },
 
@@ -263,6 +265,7 @@ const fineVolume: Plugin = {
     document.removeEventListener("timeupdate", placeControl, true);
     bar?.removeEventListener("wheel", onWheel);
     if (saveTimer !== undefined) save();
+    api?.player.setVolumeStep(null);
     clearTimeout(unmuteTimer);
     unmuteTimer = undefined;
     wasMuted = false;

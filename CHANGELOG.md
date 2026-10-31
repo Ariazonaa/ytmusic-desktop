@@ -4,6 +4,13 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.12.0
+
+- `fine-volume`: the step in its settings now also counts for the tray menu
+  and the volume shortcuts.
+- Linux: unmuting from the tray, a shortcut or with `--mute` no longer makes
+  the music louder.
+
 ## 0.11.0
 
 - Plugin `fine-volume`: the volume in even steps of loudness, down to very

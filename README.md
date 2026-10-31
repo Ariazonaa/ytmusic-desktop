@@ -151,7 +151,7 @@ macOS is not supported yet.
 | `compressor` | Evens out loud and quiet passages, in three strengths. |
 | `limiter` | Holds peaks just below full scale, so that what the equalizer, `normalize` or `audio-tools` boost does not clip. |
 | `audio-tools` | Volume boost up to 300 %, left/right balance and mono. |
-| `fine-volume` | The volume in even steps of loudness, down to very quiet: each step is half a decibel with the range at 50 dB. YouTube Music's own slider is too loud at the bottom (5 is already -26 dB) or, in its older player bar, silent below 5 and the same from 5 to 9. A wide slider with its value is always shown in the player bar, and the mouse wheel over the bar moves it, by 1 with Shift. Tray, shortcuts and media keys still work. The middle of the slider is quieter than you are used to; a range of 40 dB is closer. Replaces `wheel-volume`. |
+| `fine-volume` | The volume in even steps of loudness, down to very quiet: each step is half a decibel with the range at 50 dB. YouTube Music's own slider is too loud at the bottom (5 is already -26 dB) or, in its older player bar, silent below 5 and the same from 5 to 9. A wide slider with its value is always shown in the player bar, and the mouse wheel over the bar moves it, by 1 with Shift. The same step counts for the tray menu and the volume shortcuts. The middle of the slider is quieter than you are used to; a range of 40 dB is closer. Replaces `wheel-volume`. |
 
 ### Appearance
 
