@@ -36,8 +36,14 @@ pub(crate) fn browser_args(app: &AppHandle) -> &'static str {
     static ARGS: OnceLock<String> = OnceLock::new();
     ARGS.get_or_init(|| {
         // Setting any arguments replaces Tauri's defaults, so they are repeated here.
-        let mut args =
-            String::from("--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection");
+        //
+        // Without QUIC: over some VPNs (seen with Mullvad), YouTube Music answers
+        // "not available in your region" to every request over HTTP/3, while the
+        // same address over HTTP/2 gets the page. The browser switches to HTTP/3
+        // after the first answer, so the page came once and then not again.
+        let mut args = String::from(
+            "--disable-features=msWebOOUI,msPdfOOUI,msSmartScreenProtection --disable-quic",
+        );
         if !app.state::<SettingsStore>().get().hardware_acceleration {
             args.push_str(" --disable-gpu");
         }

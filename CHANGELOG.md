@@ -4,6 +4,13 @@ What changed for someone using the app, newest first. The version is
 maintained in `package.json`; `npm version <new>` updates the Rust side and
 this file needs a new heading.
 
+## 0.12.1
+
+- Windows: YouTube Music no longer says "not available in your region" over
+  some VPNs, e.g. Mullvad, while a browser on the same connection plays. Over
+  such an address YouTube answered every request over HTTP/3 with that page;
+  the app now connects without HTTP/3 (QUIC).
+
 ## 0.12.0
 
 - `fine-volume`: the step in its settings now also counts for the tray menu
